@@ -383,6 +383,39 @@ app.post("/create-account", async (req, res) => {
     }
 });
 
+// STOCK
+app.post("/add-stock", async (req, res) => {
+    const warehouseId = req.body.warehouseId;
+    const stuffId = req.body.stuffId;
+    const quantity = req.body.quantity;
+    const imei1 = req.body.imei1;
+    const imei2 = req.body.imei2;
+    const sn = req.body.sn;
+    const barcode = req.body.barcode;
+
+    if (!warehouseId || !stuffId || !quantity || !imei1 || !imei2 || !sn || !barcode) {
+        res.status(404).json({
+            status: 404,
+            message: "Missing required key: warehouseId, stuffId, quantity, imei1, imei2, sn, barcode"
+        });
+    }
+
+    try {
+        const query = await db.query(
+            "INSERT INTO stock (warehouse_id, stuff_id, quantity, imei1, imei2, sn, barcode) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *", [warehouseId, stuffId, quantity, imei1, imei2, sn, barcode]
+        );
+        const result = query.rows[0];
+        
+        res.json({
+            status: 200,
+            message: "OK",
+            data: result,
+        });
+    } catch (err) {
+        console.error(err);
+    }
+});
+
 app.listen(process.env.PORT, () => {
     console.log(`Server running on port ${process.env.PORT}`);
 });
