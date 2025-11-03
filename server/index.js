@@ -83,6 +83,32 @@ app.post("/add-employee", async (req, res) => {
     }
 });
 
+// WAREHOUSE
+app.post("/add-warehouse", async (req, res) => { 
+    const warehouseName = req.body.warehouseName;
+    const warehouseAddress = req.body.warehouseAddress;
+
+    if (!warehouseName || !warehouseAddress) {
+        res.status(404).json({
+            status: 404,
+            message: "Missing required key: warehouseName, warehouseAddress"
+        });
+    }
+
+    try {
+        const query = await db.query("INSERT INTO warehouse (warehouse_name, warehouse_address) VALUES ($1, $2) RETURNING *", [warehouseName, warehouseAddress]);
+        const result = query.rows[0];
+
+        res.status(200).json({
+            status: 200,
+            message: "OK",
+            data: result,
+        });
+    } catch (err) {
+        console.error(err);
+    }
+});
+
 // ACCOUNT
 app.post("/create-account", async (req, res) => {
     const employeeId = req.body.employeeId;
