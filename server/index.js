@@ -53,7 +53,7 @@ app.post("/add-employee", async (req, res) => {
     const employeeAddress = req.body.employeeAddress;
     const employeeContact = req.body.employeeContact;
 
-    if (!employeeNik || !employeeName || !employeeAddress || employeeContact) {
+    if (!employeeNik || !employeeName || !employeeAddress || !employeeContact) {
         res.status(404).json({
             status: 400,
             message: "Missing required key: employeeNik, employeeName, employeeAddress, employeeContact",
@@ -185,6 +185,39 @@ app.post("/add-stuff-purchase", async (req, res) => {
         });
     } catch (err) {
         console.error(err);
+    }
+});
+
+app.post("/add-stuff", async (req, res) => { 
+    const stuffCategoryId = req.body.stuffCategoryId;
+    const stuffBrandId = req.body.stuffBrandId;
+    const stuffCode = req.body.stuffCode;
+    const stuffSku = req.body.stuffSku;
+    const stuffName = req.body.stuffName;
+    const stuffVariant = req.body.stuffVariant;
+    const currentSellPrice = parseFloat(req.body.currentSellPrice.replace(",", "."));
+    const hasSn = req.body.hasSn;
+
+    if (!stuffCategoryId || !stuffBrandId || !stuffCode || !stuffSku || !stuffName || !stuffVariant || !currentSellPrice || !hasSn) {
+        res.status(404).json({
+            status: 404,
+            message: "Missing required key: stuffCategoryId, stuffBrandId, stuffCode, stuffSku, stuffName, stuffVariant, currentSellPrice, hasSn"
+        });
+    }
+
+    try {
+        const query = await db.query(
+            "INSERT INTO stuff (stuff_category_id, stuff_brand_id, stuff_code, stuff_sku, stuff_name, stuff_variant, current_sell_price, has_sn) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *", [stuffCategoryId, stuffBrandId, stuffCode, stuffSku, stuffName, stuffVariant, currentSellPrice, hasSn]
+        );
+        const result = query.rows[0];
+
+        res.json({
+            status: 200,
+            message: "OK",
+            data: result,
+        });
+    } catch (error) {
+        
     }
 });
 
