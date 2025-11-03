@@ -267,20 +267,22 @@ app.post("/add-discount", async (req, res) => {
     }
 });
 
-// STUFF PURCHASE
+// STUFF
 app.post("/add-stuff-purchase", async (req, res) => { 
+    const supplierId = req.body.supplierId;
+    const employeeId = req.body.employeeId;
     const buyDate = req.body.buyDate;
     const totalPrice = req.body.totalPrice;
 
-    if (!buyDate || !totalPrice) {
+    if (!supplierId || !employeeId || !buyDate || !totalPrice) {
         res.status(404).json({
             status: 404,
-            message: "Missing required key: buyDate, totalPrice"
+            message: "Missing required key: supplierId, employeeId, buyDate, totalPrice"
         });
     }
 
     try {
-        const query = await db.query("INSERT INTO stuff_purchase (buy_date, total_price) VALUES ($1, $2) RETURNING *", [buyDate, totalPrice]);
+        const query = await db.query("INSERT INTO stuff_purchase (supplier_id, employee_id, buy_date, total_price) VALUES ($1, $2, $3, $4) RETURNING *", [supplierId, employeeId, buyDate, totalPrice]);
         const result = query.rows[0];
 
         res.status(200).json({
