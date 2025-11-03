@@ -135,6 +135,30 @@ app.use("/add-stuff-category", async (req, res) => {
     }
 });
 
+app.post("/add-stuff-brand", async (req, res) => {
+    const stuffBrandName = req.body.stuffBrandName;
+
+    if (!stuffBrandName) {
+        res.status(404).json({
+            status: 404,
+            message: "Missing required key: stuffBrandName"
+        });
+    }
+
+    try {
+        const query = await db.query("INSERT INTO stuff_brand (stuff_brand_name) VALUES ($1) RETURNING *", [stuffBrandName]);
+        const result = query.rows[0];
+
+        res.status(200).json({
+            status: 200,
+            message: "OK",
+            data: result
+        });
+    } catch (err) {
+        console.log(err);
+    }
+});
+
 // ACCOUNT
 app.post("/create-account", async (req, res) => {
     const employeeId = req.body.employeeId;
