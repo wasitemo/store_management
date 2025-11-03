@@ -267,6 +267,32 @@ app.post("/add-discount", async (req, res) => {
     }
 });
 
+// STUFF PURCHASE
+app.post("/add-stuff-purchase", async (req, res) => { 
+    const buyDate = req.body.buyDate;
+    const totalPrice = req.body.totalPrice;
+
+    if (!buyDate || !totalPrice) {
+        res.status(404).json({
+            status: 404,
+            message: "Missing required key: buyDate, totalPrice"
+        });
+    }
+
+    try {
+        const query = await db.query("INSERT INTO stuff_purchase (buy_date, total_price) VALUES ($1, $2) RETURNING *", [buyDate, totalPrice]);
+        const result = query.rows[0];
+
+        res.status(200).json({
+            status: 200,
+            message: "OK",
+            data: result
+        });
+    } catch (err) {
+        console.error(err);
+    }
+});
+
 // ACCOUNT
 app.post("/create-account", async (req, res) => {
     const employeeId = req.body.employeeId;
