@@ -51,11 +51,12 @@ app.post("/add-employee", async (req, res) => {
     const employeeNik = req.body.employeeNik;
     const employeeName = req.body.employeeName;
     const employeeAddress = req.body.employeeAddress;
+    const employeeContact = req.body.employeeContact;
 
-    if (!employeeNik || !employeeName || !employeeAddress) {
+    if (!employeeNik || !employeeName || !employeeAddress || employeeContact) {
         res.status(404).json({
             status: 400,
-            message: "Missing required key: employeeNik, employeeName, employeeAddress",
+            message: "Missing required key: employeeNik, employeeName, employeeAddress, employeeContact",
         });
     }
 
@@ -70,7 +71,7 @@ app.post("/add-employee", async (req, res) => {
         }
         else
         {
-            const query = await db.query("INSERT INTO employee (employee_nik, employee_name, employee_address) VALUES ($1, $2, $3) RETURNING *", [employeeNik, employeeName, employeeAddress]);
+            const query = await db.query("INSERT INTO employee (employee_nik, employee_name, employee_address, employee_contact) VALUES ($1, $2, $3, $4) RETURNING *", [employeeNik, employeeName, employeeAddress, employeeContact]);
             const result = query.rows[0];
 
             res.status(200).json({
@@ -157,6 +158,33 @@ app.post("/add-stuff-brand", async (req, res) => {
         });
     } catch (err) {
         console.log(err);
+    }
+});
+
+app.post("/add-stuff-purchase", async (req, res) => { 
+    const supplierId = req.body.supplierId;
+    const employeeId = req.body.employeeId;
+    const buyDate = req.body.buyDate;
+    const totalPrice = req.body.totalPrice;
+
+    if (!supplierId || !employeeId || !buyDate || !totalPrice) {
+        res.status(404).json({
+            status: 404,
+            message: "Missing required key: supplierId, employeeId, buyDate, totalPrice"
+        });
+    }
+
+    try {
+        const query = await db.query("INSERT INTO stuff_purchase (supplier_id, employee_id, buy_date, total_price) VALUES ($1, $2, $3, $4) RETURNING *", [supplierId, employeeId, buyDate, totalPrice]);
+        const result = query.rows[0];
+
+        res.status(200).json({
+            status: 200,
+            message: "OK",
+            data: result
+        });
+    } catch (err) {
+        console.error(err);
     }
 });
 
@@ -261,34 +289,6 @@ app.post("/add-discount", async (req, res) => {
             status: 200,
             message: "OK",
             data: result,
-        });
-    } catch (err) {
-        console.error(err);
-    }
-});
-
-// STUFF
-app.post("/add-stuff-purchase", async (req, res) => { 
-    const supplierId = req.body.supplierId;
-    const employeeId = req.body.employeeId;
-    const buyDate = req.body.buyDate;
-    const totalPrice = req.body.totalPrice;
-
-    if (!supplierId || !employeeId || !buyDate || !totalPrice) {
-        res.status(404).json({
-            status: 404,
-            message: "Missing required key: supplierId, employeeId, buyDate, totalPrice"
-        });
-    }
-
-    try {
-        const query = await db.query("INSERT INTO stuff_purchase (supplier_id, employee_id, buy_date, total_price) VALUES ($1, $2, $3, $4) RETURNING *", [supplierId, employeeId, buyDate, totalPrice]);
-        const result = query.rows[0];
-
-        res.status(200).json({
-            status: 200,
-            message: "OK",
-            data: result
         });
     } catch (err) {
         console.error(err);
