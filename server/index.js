@@ -159,6 +159,7 @@ app.post("/add-stuff-brand", async (req, res) => {
     }
 });
 
+// SUPPLIER
 app.post("/add-supplier", async (req, res) => { 
     const supplierName = req.body.supplierName;
     const supplierContact = req.body.supplierContact;
@@ -180,10 +181,37 @@ app.post("/add-supplier", async (req, res) => {
             message: "OK",
             data: result,
         });
-    } catch (error) {
-        
+    } catch (err) {
+        console.log(err);
     }
 });
+
+// CUSTOMER
+app.post("/add-customer", async (req, res) => {
+    const customerName = req.body.customerName;
+    const customerContact = req.body.customerContact;
+    const customerAddress = req.body.customerAddress;
+
+    if (!customerName || !customerContact || !customerAddress) {
+        res.status(404).json({
+            status: 404,
+            message: "Missing required key: customerName, customerContact, customerAddress"
+        });
+    }
+
+    try {
+        const query = await db.query("INSERT INTO customer (customer_name, customer_contact, customer_address) VALUES ($1, $2, $3) RETURNING *", [customerName, customerContact, customerAddress]);
+        const result = query.rows[0];
+
+        res.status(200).json({
+            status: 200,
+            message: "OK",
+            data: result,
+        });
+    } catch (err) {
+        console.error(err);
+    }
+ });
 
 // ACCOUNT
 app.post("/create-account", async (req, res) => {
