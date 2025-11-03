@@ -238,6 +238,34 @@ app.post("/add-payment-methode", async (req, res) => {
     }
 });
 
+// DISCOUNT
+app.post("/add-discount", async (req, res) => { 
+    const discountName = req.body.discountName;
+    const discountTotal = parseFloat(req.body.discountTotal.replace(",", "."));
+    const discountStart = req.body.discountStart;
+    const discountEnd = req.body.discountEnd;
+
+    if (!discountName || !discountTotal || !discountStart || !discountEnd) {
+        res.status(404).json({
+            status: 404,
+            message: "Missing required key: discountName, discountTotal, discountStart, discountEnd"
+        });
+    }
+
+    try {
+        const query = await db.query("INSERT INTO discount (discount_name, discount_total, started_time, ended_time) VALUES ($1, $2, $3, $4) RETURNING *", [discountName, discountTotal, discountStart, discountEnd]);
+        const result = query.rows[0];
+
+        res.status(200).json({
+            status: 200,
+            message: "OK",
+            data: result,
+        });
+    } catch (err) {
+        console.error(err);
+    }
+});
+
 // ACCOUNT
 app.post("/create-account", async (req, res) => {
     const employeeId = req.body.employeeId;
