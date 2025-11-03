@@ -109,6 +109,32 @@ app.post("/add-warehouse", async (req, res) => {
     }
 });
 
+// STUFF
+app.use("/add-stuff-category", async (req, res) => { 
+    const stuffCategoryName = req.body.stuffCategoryName;
+
+    if (!stuffCategoryName)
+    {
+        return res.status(404).json({
+            status: 404,
+            message: "Missing required key: stuffCategoryName"
+        });
+    }
+
+    try {
+        const query = await db.query("INSERT INTO stuff_category (stuff_category_name) VALUES ($1) RETURNING *", [stuffCategoryName]);
+        const result = query.rows[0];
+
+        res.status(200).json({
+            status: 200,
+            message: "OK",
+            data: result
+        });
+    } catch (err) {
+        console.error(err);
+    }
+});
+
 // ACCOUNT
 app.post("/create-account", async (req, res) => {
     const employeeId = req.body.employeeId;
