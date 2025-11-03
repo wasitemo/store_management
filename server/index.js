@@ -211,7 +211,32 @@ app.post("/add-customer", async (req, res) => {
     } catch (err) {
         console.error(err);
     }
- });
+});
+ 
+// PAYMENT METHODE
+app.post("/add-payment-methode", async (req, res) => {
+    const paymentMethodeName = req.body.paymentMethodeName;
+
+    if (!paymentMethodeName) {
+        res.status(404).json({
+            status: 404,
+            message: "Missing required key: paymentMethodeName"
+        });
+    }
+
+    try {
+        const query = await db.query("INSERT INTO payment_methode (payment_methode_name) VALUES ($1) RETURNING *", [paymentMethodeName]);
+        const result = query.rows[0];
+
+        res.status(200).json({
+            status: 200,
+            message: "OK",
+            data: result,
+        });
+    } catch (err) {
+        console.error(err);
+    }
+});
 
 // ACCOUNT
 app.post("/create-account", async (req, res) => {
