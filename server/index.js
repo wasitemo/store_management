@@ -8,6 +8,7 @@ import passport from "passport";
 import { Strategy } from "passport-local";
 
 env.config();
+pg.types.setTypeParser(1082, val => val);
 const app = express();
 const saltRounds = 12;
 const db = new pg.Client({
