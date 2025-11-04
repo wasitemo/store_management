@@ -208,7 +208,7 @@ app.post("/add-stuff", async (req, res) => {
 
     try {
         const query = await db.query(
-            "INSERT INTO stuff (stuff_category_id, stuff_brand_id, stuff_code, stuff_sku, stuff_name, stuff_variant, current_sell_price, has_sn) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *", [stuffCategoryId, stuffBrandId, supplierId, stuffCode, stuffSku, stuffName, stuffVariant, currentSellPrice, hasSn]
+            "INSERT INTO stuff (stuff_category_id, stuff_brand_id, supplier_id, stuff_code, stuff_sku, stuff_name, stuff_variant, current_sell_price, has_sn) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *", [stuffCategoryId, stuffBrandId, supplierId, stuffCode, stuffSku, stuffName, stuffVariant, currentSellPrice, hasSn]
         );
         const result = query.rows[0];
 
@@ -217,8 +217,8 @@ app.post("/add-stuff", async (req, res) => {
             message: "OK",
             data: result,
         });
-    } catch (error) {
-        
+    } catch (err) {
+        console.error(err);
     }
 });
 
@@ -318,7 +318,7 @@ app.post("/add-discount", async (req, res) => {
     }
 
     try {
-        const query = await db.query("INSERT INTO discount (employee_id, discount_name, discount_total, started_time, ended_time, discount_status) VALUES ($1, $2, $3, $4) RETURNING *", [employeeId, discountName, discountTotal, discountStart, discountEnd, discountStatus]);
+        const query = await db.query("INSERT INTO discount (employee_id, discount_name, discount_total, started_time, ended_time, discount_status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *", [employeeId, discountName, discountTotal, discountStart, discountEnd, discountStatus]);
         const result = query.rows[0];
 
         res.status(200).json({
