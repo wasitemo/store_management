@@ -71,7 +71,7 @@ app.post("/add-employee", async (req, res) => {
         }
         else
         {
-            const query = await db.query("INSERT INTO employee (employee_nik, employee_name, employee_address, employee_contact) VALUES ($1, $2, $3, $4) RETURNING *", [employeeNik, employeeName, employeeAddress, employeeContact]);
+            const query = await db.query("INSERT INTO employee (employee_nik, employee_name, employee_contact, employee_address) VALUES ($1, $2, $3, $4) RETURNING *", [employeeNik, employeeName, employeeContact, employeeAddress]);
             const result = query.rows[0];
 
             res.status(200).json({
@@ -191,6 +191,7 @@ app.post("/add-stuff-purchase", async (req, res) => {
 app.post("/add-stuff", async (req, res) => { 
     const stuffCategoryId = req.body.stuffCategoryId;
     const stuffBrandId = req.body.stuffBrandId;
+    const supplierId = req.body.supplierId;
     const stuffCode = req.body.stuffCode;
     const stuffSku = req.body.stuffSku;
     const stuffName = req.body.stuffName;
@@ -198,16 +199,16 @@ app.post("/add-stuff", async (req, res) => {
     const currentSellPrice = parseFloat(req.body.currentSellPrice.replace(",", "."));
     const hasSn = req.body.hasSn;
 
-    if (!stuffCategoryId || !stuffBrandId || !stuffCode || !stuffSku || !stuffName || !stuffVariant || !currentSellPrice || !hasSn) {
+    if (!stuffCategoryId || !stuffBrandId || !supplierId || !stuffCode || !stuffSku || !stuffName || !stuffVariant || !currentSellPrice || !hasSn) {
         res.status(404).json({
             status: 404,
-            message: "Missing required key: stuffCategoryId, stuffBrandId, stuffCode, stuffSku, stuffName, stuffVariant, currentSellPrice, hasSn"
+            message: "Missing required key: stuffCategoryId, stuffBrandId, supplierId, stuffCode, stuffSku, stuffName, stuffVariant, currentSellPrice, hasSn"
         });
     }
 
     try {
         const query = await db.query(
-            "INSERT INTO stuff (stuff_category_id, stuff_brand_id, stuff_code, stuff_sku, stuff_name, stuff_variant, current_sell_price, has_sn) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *", [stuffCategoryId, stuffBrandId, stuffCode, stuffSku, stuffName, stuffVariant, currentSellPrice, hasSn]
+            "INSERT INTO stuff (stuff_category_id, stuff_brand_id, stuff_code, stuff_sku, stuff_name, stuff_variant, current_sell_price, has_sn) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *", [stuffCategoryId, stuffBrandId, supplierId, stuffCode, stuffSku, stuffName, stuffVariant, currentSellPrice, hasSn]
         );
         const result = query.rows[0];
 
@@ -302,20 +303,22 @@ app.post("/add-payment-methode", async (req, res) => {
 
 // DISCOUNT
 app.post("/add-discount", async (req, res) => { 
+    const employeeId = req.body.employeeId;
     const discountName = req.body.discountName;
     const discountTotal = parseFloat(req.body.discountTotal.replace(",", "."));
     const discountStart = req.body.discountStart;
     const discountEnd = req.body.discountEnd;
+    const discountStatus = req.body.discountStatus;
 
-    if (!discountName || !discountTotal || !discountStart || !discountEnd) {
+    if (!employeeId || !discountName || !discountTotal || !discountStart || !discountEnd || discountStatus) {
         res.status(404).json({
             status: 404,
-            message: "Missing required key: discountName, discountTotal, discountStart, discountEnd"
+            message: "Missing required key: employeeId, discountName, discountTotal, discountStart, discountEnd, discountStatus"
         });
     }
 
     try {
-        const query = await db.query("INSERT INTO discount (discount_name, discount_total, started_time, ended_time) VALUES ($1, $2, $3, $4) RETURNING *", [discountName, discountTotal, discountStart, discountEnd]);
+        const query = await db.query("INSERT INTO discount (employee_id, discount_name, discount_total, started_time, ended_time, discount_status) VALUES ($1, $2, $3, $4) RETURNING *", [employeeId, discountName, discountTotal, discountStart, discountEnd, discountStatus]);
         const result = query.rows[0];
 
         res.status(200).json({
