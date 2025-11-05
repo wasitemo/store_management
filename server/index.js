@@ -162,30 +162,39 @@ app.post("/add-stuff-brand", async (req, res) => {
     }
 });
 
-app.post("/add-stuff-purchase", async (req, res) => { 
-    const supplierId = req.body.supplierId;
-    const employeeId = req.body.employeeId;
-    const buyDate = req.body.buyDate;
-    const totalPrice = req.body.totalPrice;
-
-    if (!supplierId || !employeeId || !buyDate || !totalPrice) {
+app.post("/add-stuff-purchase", async (req, res) => {
+    let { supplierId, employeeId, buyDate, totalPrice, warehouseId, stuffId, buyBatch, quantity, buyPrice, sellPrice } = req.body;
+  
+    if (!supplierId || !employeeId || !buyDate || !totalPrice || !warehouseId || !stuffId || !buyBatch || !quantity || !buyPrice || !sellPrice) {
         res.status(404).json({
             status: 404,
-            message: "Missing required key: supplierId, employeeId, buyDate, totalPrice"
+            message: "Missing required key: supplierId, employeeId, buyDate, totalPrice, warehouseId, stuffId, buyBatch, quantity, buyPrice, sellPrice"
         });
     }
 
     try {
-        const query = await db.query("INSERT INTO stuff_purchase (supplier_id, employee_id, buy_date, total_price) VALUES ($1, $2, $3, $4) RETURNING *", [supplierId, employeeId, buyDate, totalPrice]);
-        const result = query.rows[0];
+
+        await db.query("BEGIN");
+
+        const stuffPurchase = await db.query("INSERT INTO stuff_purchase (supplier_id, employee_id, buy_date, total_price) VALUES ($1, $2, $3, $4) RETURNING stuff_purchase_id", [supplierId, employeeId, buyDate, totalPrice]);
+        
+        const purchaseId = stuffPurchase.rows[0].stuff_purchase_id;
+        
+        await db.query("INSERT INTO stuff_purchase_detail (warehouse_id, stuff_id, stuff_purchase_id, buy_batch, quantity, buy_price, sell_price) VALUES ($1, $2, $3, $4, $5, $6, $7)", [warehouseId, stuffId, purchaseId, buyBatch, quantity, buyPrice, sellPrice]);
+        
+        await db.query("COMMIT");
 
         res.status(200).json({
             status: 200,
-            message: "OK",
-            data: result
+            message: "Purchase success",
         });
     } catch (err) {
+        await db.query("ROLLBACK");
         console.error(err);
+        res.status(500).json({
+            status: 500,
+            message: err.message
+        });
     }
 });
 
