@@ -560,27 +560,32 @@ app.post("/add-stock", async (req, res) => {
     const imei1 = req.body.imei1;
     const imei2 = req.body.imei2;
     const sn = req.body.sn;
-    const barcode = req.body.barcode;
 
-    if (!warehouseId || !stuffId || !quantity || !imei1 || !imei2 || !sn || !barcode) {
+    if (!warehouseId || !stuffId || !quantity || !imei1 || !imei2 || !sn) {
         res.status(404).json({
             status: 404,
-            message: "Missing required key: warehouseId, stuffId, quantity, imei1, imei2, sn, barcode"
+            message: "Missing required key: warehouseId, stuffId, quantity, imei1, imei2, sn"
         });
     }
 
     try {
-        const query = await db.query(
-            "INSERT INTO stock (warehouse_id, stuff_id, quantity, imei1, imei2, sn, barcode) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *", [warehouseId, stuffId, quantity, imei1, imei2, sn, barcode]
+        await db.query("BEGIN");
+
+        const stuffInfoQuery = await db.query("INSERT INTO stuff_information (stuff_id, imei_1, imei_2, sn) VALUES ($1, $2, $3, $4) RETURNING stuff_information_id", [stuffId, imei1, imei2, sn]);
+        const stuffInfoId = stuffInfoQuery.rows[0].stuff_information_id;
+
+        await db.query(
+            "INSERT INTO stock (warehouse_id, stuff_id, stuff_information_id, quantity) VALUES ($1, $2, $3, $4) RETURNING *", [warehouseId, stuffId, stuffInfoId, quantity]
         );
-        const result = query.rows[0];
         
+        await db.query("COMMIT");
+
         res.json({
             status: 200,
-            message: "OK",
-            data: result,
+            message: "Succes update stock",
         });
     } catch (err) {
+        await db.query("ROLLBACK");
         console.error(err);
     }
 });
