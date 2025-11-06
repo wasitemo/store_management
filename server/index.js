@@ -470,21 +470,22 @@ app.post("/add-payment-methode", async (req, res) => {
 // DISCOUNT
 app.post("/add-discount", async (req, res) => { 
     const employeeId = req.body.employeeId;
+    const stuffId = req.body.stuffId;
     const discountName = req.body.discountName;
     const discountTotal = parseFloat(req.body.discountTotal.replace(",", "."));
     const discountStart = req.body.discountStart;
     const discountEnd = req.body.discountEnd;
     const discountStatus = req.body.discountStatus;
 
-    if (!employeeId || !discountName || !discountTotal || !discountStart || !discountEnd || discountStatus) {
-        res.status(404).json({
+    if (!employeeId || !stuffId || !discountName || !discountTotal || !discountStart || !discountEnd || !discountStatus) {
+        return res.status(404).json({
             status: 404,
-            message: "Missing required key: employeeId, discountName, discountTotal, discountStart, discountEnd, discountStatus"
+            message: "Missing required key: employeeId, stuffId, discountName, discountTotal, discountStart, discountEnd, discountStatus"
         });
     }
 
     try {
-        const query = await db.query("INSERT INTO discount (employee_id, discount_name, discount_total, started_time, ended_time, discount_status) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *", [employeeId, discountName, discountTotal, discountStart, discountEnd, discountStatus]);
+        const query = await db.query("INSERT INTO discount (employee_id, stuff_id, discount_name, discount_total, started_time, ended_time, discount_status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *", [employeeId, stuffId, discountName, discountTotal, discountStart, discountEnd, discountStatus]);
         const result = query.rows[0];
 
         res.status(200).json({
