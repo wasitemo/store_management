@@ -168,6 +168,33 @@ app.post("/add-warehouse", async (req, res) => {
     }
 });
 
+// SUPPLIER
+app.post("/add-supplier", async (req, res) => { 
+    const supplierName = req.body.supplierName;
+    const supplierContact = req.body.supplierContact;
+    const supplierAddress = req.body.supplierAddress;
+
+    if (!supplierName || !supplierContact || !supplierAddress) {
+        res.status(404).json({
+            status: 404,
+            message: "Missing required key: supplierName, supplierContact, supplierAddress"
+        });
+    }
+
+    try {
+        const query = await db.query("INSERT INTO supplier (supplier_name, supplier_contact, supplier_address) VALUES ($1, $2, $3) RETURNING *", [supplierName, supplierContact, supplierAddress]);
+        const result = query.rows[0];
+
+        res.status(200).json({
+            status: 200,
+            message: "OK",
+            data: result,
+        });
+    } catch (err) {
+        console.log(err);
+    }
+});
+
 // STUFF
 app.use("/add-stuff-category", async (req, res) => { 
     const stuffCategoryName = req.body.stuffCategoryName;
@@ -215,6 +242,41 @@ app.post("/add-stuff-brand", async (req, res) => {
         });
     } catch (err) {
         console.log(err);
+    }
+});
+
+app.post("/add-stuff", async (req, res) => { 
+    const stuffCategoryId = req.body.stuffCategoryId;
+    const stuffBrandId = req.body.stuffBrandId;
+    const supplierId = req.body.supplierId;
+    const stuffCode = req.body.stuffCode;
+    const stuffSku = req.body.stuffSku;
+    const stuffName = req.body.stuffName;
+    const stuffVariant = req.body.stuffVariant;
+    const currentSellPrice = parseFloat(req.body.currentSellPrice.replace(",", "."));
+    const hasSn = req.body.hasSn;
+    const barcode = req.body.barcode;
+
+    if (!stuffCategoryId || !stuffBrandId || !supplierId || !stuffCode || !stuffSku || !stuffName || !stuffVariant || !currentSellPrice || !hasSn || !barcode) {
+        res.status(404).json({
+            status: 404,
+            message: "Missing required key: stuffCategoryId, stuffBrandId, supplierId, stuffCode, stuffSku, stuffName, stuffVariant, currentSellPrice, hasSn, barcode"
+        });
+    }
+
+    try {
+        const query = await db.query(
+            "INSERT INTO stuff (stuff_category_id, stuff_brand_id, supplier_id, stuff_code, stuff_sku, stuff_name, stuff_variant, current_sell_price, has_sn) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *", [stuffCategoryId, stuffBrandId, supplierId, stuffCode, stuffSku, stuffName, stuffVariant, currentSellPrice, hasSn, barcode]
+        );
+        const result = query.rows[0];
+
+        res.json({
+            status: 200,
+            message: "OK",
+            data: result,
+        });
+    } catch (err) {
+        console.error(err);
     }
 });
 
@@ -353,67 +415,6 @@ app.post("/add-purchase-file", upload.single("file"), async (req, res) => {
     }
 });
 
-app.post("/add-stuff", async (req, res) => { 
-    const stuffCategoryId = req.body.stuffCategoryId;
-    const stuffBrandId = req.body.stuffBrandId;
-    const supplierId = req.body.supplierId;
-    const stuffCode = req.body.stuffCode;
-    const stuffSku = req.body.stuffSku;
-    const stuffName = req.body.stuffName;
-    const stuffVariant = req.body.stuffVariant;
-    const currentSellPrice = parseFloat(req.body.currentSellPrice.replace(",", "."));
-    const hasSn = req.body.hasSn;
-
-    if (!stuffCategoryId || !stuffBrandId || !supplierId || !stuffCode || !stuffSku || !stuffName || !stuffVariant || !currentSellPrice || !hasSn) {
-        res.status(404).json({
-            status: 404,
-            message: "Missing required key: stuffCategoryId, stuffBrandId, supplierId, stuffCode, stuffSku, stuffName, stuffVariant, currentSellPrice, hasSn"
-        });
-    }
-
-    try {
-        const query = await db.query(
-            "INSERT INTO stuff (stuff_category_id, stuff_brand_id, supplier_id, stuff_code, stuff_sku, stuff_name, stuff_variant, current_sell_price, has_sn) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *", [stuffCategoryId, stuffBrandId, supplierId, stuffCode, stuffSku, stuffName, stuffVariant, currentSellPrice, hasSn]
-        );
-        const result = query.rows[0];
-
-        res.json({
-            status: 200,
-            message: "OK",
-            data: result,
-        });
-    } catch (err) {
-        console.error(err);
-    }
-});
-
-// SUPPLIER
-app.post("/add-supplier", async (req, res) => { 
-    const supplierName = req.body.supplierName;
-    const supplierContact = req.body.supplierContact;
-    const supplierAddress = req.body.supplierAddress;
-
-    if (!supplierName || !supplierContact || !supplierAddress) {
-        res.status(404).json({
-            status: 404,
-            message: "Missing required key: supplierName, supplierContact, supplierAddress"
-        });
-    }
-
-    try {
-        const query = await db.query("INSERT INTO supplier (supplier_name, supplier_contact, supplier_address) VALUES ($1, $2, $3) RETURNING *", [supplierName, supplierContact, supplierAddress]);
-        const result = query.rows[0];
-
-        res.status(200).json({
-            status: 200,
-            message: "OK",
-            data: result,
-        });
-    } catch (err) {
-        console.log(err);
-    }
-});
-
 // CUSTOMER
 app.post("/add-customer", async (req, res) => {
     const customerName = req.body.customerName;
@@ -440,7 +441,7 @@ app.post("/add-customer", async (req, res) => {
         console.error(err);
     }
 });
- 
+
 // PAYMENT METHODE
 app.post("/add-payment-methode", async (req, res) => {
     const paymentMethodeName = req.body.paymentMethodeName;
