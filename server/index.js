@@ -111,7 +111,7 @@ app.post("/add-employee", async (req, res) => {
     const employeeContact = req.body.employeeContact;
 
     if (!employeeNik || !employeeName || !employeeAddress || !employeeContact) {
-        res.status(404).json({
+        return res.status(404).json({
             status: 400,
             message: "Missing required key: employeeNik, employeeName, employeeAddress, employeeContact",
         });
@@ -121,7 +121,7 @@ app.post("/add-employee", async (req, res) => {
         const checkResult = await db.query("SELECT * FROM employee WHERE employee_nik = $1", [employeeNik]);
 
         if (checkResult.rows.length > 0) {
-            res.status(404).json({
+            return res.status(404).json({
                 status: 404,
                 message: "NIK already used",
             });
@@ -131,7 +131,7 @@ app.post("/add-employee", async (req, res) => {
             const query = await db.query("INSERT INTO employee (employee_nik, employee_name, employee_contact, employee_address) VALUES ($1, $2, $3, $4) RETURNING *", [employeeNik, employeeName, employeeContact, employeeAddress]);
             const result = query.rows[0];
 
-            res.status(200).json({
+            return res.status(200).json({
                 status: 200,
                 message: "OK",
                 data: result,
@@ -148,7 +148,7 @@ app.post("/add-warehouse", async (req, res) => {
     const warehouseAddress = req.body.warehouseAddress;
 
     if (!warehouseName || !warehouseAddress) {
-        res.status(404).json({
+        return res.status(404).json({
             status: 404,
             message: "Missing required key: warehouseName, warehouseAddress"
         });
@@ -158,7 +158,7 @@ app.post("/add-warehouse", async (req, res) => {
         const query = await db.query("INSERT INTO warehouse (warehouse_name, warehouse_address) VALUES ($1, $2) RETURNING *", [warehouseName, warehouseAddress]);
         const result = query.rows[0];
 
-        res.status(200).json({
+        return res.status(200).json({
             status: 200,
             message: "OK",
             data: result,
@@ -175,7 +175,7 @@ app.post("/add-supplier", async (req, res) => {
     const supplierAddress = req.body.supplierAddress;
 
     if (!supplierName || !supplierContact || !supplierAddress) {
-        res.status(404).json({
+        return res.status(404).json({
             status: 404,
             message: "Missing required key: supplierName, supplierContact, supplierAddress"
         });
@@ -185,7 +185,7 @@ app.post("/add-supplier", async (req, res) => {
         const query = await db.query("INSERT INTO supplier (supplier_name, supplier_contact, supplier_address) VALUES ($1, $2, $3) RETURNING *", [supplierName, supplierContact, supplierAddress]);
         const result = query.rows[0];
 
-        res.status(200).json({
+        return res.status(200).json({
             status: 200,
             message: "OK",
             data: result,
@@ -211,7 +211,7 @@ app.use("/add-stuff-category", async (req, res) => {
         const query = await db.query("INSERT INTO stuff_category (stuff_category_name) VALUES ($1) RETURNING *", [stuffCategoryName]);
         const result = query.rows[0];
 
-        res.status(200).json({
+        return res.status(200).json({
             status: 200,
             message: "OK",
             data: result
@@ -225,7 +225,7 @@ app.post("/add-stuff-brand", async (req, res) => {
     const stuffBrandName = req.body.stuffBrandName;
 
     if (!stuffBrandName) {
-        res.status(404).json({
+        return res.status(404).json({
             status: 404,
             message: "Missing required key: stuffBrandName"
         });
@@ -235,7 +235,7 @@ app.post("/add-stuff-brand", async (req, res) => {
         const query = await db.query("INSERT INTO stuff_brand (stuff_brand_name) VALUES ($1) RETURNING *", [stuffBrandName]);
         const result = query.rows[0];
 
-        res.status(200).json({
+        return res.status(200).json({
             status: 200,
             message: "OK",
             data: result
@@ -258,7 +258,7 @@ app.post("/add-stuff", async (req, res) => {
     const barcode = req.body.barcode;
 
     if (!stuffCategoryId || !stuffBrandId || !supplierId || !stuffCode || !stuffSku || !stuffName || !stuffVariant || !currentSellPrice || !hasSn || !barcode) {
-        res.status(404).json({
+        return res.status(404).json({
             status: 404,
             message: "Missing required key: stuffCategoryId, stuffBrandId, supplierId, stuffCode, stuffSku, stuffName, stuffVariant, currentSellPrice, hasSn, barcode"
         });
@@ -270,7 +270,7 @@ app.post("/add-stuff", async (req, res) => {
         );
         const result = query.rows[0];
 
-        res.json({
+        return res.json({
             status: 200,
             message: "OK",
             data: result,
@@ -284,7 +284,7 @@ app.post("/add-stuff-purchase", async (req, res) => {
     let { supplierId, employeeId, buyDate, totalPrice, warehouseId, stuffId, buyBatch, quantity, buyPrice, sellPrice } = req.body;
   
     if (!supplierId || !employeeId || !buyDate || !totalPrice || !warehouseId || !stuffId || !buyBatch || !quantity || !buyPrice || !sellPrice) {
-        res.status(404).json({
+        return res.status(404).json({
             status: 404,
             message: "Missing required key: supplierId, employeeId, buyDate, totalPrice, warehouseId, stuffId, buyBatch, quantity, buyPrice, sellPrice"
         });
@@ -302,14 +302,14 @@ app.post("/add-stuff-purchase", async (req, res) => {
         
         await db.query("COMMIT");
 
-        res.status(200).json({
+        return res.status(200).json({
             status: 200,
             message: "Purchase success",
         });
     } catch (err) {
         await db.query("ROLLBACK");
         console.error(err);
-        res.status(500).json({
+        return res.status(500).json({
             status: 500,
             message: err.message
         });
@@ -373,8 +373,6 @@ app.post("/add-purchase-file", upload.single("file"), async (req, res) => {
                     sell_price
                 } = item;
                 
-                
-            console.log(item);
             let supplierQuery = await db.query("SELECT supplier_id FROM supplier WHERE LOWER (supplier_name) = $1", [supplier_name]);
             if(supplierQuery.rows.length === 0) throw new Error("Supplier not registered")
             let supplierId = supplierQuery.rows[0].supplier_id;
@@ -399,16 +397,16 @@ app.post("/add-purchase-file", upload.single("file"), async (req, res) => {
 
         await db.query("COMMIT");
 
-        res.status(200).json({
+        fs.unlinkSync(filePath);
+        
+        return res.status(200).json({
             status: 200,
             message: "Success created data"
         });
-
-        fs.unlinkSync(filePath);
     } catch (err) {
         await db.query("ROLLBACK");
         console.error(err.message);
-        res.status(500).json({
+        return res.status(500).json({
             status: 500,
             message: err.message
         });
@@ -422,7 +420,7 @@ app.post("/add-customer", async (req, res) => {
     const customerAddress = req.body.customerAddress;
 
     if (!customerName || !customerContact || !customerAddress) {
-        res.status(404).json({
+        return res.status(404).json({
             status: 404,
             message: "Missing required key: customerName, customerContact, customerAddress"
         });
@@ -432,7 +430,7 @@ app.post("/add-customer", async (req, res) => {
         const query = await db.query("INSERT INTO customer (customer_name, customer_contact, customer_address) VALUES ($1, $2, $3) RETURNING *", [customerName, customerContact, customerAddress]);
         const result = query.rows[0];
 
-        res.status(200).json({
+        return res.status(200).json({
             status: 200,
             message: "OK",
             data: result,
@@ -447,7 +445,7 @@ app.post("/add-payment-methode", async (req, res) => {
     const paymentMethodeName = req.body.paymentMethodeName;
 
     if (!paymentMethodeName) {
-        res.status(404).json({
+        return res.status(404).json({
             status: 404,
             message: "Missing required key: paymentMethodeName"
         });
@@ -457,7 +455,7 @@ app.post("/add-payment-methode", async (req, res) => {
         const query = await db.query("INSERT INTO payment_methode (payment_methode_name) VALUES ($1) RETURNING *", [paymentMethodeName]);
         const result = query.rows[0];
 
-        res.status(200).json({
+        return res.status(200).json({
             status: 200,
             message: "OK",
             data: result,
@@ -488,7 +486,7 @@ app.post("/add-discount", async (req, res) => {
         const query = await db.query("INSERT INTO discount (employee_id, stuff_id, discount_name, discount_total, started_time, ended_time, discount_status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *", [employeeId, stuffId, discountName, discountTotal, discountStart, discountEnd, discountStatus]);
         const result = query.rows[0];
 
-        res.status(200).json({
+        return res.status(200).json({
             status: 200,
             message: "OK",
             data: result,
@@ -516,7 +514,7 @@ app.post("/create-account", async (req, res) => {
         const checkResult = await db.query("SELECT * FROM employee_account WHERE username = $1", [username]);
 
         if (checkResult.rows.length > 0) {
-            res.status(404).json({
+            return res.status(404).json({
                 status: 404,
                 message: "Username already used"
             });
@@ -534,7 +532,7 @@ app.post("/create-account", async (req, res) => {
                     const account = await query.rows[0];
 
                     req.login(account, (err) => {
-                        res.status(200).json({
+                        return res.status(200).json({
                             status: 200,
                             message: "Create account success",
                             data: [{
@@ -563,7 +561,7 @@ app.post("/add-stock", async (req, res) => {
     const sn = req.body.sn;
 
     if (!warehouseId || !stuffId || !quantity || !imei1 || !imei2 || !sn) {
-        res.status(404).json({
+        return res.status(404).json({
             status: 404,
             message: "Missing required key: warehouseId, stuffId, quantity, imei1, imei2, sn"
         });
@@ -581,7 +579,7 @@ app.post("/add-stock", async (req, res) => {
         
         await db.query("COMMIT");
 
-        res.json({
+        return res.json({
             status: 200,
             message: "Succes update stock",
         });
