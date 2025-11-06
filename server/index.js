@@ -5,12 +5,18 @@ import bodyParser from "body-parser";
 import pg from "pg";
 import session from "express-session";
 import passport from "passport";
+import multer from "multer";
+import csv from "csv-parser";
+import fs from "fs";
+import XLSX from "xlsx";
+import path from "path";
 import { Strategy } from "passport-local";
 
 env.config();
 pg.types.setTypeParser(1082, val => val);
 const app = express();
 const saltRounds = 12;
+const upload = multer({ dest: "uploads" });
 const db = new pg.Client({
     user: process.env.PG_USER,
     host: process.env.PG_HOST,
@@ -31,6 +37,56 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
 app.use(passport.initialize());
 app.use(passport.session());
+
+function parseCSV(filePath)
+{
+    return new Promise((resolve, reject) => {
+        const results = [];
+
+        fs.createReadStream(filePath)
+            .pipe(csv())
+            .on("data", (row) => results.push(row))
+            .on("end", () => resolve(results))
+            .on("error", reject);
+    });
+}
+
+function excelDateToJsDate(serial)
+{
+    let utc_days = Math.floor(serial - 25569);
+    let utc_value = utc_days * 86400;
+    let date_info = new Date(utc_value * 1000);
+    let date = new Date(date_info.getFullYear(), date_info.getMonth(), date_info.getDate());
+
+    return new Date(date);
+}
+
+function parseExcel(filePath)
+{
+    const workBook = XLSX.readFile(filePath);
+    const sheet = workBook.Sheets[workBook.SheetNames[0]];
+    const jsonData = XLSX.utils.sheet_to_json(sheet);
+
+    const formattedData = jsonData.map(row => { 
+        const formattedRow = {};
+
+        for (const [key, value] of Object.entries(row))
+        {
+            if (typeof value === "number" && key.toLocaleLowerCase().includes("buy_date"))
+            {
+                formattedRow[key] = excelDateToJsDate(value);
+            }
+            else
+            {
+                formattedRow[key] = value;
+            }
+        }
+
+        return formattedRow;
+    });
+
+    return formattedData;
+}
 
 // EMPLOYEE
 app.get("/employee", async (req, res) => {
@@ -191,6 +247,105 @@ app.post("/add-stuff-purchase", async (req, res) => {
     } catch (err) {
         await db.query("ROLLBACK");
         console.error(err);
+        res.status(500).json({
+            status: 500,
+            message: err.message
+        });
+    }
+});
+
+app.post("/add-purchase-file", upload.single("file"), async (req, res) => { 
+    if (!req.file) {
+        return res.status(400).json({
+            status: "404",
+            message: "File not found",
+        });
+    }
+
+    const filePath = req.file.path;
+    const ext = req.file.originalname.split(".").pop().toLocaleLowerCase();
+    let rows = [];
+
+    try {
+        if (ext === "csv") {
+            rows = await parseCSV(filePath);
+        }
+        else if (ext === "xlsx" || ext === "xls")
+        {
+            rows = parseExcel(filePath);
+        }
+        else
+        {
+            throw new Error("File format must be csv or excel");
+            
+        }
+
+        if (rows.length === 0) {
+            throw new Error("Empty file or format is wrong");
+        }
+
+        await db.query("BEGIN");
+
+        for (let i = 0; i < rows.length; i++)
+        {
+            let item = rows[i];
+
+             for (let key in item)
+            {
+                if (typeof item[key] === 'string') {
+                    item[key] = item[key].toLowerCase().trim();
+                }
+            }
+
+            
+            let {
+                    supplier_name,
+                    employee_name,
+                    buy_date,
+                    total_price,
+                    warehouse_name,
+                    stuff_name,
+                    buy_batch,
+                    quantity,
+                    buy_price,
+                    sell_price
+                } = item;
+                
+                
+            console.log(item);
+            let supplierQuery = await db.query("SELECT supplier_id FROM supplier WHERE LOWER (supplier_name) = $1", [supplier_name]);
+            if(supplierQuery.rows.length === 0) throw new Error("Supplier not registered")
+            let supplierId = supplierQuery.rows[0].supplier_id;
+                
+            let employeeQuery = await db.query("SELECT employee_id FROM employee WHERE LOWER (employee_name) = $1", [employee_name]);
+             if(employeeQuery.rows.length === 0) throw new Error("Employee not registered")
+            let employeeId = employeeQuery.rows[0].employee_id;
+
+            let warehouseQuery = await db.query("SELECT warehouse_id FROM warehouse WHERE LOWER (warehouse_name) = $1", [warehouse_name]);
+            if(warehouseQuery.rows.length === 0) throw new Error("Warehouse not registered")
+            let warehouseId = warehouseQuery.rows[0].warehouse_id;
+
+            let stuffQuery = await db.query("SELECT stuff_id FROM stuff WHERE LOWER (stuff_name) = $1", [stuff_name]);
+             if(stuffQuery.rows.length === 0) throw new Error("Stuff not registered")
+            let stuffId = stuffQuery.rows[0].stuff_id;
+
+            let purchaseQuery = await db.query("INSERT INTO stuff_purchase (supplier_id, employee_id, buy_date, total_price) VALUES ($1, $2, $3, $4) RETURNING stuff_purchase_id", [supplierId, employeeId, buy_date, total_price]);
+            let purchaseId = purchaseQuery.rows[0].stuff_purchase_id;
+
+            await db.query("INSERT INTO stuff_purchase_detail (warehouse_id, stuff_id, stuff_purchase_id, buy_batch, quantity, buy_price, sell_price) VALUES ($1, $2, $3, $4, $5, $6, $7)", [warehouseId, stuffId, purchaseId, buy_batch, quantity, buy_price, sell_price]);
+        }
+
+        await db.query("COMMIT");
+
+        res.status(200).json({
+            status: 200,
+            message: "Success created data"
+        });
+
+        fs.unlinkSync(filePath);
+    } catch (err) {
+        await db.query("ROLLBACK");
+        console.error(err.message);
         res.status(500).json({
             status: 500,
             message: err.message
