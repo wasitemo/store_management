@@ -9,7 +9,6 @@ import multer from "multer";
 import csv from "csv-parser";
 import fs from "fs";
 import XLSX from "xlsx";
-import path from "path";
 import { Strategy } from "passport-local";
 
 env.config();
@@ -503,53 +502,65 @@ app.post("/create-account", async (req, res) => {
     const password = req.body.password;
     const role = req.body.role;
 
-    if (!employeeId || !username || !password || !role) {
-        return res.status(400).json({
-            status: 404,
-            message: "Missing required key: employeeId, username, password, role",
-        });
+    if (req.isUnauthenticated()) {
+        return res.status(500).json({ status: 500, message: "Unauthenticated" });
     }
-
-    try {
-        const checkResult = await db.query("SELECT * FROM employee_account WHERE username = $1", [username]);
-
-        if (checkResult.rows.length > 0) {
-            return res.status(404).json({
+    else
+    {
+        if (!employeeId || !username || !password || !role) {
+            return res.status(400).json({
                 status: 404,
-                message: "Username already used"
+                message: "Missing required key: employeeId, username, password, role",
             });
         }
-        else
-        {
-            bcrypt.hash(password, saltRounds, async (err, hash) => {
-                if (err)
-                {
-                    console.error("Error hashing password : ", err);
-                }
-                else
-                {
-                    const query = await db.query("INSERT INTO employee_account (employee_id, username, password, role) VALUES ($1, $2, $3, $4)", [employeeId, username, hash, role]);
-                    const account = await query.rows[0];
 
-                    req.login(account, (err) => {
-                        return res.status(200).json({
-                            status: 200,
-                            message: "Create account success",
-                            data: [{
-                                employeeId: employeeId,
-                                username: username,
-                                password: password,
-                                role: role
-                            }]
+        try {
+            const checkResult = await db.query("SELECT * FROM employee_account WHERE username = $1", [username]);
+
+            if (checkResult.rows.length > 0) {
+                return res.status(404).json({
+                    status: 404,
+                    message: "Username already used"
+                });
+            }
+            else
+            {
+                bcrypt.hash(password, saltRounds, async (err, hash) => {
+                    if (err)
+                    {
+                        console.error("Error hashing password : ", err);
+                    }
+                    else
+                    {
+                        const query = await db.query("INSERT INTO employee_account (employee_id, username, password, role) VALUES ($1, $2, $3, $4)", [employeeId, username, hash, role]);
+                        const account = await query.rows[0];
+
+                        req.login(account, (err) => {
+                            return res.status(200).json({
+                                status: 200,
+                                message: "Create account success",
+                                data: [{
+                                    employeeId: employeeId,
+                                    username: username,
+                                    password: password,
+                                    role: role
+                                }]
+                            });
                         });
-                    });
-                }
-            });
+                    }
+                });
+            }
+        } catch (err) {
+            console.error(err);
         }
-    } catch (err) {
-        console.error(err);
     }
 });
+
+app.post("/login",
+    passport.authenticate("local"), (req, res) => {
+        res.status(200).json({ status: 200, message: req.user });
+    }
+);
 
 // STOCK
 app.post("/add-stock", async (req, res) => {
@@ -591,6 +602,16 @@ app.post("/add-stock", async (req, res) => {
 
 // CUSTOMER ORDER
 app.post("/add-order", async (req, res) => {
+
+    /**
+     * 1. Ambil semua diskon yang terdapat pada item
+     * 2. Kurangi harga item dengan semua diskon yang diterapkan
+     * 4. lalu jumlahkan semua harga barang setelah diskon jika pembelian lebih dari 1
+     * 3. Ambil semua diskon yang terdapat pada transaksi
+     * 4. kurangi total harga dengan diskon transaksi
+     * 5. kurangi stock sesuai total item yang ada pada transaksi
+     */
+
     const customerId = parseInt(req.body.customerId);
     const paymentMethodeId = parseInt(req.body.paymentMethodeId);
     const employeeId = parseInt(req.body.employeeId);
@@ -681,6 +702,49 @@ app.post("/add-order", async (req, res) => {
             message: err.message
         });
     }
+});
+
+// MANAGE-COOKIE
+passport.use("local", new Strategy(async function verify(username, password, cb) {
+    try {
+        const accountQuery = await db.query("SELECT * FROM employee_account WHERE username = $1", [username]);
+
+        if (accountQuery.rows.length > 0) {
+            const account = accountQuery.rows[0];
+            const hashPassword = account.password;
+
+            bcrypt.compare(password, hashPassword, (err, valid) => {
+                if (err) {
+                    console.error("Error comparing password: ", err);
+                    return cb(err);
+                }
+                else
+                {
+                    if (valid) {
+                        return cb(null, account.username);
+                    }
+                    else
+                    {
+                        return cb(null, false);
+                    }
+                }
+             });
+        }
+        else
+        {
+            return cb("Account not found");
+        }
+    } catch (err) {
+        return console.error(err);
+    }
+}));
+
+passport.serializeUser((user, cb) => {
+    cb(null, user);
+});
+
+passport.deserializeUser((user, cb) => {
+    cb(null, user);
 });
 
 app.listen(process.env.PORT, () => {
