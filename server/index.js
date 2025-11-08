@@ -95,8 +95,36 @@ function generateRefreshToken(account) {
     );
 }
 
+async function verifyToken(req, res, next)
+{
+    let authHeader = req.headers["authorization"];
+    let token = authHeader && authHeader.split(" ")[1];
+    
+    if (!token) {
+        return res.status(401).json({
+            status: 401,
+            message: "Access token required"
+        });
+    }
+
+    jwt.verify(
+        token,
+        process.env.JWT_ACCESS_SECRET, (err, account) => {
+            if (err) {
+                return res.status(403).json({
+                    status: 403,
+                    message: "Invalid or expired token"
+                });
+            }
+
+            req.user = account;
+            next();
+        }
+    );
+}
+
 // EMPLOYEE
-app.get("/employee", async (req, res) => {
+app.get("/employee", verifyToken, async (req, res) => {
     try {
         const query = await db.query("SELECT * FROM employee");
         const result = query.rows;
@@ -560,13 +588,20 @@ app.post("/create-account", async (req, res) => {
 
 app.post("/login", async (req, res) => {
     let { username, password } = req.body;
-
+    const accountQuery = await db.query("SELECT * FROM employee_account WHERE username = $1", [username]);
+    
     try {
-        const accountQuery = await db.query("SELECT * FROM employee_account WHERE username = $1", [username]);
-
+        
         if (accountQuery.rows.length > 0) {
             const account = accountQuery.rows[0];
             const hashPassword = account.password;
+
+            if (!account) {
+                return res.status(401).json({
+                    status: 401,
+                    message: "Invalid credentials"
+                });
+            }
 
             bcrypt.compare(password, hashPassword, async (err, valid) => {
                 if (err) {
@@ -580,15 +615,15 @@ app.post("/login", async (req, res) => {
                         let refreshToken = generateRefreshToken(account);
                         let expiresAt = new Date();
 
-                        expiresAt.setDate(expiresAt.getDay() + 30);
+                        expiresAt.setDate(expiresAt.getDay() + 7);
 
-                        await db.query("INSERT INTO refresh_token (employee_account_id, token, expires_at) VALUES ($1, $2, $3)", [account.employee_account_id, refreshToken, expiresAt]);
+                        await db.query("INSERT INTO refresh_token (employee_account_id, token_jti, expires_at) VALUES ($1, $2, $3)", [account.employee_account_id, refreshToken, expiresAt]);
 
                         res.cookie("refreshToken", refreshToken, {
                             httpOnly: true,
                             secure: false,
                             sameSite: "strict",
-                            maxAge: 30 * 24 * 60 * 60 * 1000
+                            maxAge: 7 * 24 * 60 * 60 * 1000
                         });
 
                         return res.status(200).json({
@@ -597,11 +632,11 @@ app.post("/login", async (req, res) => {
                         });
                     }
                     else
-                    {
-                        return cb(null, false);
+                        {
+                            return cb(null, false);
+                        }
                     }
-                }
-            });
+                });
         }
         else
         {
@@ -623,7 +658,7 @@ app.use("/refresh-token", async (req, res) => {
             });
         }
 
-        let query = await db.query("SELECT * FROM refresh_token WHERE token = $1 AND revoked = false", [refreshToken]);
+        let query = await db.query("SELECT * FROM refresh_token WHERE token_jti = $1", [refreshToken]);
         let queryToken = query.rows[0];
 
         if (!queryToken) {
@@ -633,23 +668,26 @@ app.use("/refresh-token", async (req, res) => {
             });
         }
 
-        jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, (err, account) => {
-            let newAccessToken = generateAccessToken(account);
-
-            if (err) {
-                return res.status(403).json({
-                    status: 403,
-                    message:"Invalid or expired token"
-                });
-            }
-            else
+        jwt.verify(
+            refreshToken,
+            process.env.JWT_REFRESH_SECRET, (err, account) => 
             {
-                return res.status(200).json({
+                if (err) {
+                    return res.status(403).json({
+                        status: 403,
+                        message: "Token is no longer valid"
+                    });
+                }
+
+                let newAccessToken = generateAccessToken(account);
+                
+                res.status(200).json({
                     status: 200,
                     message: newAccessToken
                 });
             }
-        });
+        );
+
     } catch (err) {
         console.error(err);
         return res.status(500).json({
@@ -664,13 +702,13 @@ app.post("/logout", async (req, res) => {
         let refreshToken = req.cookies.refreshToken;
 
         if (refreshToken) {
-            await db.query("UPDATE refresh_token SET revoked = true WHERE token = $1", [refreshToken]);
+            await db.query("DELETE from refresh_token WHERE token_jti = $1", [refreshToken]);
             res.clearCookie("refreshToken");
         }
 
         return res.status(200).json({
             status: 200,
-            message: "Logged out successfully"
+            message: "Logout successfully"
         });
     } catch (err) {
         console.error(err);
