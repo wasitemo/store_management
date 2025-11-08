@@ -3,18 +3,17 @@ import env from "dotenv";
 import bcrypt from "bcrypt";
 import bodyParser from "body-parser";
 import pg from "pg";
-import session from "express-session";
-import passport from "passport";
 import multer from "multer";
 import csv from "csv-parser";
 import fs from "fs";
 import XLSX from "xlsx";
-import { Strategy } from "passport-local";
+import jwt from "jsonwebtoken";
+import cookieParser from "cookie-parser";
 
 env.config();
 pg.types.setTypeParser(1082, val => val);
 const app = express();
-const saltRounds = 12;
+const saltRounds = process.env.SALT_ROUNDS;
 const upload = multer({ dest: "uploads" });
 const db = new pg.Client({
     user: process.env.PG_USER,
@@ -25,17 +24,9 @@ const db = new pg.Client({
 });
 db.connect();
 
-app.use(
-    session({
-        secret: process.env.ACCESS_SECRET,
-        resave: false,
-        saveUninitialized: true,
-    })
-);
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.json());
-app.use(passport.initialize());
-app.use(passport.session());
+app.use(cookieParser());
 
 function parseCSV(filePath)
 {
@@ -85,6 +76,23 @@ function parseExcel(filePath)
     });
 
     return formattedData;
+}
+
+function generateAccessToken(account) 
+{
+    return jwt.sign(
+        { id: account.id, username: account.username },
+        process.env.JWT_ACCESS_SECRET,
+        {expiresIn: process.env.ACCESS_TOKEN_EXPIRE}
+    );
+}
+
+function generateRefreshToken(account) {
+    return jwt.sign(
+        { id: account.id },
+        process.env.JWT_REFRESH_SECRET,
+        {expiresIn: process.env.REFRESH_TOKEN_EXPIRE}
+    );
 }
 
 // EMPLOYEE
@@ -502,65 +510,176 @@ app.post("/create-account", async (req, res) => {
     const password = req.body.password;
     const role = req.body.role;
 
-    if (req.isUnauthenticated()) {
-        return res.status(500).json({ status: 500, message: "Unauthenticated" });
+    if (!employeeId || !username || !password || !role) {
+        return res.status(400).json({
+            status: 404,
+            message: "Missing required key: employeeId, username, password, role",
+        });
     }
-    else
-    {
-        if (!employeeId || !username || !password || !role) {
-            return res.status(400).json({
+
+    try {
+        const checkResult = await db.query("SELECT * FROM employee_account WHERE username = $1", [username]);
+
+        if (checkResult.rows.length > 0) {
+            return res.status(404).json({
                 status: 404,
-                message: "Missing required key: employeeId, username, password, role",
+                message: "Username already used"
+            });
+        }
+        else
+        {
+            bcrypt.hash(password, saltRounds, async (err, hash) => {
+                if (err)
+                {
+                     console.error("Error hashing password : ", err);
+                }
+                else
+                {
+                    const query = await db.query("INSERT INTO employee_account (employee_id, username, password, role) VALUES ($1, $2, $3, $4)", [employeeId, username, hash, role]);
+                    const account = await query.rows[0];
+
+                    req.login(account, (err) => {
+                        return res.status(200).json({
+                            status: 200,
+                            message: "Create account success",
+                            data: [{
+                                employeeId: employeeId,
+                                username: username,
+                                password: password,
+                                role: role
+                            }]
+                        });
+                    });
+                }
+            });
+        }
+    } catch (err) {
+        console.error(err);
+    }
+});
+
+app.post("/login", async (req, res) => {
+    let { username, password } = req.body;
+
+    try {
+        const accountQuery = await db.query("SELECT * FROM employee_account WHERE username = $1", [username]);
+
+        if (accountQuery.rows.length > 0) {
+            const account = accountQuery.rows[0];
+            const hashPassword = account.password;
+
+            bcrypt.compare(password, hashPassword, async (err, valid) => {
+                if (err) {
+                    console.error("Error comparing password: ", err);
+                    return cb(err);
+                }
+                else
+                {
+                    if (valid) {
+                        let accessToken = generateAccessToken(account);
+                        let refreshToken = generateRefreshToken(account);
+                        let expiresAt = new Date();
+
+                        expiresAt.setDate(expiresAt.getDay() + 30);
+
+                        await db.query("INSERT INTO refresh_token (employee_account_id, token, expires_at) VALUES ($1, $2, $3)", [account.employee_account_id, refreshToken, expiresAt]);
+
+                        res.cookie("refreshToken", refreshToken, {
+                            httpOnly: true,
+                            secure: false,
+                            sameSite: "strict",
+                            maxAge: 30 * 24 * 60 * 60 * 1000
+                        });
+
+                        return res.status(200).json({
+                            status: 200,
+                            message: accessToken,
+                        });
+                    }
+                    else
+                    {
+                        return cb(null, false);
+                    }
+                }
+            });
+        }
+        else
+        {
+            return cb("Account not found");
+        }
+    } catch (err) {
+        return console.error(err);
+    }
+});
+
+app.use("/refresh-token", async (req, res) => {
+    try {
+        let refreshToken = req.cookies.refreshToken;
+
+        if (!refreshToken) {
+            return res.status(401).json({
+                status: 401,
+                message: "No refresh token provided"
             });
         }
 
-        try {
-            const checkResult = await db.query("SELECT * FROM employee_account WHERE username = $1", [username]);
+        let query = await db.query("SELECT * FROM refresh_token WHERE token = $1 AND revoked = false", [refreshToken]);
+        let queryToken = query.rows[0];
 
-            if (checkResult.rows.length > 0) {
-                return res.status(404).json({
-                    status: 404,
-                    message: "Username already used"
+        if (!queryToken) {
+            return res.status(403).json({
+                status: 403,
+                message: "Invalid refresh token"
+            });
+        }
+
+        jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, (err, account) => {
+            let newAccessToken = generateAccessToken(account);
+
+            if (err) {
+                return res.status(403).json({
+                    status: 403,
+                    message:"Invalid or expired token"
                 });
             }
             else
             {
-                bcrypt.hash(password, saltRounds, async (err, hash) => {
-                    if (err)
-                    {
-                        console.error("Error hashing password : ", err);
-                    }
-                    else
-                    {
-                        const query = await db.query("INSERT INTO employee_account (employee_id, username, password, role) VALUES ($1, $2, $3, $4)", [employeeId, username, hash, role]);
-                        const account = await query.rows[0];
-
-                        req.login(account, (err) => {
-                            return res.status(200).json({
-                                status: 200,
-                                message: "Create account success",
-                                data: [{
-                                    employeeId: employeeId,
-                                    username: username,
-                                    password: password,
-                                    role: role
-                                }]
-                            });
-                        });
-                    }
+                return res.status(200).json({
+                    status: 200,
+                    message: newAccessToken
                 });
             }
-        } catch (err) {
-            console.error(err);
-        }
+        });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({
+            status: 500,
+            message: "Server error"
+        });
     }
 });
 
-app.post("/login",
-    passport.authenticate("local"), (req, res) => {
-        res.status(200).json({ status: 200, message: req.user });
+app.post("/logout", async (req, res) => {
+    try {
+        let refreshToken = req.cookies.refreshToken;
+
+        if (refreshToken) {
+            await db.query("UPDATE refresh_token SET revoked = true WHERE token = $1", [refreshToken]);
+            res.clearCookie("refreshToken");
+        }
+
+        return res.status(200).json({
+            status: 200,
+            message: "Logged out successfully"
+        });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({
+            status: 500,
+            message: "Server error"
+        });
     }
-);
+});
 
 // STOCK
 app.post("/add-stock", async (req, res) => {
@@ -702,49 +821,6 @@ app.post("/add-order", async (req, res) => {
             message: err.message
         });
     }
-});
-
-// MANAGE-COOKIE
-passport.use("local", new Strategy(async function verify(username, password, cb) {
-    try {
-        const accountQuery = await db.query("SELECT * FROM employee_account WHERE username = $1", [username]);
-
-        if (accountQuery.rows.length > 0) {
-            const account = accountQuery.rows[0];
-            const hashPassword = account.password;
-
-            bcrypt.compare(password, hashPassword, (err, valid) => {
-                if (err) {
-                    console.error("Error comparing password: ", err);
-                    return cb(err);
-                }
-                else
-                {
-                    if (valid) {
-                        return cb(null, account.username);
-                    }
-                    else
-                    {
-                        return cb(null, false);
-                    }
-                }
-             });
-        }
-        else
-        {
-            return cb("Account not found");
-        }
-    } catch (err) {
-        return console.error(err);
-    }
-}));
-
-passport.serializeUser((user, cb) => {
-    cb(null, user);
-});
-
-passport.deserializeUser((user, cb) => {
-    cb(null, user);
 });
 
 app.listen(process.env.PORT, () => {
