@@ -501,33 +501,97 @@ app.post("/add-payment-methode", async (req, res) => {
 });
 
 // DISCOUNT
-app.post("/add-discount", async (req, res) => { 
-    const employeeId = req.body.employeeId;
-    const stuffId = req.body.stuffId;
-    const discountName = req.body.discountName;
-    const discountTotal = parseFloat(req.body.discountTotal.replace(",", "."));
-    const discountStart = req.body.discountStart;
-    const discountEnd = req.body.discountEnd;
-    const discountStatus = req.body.discountStatus;
+app.post("/add-stuff-discount", verifyToken, async (req, res) => {
+     
+    let employeeId = req.body.employeeId;
+    let stuffId = req.body.stuffId;
+    let discountName = req.body.discountName;
+    let discountType = req.body.discountType.toLowerCase();
+    let discountValue = req.body.discountValue;
+    let discountStart = req.body.discountStart;
+    let discountEnd = req.body.discountEnd;
+    let discountStatus = req.body.discountStatus;
 
-    if (!employeeId || !stuffId || !discountName || !discountTotal || !discountStart || !discountEnd || !discountStatus) {
+    if (typeof discountValue === "string" && discountValue.includes(",")) {
+        let newValue = discountValue.replace(",", ".");
+        let parse = parseFloat(newValue);
+
+        if (!isNaN(parse)) {
+            discountValue = parse;
+        }
+    }
+
+    if (!employeeId) {
         return res.status(404).json({
             status: 404,
-            message: "Missing required key: employeeId, stuffId, discountName, discountTotal, discountStart, discountEnd, discountStatus"
+            message: "Missing required key employeeId"
+        });
+    }
+    else if (!stuffId)
+    {
+        return res.status(404).json({
+            status: 404,
+            message: "Missing required key stuffId"
+        });
+    }
+    else if (!discountName)
+    {
+        return res.status(404).json({
+            status: 404,
+            message: "Missing required key discountName"
+        });
+    }
+    else if (!discountValue)
+    {
+        return res.status(404).json({
+            status: 404,
+            message: "Missing required key discountValue"
+        });
+    }
+    else if (!discountStart)
+    {
+        return res.status(404).json({
+            status: 404,
+            message: "Missing required key discountStart"
+        });
+    }
+    else if (!discountEnd)
+    {
+        return res.status(404).json({
+            status: 404,
+            message: "Missing required key discountEnd"
+        });
+    }
+    else if (!discountStatus)
+    {
+        return res.status(404).json({
+            status: 404,
+            message: "Missing required key discountStatus"
         });
     }
 
     try {
-        const query = await db.query("INSERT INTO discount (employee_id, stuff_id, discount_name, discount_total, started_time, ended_time, discount_status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *", [employeeId, stuffId, discountName, discountTotal, discountStart, discountEnd, discountStatus]);
-        const result = query.rows[0];
+        await db.query("BEGIN");
+
+        let discountQuery = await db.query("INSERT INTO discount (employee_id, discount_name, discount_type, discount_value, started_time, ended_time, discount_status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING discount_id", [employeeId, discountName, discountType, discountValue, discountStart, discountEnd, discountStatus]);
+
+        let discountId = discountQuery.rows[0].discount_id;
+
+        await db.query("INSERT INTO stuff_discount (stuff_id, discount_id) VALUES ($1, $2)", [stuffId, discountId]);
+
+        await db.query("COMMIT");
 
         return res.status(200).json({
             status: 200,
-            message: "OK",
-            data: result,
+            message: "Success",
         });
     } catch (err) {
+        db.query("ROLLBACK");
         console.error(err);
+        return res.status(404).json({
+            status: 404,
+            message: err.message
+        });
     }
 });
 
