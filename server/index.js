@@ -870,12 +870,10 @@ app.post("/logout", async (req, res) => {
 
 // STOCK
 app.post("/add-stock", async (req, res) => {
-    const warehouseId = req.body.warehouseId;
-    const stuffId = req.body.stuffId;
+    const warehouseId = req.body.warehouse_id;
+    const stuffId = req.body.stuff_id;
     const quantity = req.body.quantity;
-    const imei1 = req.body.imei1;
-    const imei2 = req.body.imei2;
-    const sn = req.body.sn;
+    const stockStatus = req.body.stock_status;
 
     if (!warehouseId || !stuffId || !quantity || !imei1 || !imei2 || !sn) {
         return res.status(404).json({
@@ -887,7 +885,7 @@ app.post("/add-stock", async (req, res) => {
     try {
         await db.query("BEGIN");
 
-        const stuffInfoQuery = await db.query("INSERT INTO stuff_information (stuff_id, imei_1, imei_2, sn) VALUES ($1, $2, $3, $4) RETURNING stuff_information_id", [stuffId, imei1, imei2, sn]);
+        const stuffInfoQuery = await db.query("INSERT INTO stuff_information (stuff_id, stock_id, imei_1, imei_2, sn) VALUES ($1, $2, $3, $4) RETURNING stuff_information_id", [stuffId, imei1, imei2, sn]);
         const stuffInfoId = stuffInfoQuery.rows[0].stuff_information_id;
 
         await db.query(
@@ -908,59 +906,49 @@ app.post("/add-stock", async (req, res) => {
 
 // CUSTOMER ORDER
 app.post("/add-order", async (req, res) => {
+    let {
+        customer_id,
+        employee_id,
+        warehouse_id,
+        payment_methode_id,
+        order_date,
+        payment,
+        items,
+        discounts,
+    } = req.body;
 
-    //belum buat code untuk update stocknya dan input ke databasenya baru selesai mengurus perhitungan discountnya
-
-    const customerId = parseInt(req.body.customerId);
-    const employeeId = parseInt(req.body.employeeId);
-    const warehouseId = req.body.warehouseId;
-    const paymentMethodeId = parseInt(req.body.paymentMethodeId);
-    const orderDate = req.body.orderDate;
-    const payment = req.body.payment;
-    const items = req.body.items;
-    const discounts = req.body.discounts;
-
-    if (typeof payment === "string" && payment.includes(",")) {
-        let newValue = discountValue.replace(",", ".");
-        let parse = parseFloat(newValue);
-
-        if (!isNaN(parse)) {
-            discountValue = parse;
-        }
-    }
-
-    if (!customerId) {
+    if (!customer_id) {
         return res.status(404).json({
             status: 404,
-            message: "Missing required key: customerId"
+            message: "Missing required key: customer_id"
         });
     }
-    else if (!employeeId)
+    else if (!employee_id)
     {
         return res.status(404).json({
             status: 404,
-            message: "Missing required key: employeeId"
+            message: "Missing required key: employee_id"
         });
     }
-    else if (!warehouseId)
+    else if (!warehouse_id)
         {
             return res.status(404).json({
                 status: 404,
-                message: "Missing required key: warehouseId"
+                message: "Missing required key: warehouse_id"
             });
         }
-    else if (!paymentMethodeId)
+    else if (!payment_methode_id)
     {
         return res.status(404).json({
                 status: 404,
-                message: "Missing required key: paymentMethodeId"
+                message: "Missing required key: paymentMethode_id"
         });
     }
-    else if (!orderDate)
+    else if (!order_date)
     {
         return res.status(404).json({
             status: 404,
-            message: "Missing required key: orderDate"
+            message: "Missing required key: order_date"
         });
     }
     else if (!payment)
@@ -971,20 +959,29 @@ app.post("/add-order", async (req, res) => {
         });
     }
 
-    try {
-        await db.query("BEGIN");
-    
-        let totalPayment = 0;
-        let grandTotalItem = 0
-        let remainingPayment;
-        let saveTotalDiscountItem = 0;
-        let savetotalDiscountOrder = 0;
-        let quantity = 0;
+    if (typeof payment === "string" && payment.includes(",")) {
+        let newValue = payment.replace(",", ".");
+        let parsed = parseFloat(newValue);
 
-        for (let i = 0; i < items.length; i++)
-        {
-            let totalDiscountItem = 0;
-            const discountItemQuery = await db.query(`
+        if (!isNaN(parsed)) {
+            payment = parsed;
+        }
+    }
+
+    let calculateQuantities = (items) => {
+        return Object.values(
+            items.reduce((acc, item) => {
+                if (!acc[item.stuff_id]) {
+                    acc[item.stuff_id] = { stuff_id: item.stuff_id, quantity: 0 };
+                }
+                acc[item.stuff_id].quantity += 1;
+                return acc;
+            }, {})
+        );
+    };
+
+    let calculateItemDiscount = async (stuff_id) => { 
+        let discountItemQuery = await db.query(`
                 SELECT
                 stuff.stuff_id,
                 stuff.stuff_name, 
@@ -1000,64 +997,131 @@ app.post("/add-order", async (req, res) => {
                 LEFT JOIN stuff_discount ON stuff.stuff_id = stuff_discount.stuff_id
                 LEFT JOIN discount ON stuff_discount.discount_id = discount.discount_id
                 WHERE stuff.stuff_id = $1
-                GROUP BY stuff.stuff_id, stuff.stuff_name, stuff.current_sell_price`, [items[i].stuff_id]
-            );
+                GROUP BY stuff.stuff_id, stuff.stuff_name, stuff.current_sell_price`, [stuff_id]
+        );
+        
+        if (discountItemQuery.rows.length === 0) {
+            return { price: 0, discount: 0 };
+        }
 
-            if (!items[i].stuff_id) {
-                    return res.status(404).json({
-                    status: 404,
-                    message: "Missing required key: stuff_id"
+        let item = discountItemQuery.rows[0];
+        let totalDiscount = 0;
+
+        for (let d of item.discounts)
+        {
+            if (d.discount_status === true) {
+                if (d.discount_type === "percentage") {
+                totalDiscount += item.current_sell_price * (d.discount_value / 100);
+                }
+                else if (d.discount_type === "fixed")
+                {
+                    totalDiscount += d.discount_value;
+                }
+            }
+        };
+
+        return {
+            price: parseFloat(item.current_sell_price) - totalDiscount, totalDiscount
+        };
+    };
+
+    let calculateOrderDiscount = async (discounts, grandTotalItem) => { 
+        let totalOrderDiscount = 0;
+
+        for (let d of discounts)
+        {
+            let discountOrderQuery = await db.query("SELECT discount_id, discount_type, discount_status, discount_value FROM discount WHERE discount_id = $1", [d.discount_id]);
+
+            let discountData = discountOrderQuery.rows[0];
+
+            if (discountData && discountData.discount_status === true) {
+                if (discountData.discount_type === "percentage") {
+                    totalOrderDiscount += grandTotalItem * (parseFloat(discountData.discount_value) / 100);
+                }
+                else if (discountData.discount_type === "fixed")
+                {
+                    totalOrderDiscount += parseFloat(discountData.discount_value);
+                }
+            }
+        }
+
+        return parseFloat(totalOrderDiscount);
+    };
+
+    try {
+        await db.query("BEGIN");
+
+        let saveTotalDiscountItem = 0;
+        let saveTotalDiscountOrder = 0;
+        let grandTotalItem = 0;
+        let quantities = calculateQuantities(items);
+
+        for (let item of items)
+        {
+            let { price, totalDiscount } = await calculateItemDiscount(item.stuff_id);
+
+            grandTotalItem += price;
+            saveTotalDiscountItem += totalDiscount;
+        }
+
+        saveTotalDiscountOrder = await calculateOrderDiscount(discounts, grandTotalItem);
+
+        let totalPayment = grandTotalItem - saveTotalDiscountOrder;
+        let remainingPayment = payment - totalPayment;
+
+        let customerOrderQuery = await db.query(`
+            INSERT INTO customer_order
+            (customer_id, payment_methode_id, employee_id, order_date, payment, sub_total, remaining_payment)
+            VALUES
+            ($1, $2, $3, $4, $5, $6, $7) RETURNING order_id;
+        `, [customer_id, payment_methode_id, employee_id, order_date, payment, totalPayment, remainingPayment]);
+
+        let order_id = customerOrderQuery.rows[0].order_id;
+
+        for (let d of discounts)
+        {
+            await db.query("INSERT INTO order_discount (order_id, discount_id) VALUES ($1, $2)", [order_id, d.discount_id]);
+        }
+
+        for (let q of quantities)
+        {
+            let stockQuery = await db.query("SELECT quantity FROM stock WHERE warehouse_id = $1 AND stuff_id = $2", [warehouse_id, q.stuff_id]);
+
+            if (stockQuery.rows.length === 0) {
+                await db.query("ROLLBACK");
+                return res.status(400).json({
+                    status: 400,
+                    message: "Stuff or stock is not available in the warehosue"
                 });
             }
-            
-            for (let j = 0; j < discountItemQuery.rows.length; j++) {
-                let itemData = discountItemQuery.rows[j];
-                
-                for (let k of itemData.discounts)
-                {
-                    if (k.discount_status === true) {
-                        if (k.discount_type === "percentage") {
-                            totalDiscountItem += itemData.current_sell_price * (k.discount_value / 100);
-                            saveTotalDiscountItem += itemData.current_sell_price * (k.discount_value / 100);
-                        }
-                        else if (k.discount_type === "fixed")
-                        {
-                            totalDiscountItem += k.discount_value;
-                            saveTotalDiscountItem += k.discount_value;
-                        }
-                    }
 
-                }
-                
-                itemData.current_sell_price = parseFloat(itemData.current_sell_price) - totalDiscountItem;
-                grandTotalItem += itemData.current_sell_price;
+            let stock = stockQuery.rows[0]?.quantity ?? 0;
 
+            if (stock < q.quantities) {
+                await db.query("ROLLBACK");
+                return res.status(400).json({
+                    status: 400,
+                    message: `Stock insufficient for stuff_id ${q.stuff_id}`
+                });
             }
 
-            quantity = items.length;
-        }
-        
-        for (let i = 0; i < discounts.length; i++)
-        {
-            let discountOrderQuery = await db.query("SELECT discount_id, discount_type, discount_status, discount_value FROM discount WHERE discount_id = $1", [discounts[i].discount_id]);
-
-            for (let j of discountOrderQuery.rows)
-            {
-                if (j.discount_type === "percentage") {
-                    savetotalDiscountOrder += grandTotalItem * (parseFloat(j.discount_value) / 100);
-                }
-                else if (j.discount_type === "fixed")
-                {
-                    savetotalDiscountOrder += parseFloat(j.discount_value);
-                }
+            if (stock === 0) {
+                await db.query("ROLLBACK");
+                return res.status(400).json({
+                    status: 400,
+                    message: `Stock is empty`
+                });
             }
 
-        }
-        
-        totalPayment = grandTotalItem - savetotalDiscountOrder;
-        remainingPayment = payment - totalPayment;
+            await db.query("UPDATE stock SET quantity = quantity - $1 WHERE warehouse_id = $2 AND stuff_id = $3", [q.quantity, warehouse_id, q.stuff_id]);
 
-        console.log(quantity);
+            await db.query(`
+                INSERT INTO customer_order_detail
+                (stuff_id, order_id, warehouse_id, total_item_discount, total_order_discount)
+                VALUES
+                ($1, $2, $3, $4, $5)    
+            `, [q.stuff_id, order_id, warehouse_id, saveTotalDiscountItem, saveTotalDiscountOrder]);
+        }
         
         await db.query("COMMIT");
 
