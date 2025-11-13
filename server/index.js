@@ -13,7 +13,7 @@ import cookieParser from "cookie-parser";
 env.config();
 pg.types.setTypeParser(1082, val => val);
 const app = express();
-const saltRounds = process.env.SALT_ROUNDS;
+const saltRounds = 12;
 const upload = multer({ dest: "uploads" });
 const db = new pg.Client({
     user: process.env.PG_USER,
@@ -301,7 +301,7 @@ app.post("/add-stuff", async (req, res) => {
 
     try {
         const query = await db.query(
-            "INSERT INTO stuff (stuff_category_id, stuff_brand_id, supplier_id, stuff_code, stuff_sku, stuff_name, stuff_variant, current_sell_price, has_sn) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *", [stuffCategoryId, stuffBrandId, supplierId, stuffCode, stuffSku, stuffName, stuffVariant, currentSellPrice, hasSn, barcode]
+            "INSERT INTO stuff (stuff_category_id, stuff_brand_id, supplier_id, stuff_code, stuff_sku, stuff_name, stuff_variant, current_sell_price, has_sn, barcode) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *", [stuffCategoryId, stuffBrandId, supplierId, stuffCode, stuffSku, stuffName, stuffVariant, currentSellPrice, hasSn, barcode]
         );
         const result = query.rows[0];
 
@@ -501,7 +501,7 @@ app.post("/add-payment-methode", async (req, res) => {
 });
 
 // DISCOUNT
-app.post("/add-stuff-discount", verifyToken, async (req, res) => {
+app.post("/add-stuff-discount", async (req, res) => {
      
     let employeeId = req.body.employeeId;
     let stuffId = req.body.stuffId;
@@ -595,10 +595,9 @@ app.post("/add-stuff-discount", verifyToken, async (req, res) => {
     }
 });
 
-app.post("/add-order-discount", verifyToken, async (req, res) => {
+app.post("/add-order-discount", async (req, res) => {
      
     let employeeId = req.body.employeeId;
-    let stuffId = req.body.stuffId;
     let discountName = req.body.discountName;
     let discountType = req.body.discountType.toLowerCase();
     let discountValue = req.body.discountValue;
@@ -619,13 +618,6 @@ app.post("/add-order-discount", verifyToken, async (req, res) => {
         return res.status(404).json({
             status: 404,
             message: "Missing required key employeeId"
-        });
-    }
-    else if (!stuffId)
-    {
-        return res.status(404).json({
-            status: 404,
-            message: "Missing required key stuffId"
         });
     }
     else if (!discountName)
@@ -712,20 +704,10 @@ app.post("/create-account", async (req, res) => {
                 }
                 else
                 {
-                    const query = await db.query("INSERT INTO employee_account (employee_id, username, password, role) VALUES ($1, $2, $3, $4)", [employeeId, username, hash, role]);
-                    const account = await query.rows[0];
-
-                    req.login(account, (err) => {
-                        return res.status(200).json({
-                            status: 200,
-                            message: "Create account success",
-                            data: [{
-                                employeeId: employeeId,
-                                username: username,
-                                password: password,
-                                role: role
-                            }]
-                        });
+                    return res.status(200).json({
+                        status: 200,
+                        message: "Create account success",
+                        data: account
                     });
                 }
             });
@@ -870,28 +852,67 @@ app.post("/logout", async (req, res) => {
 
 // STOCK
 app.post("/add-stock", async (req, res) => {
-    const warehouseId = req.body.warehouse_id;
-    const stuffId = req.body.stuff_id;
-    const quantity = req.body.quantity;
-    const stockStatus = req.body.stock_status;
+    
+    let { 
+        warehouse_id,
+        stuff_id,
+        imei_1,
+        imei_2,
+        sn,
+    } = req.body;
 
-    if (!warehouseId || !stuffId || !quantity || !imei1 || !imei2 || !sn) {
-        return res.status(404).json({
-            status: 404,
-            message: "Missing required key: warehouseId, stuffId, quantity, imei1, imei2, sn"
+    if (!warehouse_id) {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: warehouse_id"
         });
+    }
+    else if (!stuff_id)
+    {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: stuff_id"
+        });
+    }
+    else if (!imei_1)
+    {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: imei_1"
+        });
+    }
+    else if (!imei_2)
+    {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: imei_2"
+        });
+    }
+    else if (!sn)
+    {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: sn"
+        });
+    }
+
+    if (typeof stock_status === "string") {
+        stock_status = stock_status.toLowerCase();
     }
 
     try {
         await db.query("BEGIN");
-
-        const stuffInfoQuery = await db.query("INSERT INTO stuff_information (stuff_id, stock_id, imei_1, imei_2, sn) VALUES ($1, $2, $3, $4) RETURNING stuff_information_id", [stuffId, imei1, imei2, sn]);
-        const stuffInfoId = stuffInfoQuery.rows[0].stuff_information_id;
+        
+        let stuffInfoQuery = await db.query("INSERT INTO stuff_information (stuff_id, imei_1, imei_2, sn, stock_status) VALUES ($1, $2, $3, $4, 'ready') RETURNING stuff_information_id", [stuff_id, imei_1, imei_2, sn]);
+        
+        let stuffInfoId = stuffInfoQuery.rows[0].stuff_information_id;
 
         await db.query(
-            "INSERT INTO stock (warehouse_id, stuff_id, stuff_information_id, quantity) VALUES ($1, $2, $3, $4) RETURNING *", [warehouseId, stuffId, stuffInfoId, quantity]
+            "INSERT INTO stock (warehouse_id, stuff_id, stuff_information_id, stock_type) VALUES ($1, $2, $3, 'in')", [warehouse_id, stuff_id,stuffInfoId]
         );
-        
+
+        await db.query("UPDATE stuff SET total_stock = (SELECT COUNT(*) FROM stuff_information WHERE stuff_id = $1 AND stock_status = 'ready') WHERE stuff_id = $2", [stuff_id, stuff_id]);
+
         await db.query("COMMIT");
 
         return res.json({
@@ -901,6 +922,10 @@ app.post("/add-stock", async (req, res) => {
     } catch (err) {
         await db.query("ROLLBACK");
         console.error(err);
+        return res.status(400).json({
+            status: 400,
+            message: err.message
+        });
     }
 });
 
