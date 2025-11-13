@@ -1192,17 +1192,17 @@ app.post("/add-order", async (req, res) => {
 
         for (let q of quantities)
         {
-            let stockQuery = await db.query("SELECT quantity FROM stock WHERE warehouse_id = $1 AND stuff_id = $2", [warehouse_id, q.stuff_id]);
+            let stockQuery = await db.query("SELECT total_stock FROM stuff WHERE stuff_id = $1", [q.stuff_id]);
 
             if (stockQuery.rows.length === 0) {
                 await db.query("ROLLBACK");
                 return res.status(400).json({
                     status: 400,
-                    message: "Stuff or stock is not available in the warehosue"
+                    message: "Stuff or stock is not available"
                 });
             }
 
-            let stock = stockQuery.rows[0]?.quantity ?? 0;
+            let stock = stockQuery.rows[0]?.total_stock ?? 0;
 
             if (stock < q.quantities) {
                 await db.query("ROLLBACK");
@@ -1220,8 +1220,8 @@ app.post("/add-order", async (req, res) => {
                 });
             }
 
-            await db.query("UPDATE stock SET quantity = quantity - $1 WHERE warehouse_id = $2 AND stuff_id = $3", [q.quantity, warehouse_id, q.stuff_id]);
-
+            await db.query("UPDATE stuff SET total_stock = total_stock - $1 WHERE stuff_id = $2", [q.quantity, q.stuff_id]);
+            await db.query("UPDATE stock SET stock_type = 'out' WHERE warehouse_id = $1 AND stuff_id = $2", [warehouse_id, q.stuff_id]);
             await db.query(`
                 INSERT INTO customer_order_detail
                 (stuff_id, order_id, warehouse_id, total_item_discount, total_order_discount)
