@@ -9,7 +9,6 @@ import fs from "fs";
 import XLSX from "xlsx";
 import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
-import { throws } from "assert";
 
 env.config();
 pg.types.setTypeParser(1082, val => val);
@@ -82,7 +81,7 @@ function parseExcel(filePath)
 function generateAccessToken(account) 
 {
     return jwt.sign(
-        { id: account.id, username: account.username },
+        { id: account.employee_account_id, username: account.username },
         process.env.JWT_ACCESS_SECRET,
         {expiresIn: process.env.ACCESS_TOKEN_EXPIRE}
     );
@@ -90,7 +89,7 @@ function generateAccessToken(account)
 
 function generateRefreshToken(account) {
     return jwt.sign(
-        { id: account.id },
+        { id: account.employee_account_id },
         process.env.JWT_REFRESH_SECRET,
         {expiresIn: process.env.REFRESH_TOKEN_EXPIRE}
     );
@@ -281,38 +280,140 @@ app.post("/add-stuff-brand", async (req, res) => {
     }
 });
 
-app.post("/add-stuff", async (req, res) => { 
-    const stuffCategoryId = req.body.stuffCategoryId;
-    const stuffBrandId = req.body.stuffBrandId;
-    const supplierId = req.body.supplierId;
-    const stuffCode = req.body.stuffCode;
-    const stuffSku = req.body.stuffSku;
-    const stuffName = req.body.stuffName;
-    const stuffVariant = req.body.stuffVariant;
-    const currentSellPrice = parseFloat(req.body.currentSellPrice.replace(",", "."));
-    const hasSn = req.body.hasSn;
-    const barcode = req.body.barcode;
+app.post("/add-stuff", verifyToken, async (req, res) => { 
+    let {
+        stuff_category_id,
+        stuff_brand_id,
+        supplier_id,
+        stuff_code,
+        stuff_sku,
+        stuff_name,
+        stuff_variant,
+        current_sell_price,
+        has_sn,
+        barcode
+    } = req.body;
 
-    if (!stuffCategoryId || !stuffBrandId || !supplierId || !stuffCode || !stuffSku || !stuffName || !stuffVariant || !currentSellPrice || !hasSn || !barcode) {
+    if (typeof current_sell_price === "string" && current_sell_price.includes(",")) {
+        let newValue = current_sell_price.replace(",", ".");
+        let parsed = parseFloat(newValue);
+
+        if (!isNaN(parsed)) {
+            payment = parsed;
+        }
+    }
+
+    if (!stuff_category_id) {
         return res.status(404).json({
             status: 404,
-            message: "Missing required key: stuffCategoryId, stuffBrandId, supplierId, stuffCode, stuffSku, stuffName, stuffVariant, currentSellPrice, hasSn, barcode"
+            message: "Missing required key: stuff_category_id"
+        });
+    }
+    else if (!stuff_brand_id)
+    {
+        return res.status(404).json({
+            status: 404,
+            message: "Missing required key: stuff_brand_id"
+        });
+    }
+    else if (!supplier_id)
+    {
+        return res.status(404).json({
+            status: 404,
+            message: "Missing required key: supplier_id"
+        });
+    }
+    else if (!stuff_code)
+    {
+        return res.status(404).json({
+            status: 404,
+            message: "Missing required key: stuff_code"
+        });
+    }
+    else if (!stuff_sku)
+    {
+        return res.status(404).json({
+            status: 404,
+            message: "Missing required key: stuff_sku"
+        });
+    }
+    else if (!stuff_name)
+    {
+        return res.status(404).json({
+            status: 404,
+            message: "Missing required key: stuff_name"
+        });
+    }
+    else if (!stuff_variant)
+    {
+        return res.status(404).json({
+            status: 404,
+            message: "Missing required key: stuff_variant"
+        });
+    }
+    else if (!current_sell_price)
+    {
+        return res.status(404).json({
+            status: 404,
+            message: "Missing required key: current_sell_price"
+        });
+    }
+    else if (!has_sn)
+    {
+        return res.status(404).json({
+            status: 404,
+            message: "Missing required key: has_sn"
+        });
+    }
+    else if (!barcode)
+    {
+        return res.status(404).json({
+            status: 404,
+            message: "Missing required key: barcode"
         });
     }
 
     try {
-        const query = await db.query(
-            "INSERT INTO stuff (stuff_category_id, stuff_brand_id, supplier_id, stuff_code, stuff_sku, stuff_name, stuff_variant, current_sell_price, has_sn, barcode) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *", [stuffCategoryId, stuffBrandId, supplierId, stuffCode, stuffSku, stuffName, stuffVariant, currentSellPrice, hasSn, barcode]
+        await db.query("BEGIN");
+
+        let refreshToken = req.cookies.refreshToken;
+
+        jwt.verify(
+            refreshToken,
+            process.env.JWT_REFRESH_SECRET, async (err, account) =>
+            {
+                if (err) {
+                    return res.status(403).json({
+                        status: 403,
+                        message: "Token is no longer valid"
+                    });
+                }
+                else
+                {
+                    let stuffQuery = await db.query(
+                        "INSERT INTO stuff (stuff_category_id, stuff_brand_id, supplier_id, stuff_code, stuff_sku, stuff_name, stuff_variant, current_sell_price, has_sn, barcode) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *", [stuff_category_id, stuff_brand_id, supplier_id, stuff_code, stuff_sku, stuff_name, stuff_variant, current_sell_price, has_sn, barcode]
+                    );
+                    let stuffData = stuffQuery.rows[0];
+                    let stuffId = stuffQuery.rows[0].stuff_id;
+
+                    await db.query("INSERT INTO stuff_history (stuff_id, employee_id, operation, new_data) VALUES ($1, $2, 'insert', $3)", [stuffId, account.id, stuffData]);
+                }
+            }
         );
-        const result = query.rows[0];
+
+        await db.query("COMMIT");
 
         return res.json({
             status: 200,
-            message: "OK",
-            data: result,
+            message: "Success add stuff",
         });
     } catch (err) {
+        await db.query("ROLLBACK");
         console.error(err);
+        return res.status(400).json({
+            status: 400,
+            message: err.message
+        });
     }
 });
 
@@ -394,7 +495,6 @@ app.post("/upload-stuff-purchase", upload.single("file"), async (req, res) => {
                     item[key] = item[key].toLowerCase().trim();
                 }
             }
-
             
             let {
                     supplier_name,
@@ -747,7 +847,7 @@ app.post("/login", async (req, res) => {
                         let refreshToken = generateRefreshToken(account);
                         let expiresAt = new Date();
 
-                        expiresAt.setDate(expiresAt.getDay() + 7);
+                        expiresAt.setDate(expiresAt.getDate() + 7);
 
                         await db.query("INSERT INTO refresh_token (employee_account_id, token_jti, expires_at) VALUES ($1, $2, $3)", [account.employee_account_id, refreshToken, expiresAt]);
 
