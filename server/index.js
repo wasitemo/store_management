@@ -126,7 +126,7 @@ async function verifyToken(req, res, next)
 function convertionToNumber(value)
 {
     if (value.includes(".") || value.includes(",")) {
-        let newValue = value.replace(".", "").replace(",", "");
+        let newValue = value.replaceAll(".", "").replace(",", "");
         let parsed = parseFloat(newValue);
 
         if (!isNaN(parsed)) {
@@ -141,7 +141,7 @@ function convertionToNumber(value)
 
 function convertionToDecimal(value)
 {
-    if (typeof value === "string" && value.includes(",")) {
+    if (value.includes(",")) {
         let newValue = value.replace(",", ".");
         let parsed = parseFloat(newValue);
 
@@ -537,31 +537,118 @@ app.patch("/update-stuff/:stuff_id", verifyToken, async (req, res) => {
 });
 
 app.post("/add-stuff-purchase", async (req, res) => {
-    let { supplierId, employeeId, buyDate, totalPrice, warehouseId, stuffId, buyBatch, quantity, buyPrice, sellPrice } = req.body;
+    let {
+        supplier_id,
+        buy_date,
+        total_price,
+        warehouse_id,
+        stuff_id,
+        buy_batch,
+        quantity,
+        buy_price,
+    } = req.body;
   
-    if (!supplierId || !employeeId || !buyDate || !totalPrice || !warehouseId || !stuffId || !buyBatch || !quantity || !buyPrice || !sellPrice) {
-        return res.status(404).json({
-            status: 404,
-            message: "Missing required key: supplierId, employeeId, buyDate, totalPrice, warehouseId, stuffId, buyBatch, quantity, buyPrice, sellPrice"
+    if (!supplier_id) {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: supplier_id"
         });
+    }
+    else if (!buy_date)
+    {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: buy_date"
+        });
+    }
+    else if(!total_price)
+    {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: buy_date"
+        });
+    }
+    else if (!warehouse_id)
+    {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: warehous_id"
+        });
+    }
+    else if (!stuff_id)
+    {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: stuff_id"
+        });
+    }
+    else if (!buy_batch)
+    {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: buy_batch"
+        });
+    }
+    else if (!quantity)
+    {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: quantity"
+        });
+    }
+    else if (!buy_price)
+    {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: buy_price"
+        });
+    }
+
+    if (typeof total_price === "string") {
+        total_price = convertionToNumber(total_price);
+    }
+
+    if (typeof buy_price === "string") {
+        buy_price = convertionToNumber(buy_price);
+    }
+
+    if (typeof quantity === "string") {
+        quantity = convertionToNumber(quantity);
     }
 
     try {
 
         await db.query("BEGIN");
 
-        const stuffPurchase = await db.query("INSERT INTO stuff_purchase (supplier_id, employee_id, buy_date, total_price) VALUES ($1, $2, $3, $4) RETURNING stuff_purchase_id", [supplierId, employeeId, buyDate, totalPrice]);
-        
-        const purchaseId = stuffPurchase.rows[0].stuff_purchase_id;
-        
-        await db.query("INSERT INTO stuff_purchase_detail (warehouse_id, stuff_id, stuff_purchase_id, buy_batch, quantity, buy_price, sell_price) VALUES ($1, $2, $3, $4, $5, $6, $7)", [warehouseId, stuffId, purchaseId, buyBatch, quantity, buyPrice, sellPrice]);
-        
-        await db.query("COMMIT");
+        let refreshToken = req.cookies.refreshToken;
 
-        return res.status(200).json({
-            status: 200,
-            message: "Purchase success",
-        });
+        jwt.verify(
+            refreshToken,
+            process.env.JWT_REFRESH_SECRET,
+            async (err, account) => {
+                if (err) {
+                    return res.status(400).json({
+                        status: 400,
+                        message: "Token is no longer valid"
+                    });
+                }
+                else
+                {
+                    const stuffPurchaseQuery = await db.query("INSERT INTO stuff_purchase (supplier_id, employee_id, buy_date, total_price) VALUES ($1, $2, $3, $4) RETURNING stuff_purchase_id", [supplier_id, account.id, buy_date, total_price]);
+        
+                    const purchaseId = stuffPurchaseQuery.rows[0].stuff_purchase_id;
+        
+                    await db.query("INSERT INTO stuff_purchase_detail (warehouse_id, stuff_id, stuff_purchase_id, buy_batch, quantity, buy_price) VALUES ($1, $2, $3, $4, $5, $6)", [warehouse_id, stuff_id, purchaseId, buy_batch, quantity, buy_price]);
+        
+                    await db.query("COMMIT");
+
+                    return res.status(200).json({
+                        status: 200,
+                        message: "Purchase success",
+                    });
+                }
+            }
+        );
     } catch (err) {
         await db.query("ROLLBACK");
         console.error(err);
