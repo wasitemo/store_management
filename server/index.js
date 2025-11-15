@@ -417,6 +417,67 @@ app.post("/add-stuff", verifyToken, async (req, res) => {
     }
 });
 
+app.patch("/update-stuff/:stuff_id", async (req, res) => {
+    let reqId = parseInt(req.params.stuff_id);
+    let update = req.body;
+    let keys = Object.keys(update);
+
+    if (keys.length === 0) {
+        return res.status(400).json({
+            status: 400,
+            message: "No items updated"
+        });
+    }
+
+    let setQuery = keys.map((key, index) => `${key} = $${index + 1}`).join(", ");
+    let values = Object.values(update);
+
+    try {
+        await db.query("BEGIN");
+        
+        let refreshToken = req.cookies.refreshToken;
+
+        jwt.verify(
+            refreshToken,
+            process.env.JWT_REFRESH_SECRET,
+            async (err, account) => {
+                if (err) {
+                    return res.status(400).json({
+                        status: 400,
+                        message: "Token is no longer valid"
+                    });
+                }
+                else
+                {
+                    let oldDataQuery = await db.query("SELECT * FROM stuff WHERE stuff_id = $1", [reqId]);
+                    let stuffQuery = await db.query(`UPDATE stuff SET ${setQuery} WHERE stuff_id = $${keys.length + 1} RETURNING *`, [...values, reqId]);
+                    let stuffId = stuffQuery.rows[0].stuff_id;
+                    let oldData = oldDataQuery.rows[0];
+                    let newData = stuffQuery.rows[0];
+
+                    await db.query("INSERT INTO stuff_history (stuff_id, employee_id, operation, old_data, new_data) VALUES ($1, $2, 'update', $3, $4)", [stuffId, account.id, oldData, newData]);
+
+                    return res.status(400).json({
+                        status: 400,
+                        message: "Succes updated data"
+        });
+                }
+            }
+        );
+
+        await db.query("COMMIT");
+    } catch (err) {
+        await db.query("ROLLBACK");
+        console.error(err);
+        return res.status(400).json({
+            status: 400,
+            message: err.message
+        });
+    }
+
+    console.log(setQuery);
+});
+
 app.post("/add-stuff-purchase", async (req, res) => {
     let { supplierId, employeeId, buyDate, totalPrice, warehouseId, stuffId, buyBatch, quantity, buyPrice, sellPrice } = req.body;
   
