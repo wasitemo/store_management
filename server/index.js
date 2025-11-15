@@ -125,15 +125,17 @@ async function verifyToken(req, res, next)
 
 function convertionToNumber(value)
 {
-    if (typeof value === "string") {
-        if (value.includes(".") || value.includes(",")) {
-            let newValue = value.replace(".", "").replace(",", "");
-            let parsed = parseFloat(newValue);
+    if (value.includes(".") || value.includes(",")) {
+        let newValue = value.replace(".", "").replace(",", "");
+        let parsed = parseFloat(newValue);
 
-            if (!isNaN(parsed)) {
-                return value = parsed;
-            }
+        if (!isNaN(parsed)) {
+            return value = parsed;
         }
+    }
+    else
+    {
+        return parseFloat(value);
     }
 }
 
