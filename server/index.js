@@ -123,6 +123,32 @@ async function verifyToken(req, res, next)
     );
 }
 
+function convertionToNumber(value)
+{
+    if (typeof value === "string") {
+        if (value.includes(".") || value.includes(",")) {
+            let newValue = value.replace(".", "").replace(",", "");
+            let parsed = parseFloat(newValue);
+
+            if (!isNaN(parsed)) {
+                return value = parsed;
+            }
+        }
+    }
+}
+
+function convertionToDecimal(value)
+{
+    if (typeof value === "string" && value.includes(",")) {
+        let newValue = value.replace(",", ".");
+        let parsed = parseFloat(newValue);
+
+        if (!isNaN(parsed)) {
+            value = parsed;
+        }
+    }
+}
+
 // EMPLOYEE
 app.get("/employee", verifyToken, async (req, res) => {
     try {
@@ -417,12 +443,44 @@ app.post("/add-stuff", verifyToken, async (req, res) => {
     }
 });
 
-app.patch("/update-stuff/:stuff_id", async (req, res) => {
+app.patch("/update-stuff/:stuff_id", verifyToken, async (req, res) => {
     let reqId = parseInt(req.params.stuff_id);
     let update = req.body;
     let keys = Object.keys(update);
+    let fields = {
+        stuff_category_id: "number",
+        stuff_brand_id: "number",
+        supplier_id: "number",
+        stuff_code: "number",
+        stuff_sku: "string",
+        stuff_name: "string",
+        stuff_variant: "string",
+        current_sell_price: "number",
+        has_sn: "boolean",
+        barcode: "string",
+    };
+    let invalidFields = keys.filter(k => !fields[k]);
+
+    for (let key of keys)
+    {
+        let expectedType = fields[key];
+        let value = update[key];
+
+        if (expectedType === "number") {
+            update[key] = convertionToNumber(value);
+        }
+    }
+
+    if (invalidFields.length > 0) {
+        await db.query("ROLLBACK");
+        return res.status(400).json({
+            status: 400,
+            message: "Invalid field ", invalidFields
+        });
+    }
 
     if (keys.length === 0) {
+        await db.query("ROLLBACK");
         return res.status(400).json({
             status: 400,
             message: "No items updated"
@@ -457,8 +515,8 @@ app.patch("/update-stuff/:stuff_id", async (req, res) => {
 
                     await db.query("INSERT INTO stuff_history (stuff_id, employee_id, operation, old_data, new_data) VALUES ($1, $2, 'update', $3, $4)", [stuffId, account.id, oldData, newData]);
 
-                    return res.status(400).json({
-                        status: 400,
+                    return res.status(200).json({
+                        status: 200,
                         message: "Succes updated data"
         });
                 }
@@ -474,8 +532,6 @@ app.patch("/update-stuff/:stuff_id", async (req, res) => {
             message: err.message
         });
     }
-
-    console.log(setQuery);
 });
 
 app.post("/add-stuff-purchase", async (req, res) => {
