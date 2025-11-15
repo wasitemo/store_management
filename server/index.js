@@ -536,7 +536,7 @@ app.patch("/update-stuff/:stuff_id", verifyToken, async (req, res) => {
     }
 });
 
-app.post("/add-stuff-purchase", async (req, res) => {
+app.post("/add-stuff-purchase", verifyToken, async (req, res) => {
     let {
         supplier_id,
         buy_date,
