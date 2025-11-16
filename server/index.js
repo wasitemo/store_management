@@ -993,24 +993,60 @@ app.post("/add-order-discount", async (req, res) => {
 
 // ACCOUNT
 app.post("/create-account", async (req, res) => {
-    const employeeId = req.body.employeeId;
-    const username = req.body.username;
-    const password = req.body.password;
-    const role = req.body.role;
+    let { 
+        employee_id,
+        username,
+        password,
+        role,
+        account_status,
+    } = req.body;
 
-    if (!employeeId || !username || !password || !role) {
+    if (!employee_id) {
         return res.status(400).json({
-            status: 404,
-            message: "Missing required key: employeeId, username, password, role",
+            status: 400,
+            message: "Missing required key: employee_id",
         });
+    }
+    else if (!username)
+    {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: username",
+        });
+    }
+    else if (!password)
+    {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: password",
+        });
+    }
+    else if (!role)
+    {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: role",
+        });
+    }
+    else if (!account_status)
+    {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: account_status",
+        });
+    }
+
+    if (typeof account_status === "string")
+    {
+        account_status = account_status.toLowerCase();
     }
 
     try {
         const checkResult = await db.query("SELECT * FROM employee_account WHERE username = $1", [username]);
 
         if (checkResult.rows.length > 0) {
-            return res.status(404).json({
-                status: 404,
+            return res.status(400).json({
+                status: 400,
                 message: "Username already used"
             });
         }
@@ -1023,16 +1059,21 @@ app.post("/create-account", async (req, res) => {
                 }
                 else
                 {
+                    await db.query("INSERT INTO employee_account (employee_id, username, password, role, account_status) VALUES ($1, $2, $3, $4, $5)", [employee_id, username, hash, role, account_status]);
+
                     return res.status(200).json({
                         status: 200,
                         message: "Create account success",
-                        data: account
                     });
                 }
             });
         }
     } catch (err) {
         console.error(err);
+        return res.status(400).json({
+            status: 400,
+            message: err.message
+        });
     }
 });
 
@@ -1093,7 +1134,11 @@ app.post("/login", async (req, res) => {
             return cb("Account not found");
         }
     } catch (err) {
-        return console.error(err);
+        console.error(err);
+        return res.status(400).json({
+            status: 400,
+            message: err.message
+        });
     }
 });
 
