@@ -1077,7 +1077,7 @@ app.post("/create-account", verifyToken, async (req, res) => {
     }
 });
 
-app.post("/login", verifyToken, async (req, res) => {
+app.post("/login", async (req, res) => {
     let { username, password } = req.body;
     const accountQuery = await db.query("SELECT * FROM employee_account WHERE username = $1", [username]);
     
@@ -1103,43 +1103,106 @@ app.post("/login", verifyToken, async (req, res) => {
 
             bcrypt.compare(password, hashPassword, async (err, valid) => {
                 if (err) {
-                    console.error("Error comparing password: ", err);
-                    return cb(err);
+                    return console.error("Error comparing password: ", err);
+                }
+                if (valid) {
+                    let accessToken = generateAccessToken(account);
+                    let refreshToken = generateRefreshToken(account);
+                    let expiresAt = new Date();
+
+                    expiresAt.setDate(expiresAt.getDate() + 7);
+
+                    await db.query("INSERT INTO refresh_token (employee_account_id, token_jti, expires_at) VALUES ($1, $2, $3)", [account.employee_account_id, refreshToken, expiresAt]);
+
+                    res.cookie("refreshToken", refreshToken, {
+                        httpOnly: true,
+                        secure: false,
+                        sameSite: "strict",
+                        maxAge: 7 * 24 * 60 * 60 * 1000
+                    });
+
+                    return res.status(200).json({
+                        status: 200,
+                        message: accessToken,
+                    });
                 }
                 else
                 {
-                    if (valid) {
-                        let accessToken = generateAccessToken(account);
-                        let refreshToken = generateRefreshToken(account);
-                        let expiresAt = new Date();
-
-                        expiresAt.setDate(expiresAt.getDate() + 7);
-
-                        await db.query("INSERT INTO refresh_token (employee_account_id, token_jti, expires_at) VALUES ($1, $2, $3)", [account.employee_account_id, refreshToken, expiresAt]);
-
-                        res.cookie("refreshToken", refreshToken, {
-                            httpOnly: true,
-                            secure: false,
-                            sameSite: "strict",
-                            maxAge: 7 * 24 * 60 * 60 * 1000
-                        });
-
-                        return res.status(200).json({
-                            status: 200,
-                            message: accessToken,
-                        });
-                    }
-                    else
-                        {
-                            return cb(null, false);
-                        }
-                    }
-                });
+                    return res.status(400).json({
+                        status: 400,
+                        message: "Username or password doesn't match"
+                    });
+                }
+            });
         }
         else
         {
-            return cb("Account not found");
+            console.log("Account not found");
+            return res.status(400).json({
+                status: 400,
+                message: "Account not found"
+            });
         }
+    } catch (err) {
+        console.error(err);
+        return res.status(400).json({
+            status: 400,
+            message: err.message
+        });
+    }
+});
+
+app.patch("/update-account/:employee_account_id", async (req, res) => {
+    let reqId = parseInt(req.params.employee_account_id);
+    let update = req.body;
+    let keys = Object.keys(update);
+    let fields = {
+        employee_id: "number",
+        username: "string",
+        password: "string",
+        role: "string",
+        account_status: "string",
+    };
+    let invalidField = keys.filter(k => !fields[k]);
+
+    if (invalidField.length > 0) {
+        return res.status(400).json({
+            status: 400,
+            message: "Invalid field ", invalidField
+        });
+    }
+
+    if (keys.length === 0) {
+        return res.status("400").json({
+            status: 400,
+            message: "No item updated"
+        });
+    }
+
+    for (let key of keys)
+    {
+        let expextedType = fields[key];
+        let value = update[key];
+
+        if (expextedType === "number") {
+            update[key] = convertionToNumber(value);
+        }
+
+        if (key === "password") {
+            update[key] = await bcrypt.hash(value, saltRounds);
+        }
+    }
+
+    let setQuery = keys.map((key, index) => `${key} = $${index + 1}`).join(",");
+    let values = Object.values(update);
+
+    try {
+        await db.query(`UPDATE employee_account SET ${setQuery} WHERE employee_account_id = $${keys.length + 1}`, [...values, reqId]);
+
+        return res.status(200).json({
+            status: 200,
+            message: "Success updated data"
+        });
     } catch (err) {
         console.error(err);
         return res.status(400).json({
