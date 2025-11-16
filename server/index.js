@@ -992,7 +992,7 @@ app.post("/add-order-discount", async (req, res) => {
 });
 
 // ACCOUNT
-app.post("/create-account", async (req, res) => {
+app.post("/create-account", verifyToken, async (req, res) => {
     let { 
         employee_id,
         username,
@@ -1077,7 +1077,7 @@ app.post("/create-account", async (req, res) => {
     }
 });
 
-app.post("/login", async (req, res) => {
+app.post("/login", verifyToken, async (req, res) => {
     let { username, password } = req.body;
     const accountQuery = await db.query("SELECT * FROM employee_account WHERE username = $1", [username]);
     
