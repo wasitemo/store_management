@@ -230,6 +230,51 @@ app.post("/add-employee", verifyToken, async (req, res) => {
     }
 });
 
+app.patch("/update-employee/:employee_id", verifyToken, async (req, res) => {
+    let reqId = parseInt(req.params.employee_id);
+    let update = req.body;
+    let keys = Object.keys(update);
+    let fields = [
+        "employee_nik",
+        "employee_name",
+        "employee_contact",
+        "employee_address",
+    ];
+    let invalidField = fields.filter(k => !fields.includes(k));
+
+    if (invalidField.length > 0) {
+        return res.status(400).json({
+            status: 400,
+            message: "Invalid field", invalidField
+        });
+    }
+
+    if (keys.length === 0) {
+        return res.status(400).json({
+            status: 400,
+            message: "No items updated"
+        });
+    }
+
+    let setQuery = keys.map((key, index) => `${key} = $${index + 1}`).join(",");
+    let values = Object.values(update);
+
+    try {
+        await db.query(`UPDATE employee SET ${setQuery} WHERE employee_id = $${keys.length + 1}`, [...values, reqId]);
+
+        return res.status(200).json({
+            status: 200,
+            message: "Success update data"
+        });
+    } catch (err) {
+        console.log(err);
+        return res.status(400).json({
+            status: 400,
+            message: err.message
+        });
+    }
+});
+
 // WAREHOUSE
 app.post("/add-warehouse", async (req, res) => { 
     const warehouseName = req.body.warehouseName;
