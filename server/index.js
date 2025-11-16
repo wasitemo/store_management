@@ -1094,6 +1094,13 @@ app.post("/login", async (req, res) => {
                 });
             }
 
+            if (accountQuery.rows[0].account_status === "non-active") {
+                return res.status(400).json({
+                    status: 400,
+                    message: "You can't access this account anymore"
+                });
+            }
+
             bcrypt.compare(password, hashPassword, async (err, valid) => {
                 if (err) {
                     console.error("Error comparing password: ", err);
