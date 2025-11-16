@@ -167,41 +167,66 @@ app.get("/employee", verifyToken, async (req, res) => {
     }
 });
 
-app.post("/add-employee", async (req, res) => { 
-    const employeeNik = req.body.employeeNik;
-    const employeeName = req.body.employeeName;
-    const employeeAddress = req.body.employeeAddress;
-    const employeeContact = req.body.employeeContact;
+app.post("/add-employee", verifyToken, async (req, res) => {
+    let { 
+        employee_nik,
+        employee_name,
+        employee_address,
+        employee_contact
+    } = req.body;
 
-    if (!employeeNik || !employeeName || !employeeAddress || !employeeContact) {
-        return res.status(404).json({
+    if (!employee_nik) {
+        return res.status(400).json({
             status: 400,
-            message: "Missing required key: employeeNik, employeeName, employeeAddress, employeeContact",
+            message: "Missing required key: employee_nik",
+        });
+    }
+    else if (!employee_name)
+    {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: employee_name",
+        });
+    }
+    else if (!employee_address)
+    {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: employee_address",
+        });
+    }
+    else if (!employee_contact)
+    {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: employee_contact",
         });
     }
 
     try {
-        const checkResult = await db.query("SELECT * FROM employee WHERE employee_nik = $1", [employeeNik]);
+        const checkResult = await db.query("SELECT * FROM employee WHERE employee_nik = $1", [employee_nik]);
 
         if (checkResult.rows.length > 0) {
-            return res.status(404).json({
-                status: 404,
+            return res.status(400).json({
+                status: 400,
                 message: "NIK already used",
             });
         }
         else
         {
-            const query = await db.query("INSERT INTO employee (employee_nik, employee_name, employee_contact, employee_address) VALUES ($1, $2, $3, $4) RETURNING *", [employeeNik, employeeName, employeeContact, employeeAddress]);
-            const result = query.rows[0];
+            await db.query("INSERT INTO employee (employee_nik, employee_name, employee_contact, employee_address) VALUES ($1, $2, $3, $4)", [employee_nik, employee_name, employee_contact, employee_address]);
 
             return res.status(200).json({
                 status: 200,
-                message: "OK",
-                data: result,
+                message: "Success add employee",
             });
         }
     } catch (err) {
         console.error(err);
+        return res.status(400).json({
+            status: 400,
+            message: err.message,
+        });
     }
 });
 
