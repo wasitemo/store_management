@@ -391,28 +391,30 @@ app.patch("/update-supplier/:supplier_id", verifyToken, async (req, res) => {
 });
 
 // STUFF
-app.use("/add-stuff-category", async (req, res) => { 
-    const stuffCategoryName = req.body.stuffCategoryName;
+app.use("/add-stuff-category", verifyToken, async (req, res) => { 
+    const {stuff_category_name} = req.body;
 
-    if (!stuffCategoryName)
+    if (!stuff_category_name)
     {
         return res.status(404).json({
             status: 404,
-            message: "Missing required key: stuffCategoryName"
+            message: "Missing required key: stuff_category_name"
         });
     }
 
     try {
-        const query = await db.query("INSERT INTO stuff_category (stuff_category_name) VALUES ($1) RETURNING *", [stuffCategoryName]);
-        const result = query.rows[0];
+        await db.query("INSERT INTO stuff_category (stuff_category_name) VALUES ($1)", [stuff_category_name]);
 
         return res.status(200).json({
             status: 200,
-            message: "OK",
-            data: result
+            message: "Success add stuff category",
         });
     } catch (err) {
         console.error(err);
+        return res.status(400).json({
+            status: 400,
+            message: err.message
+        });
     }
 });
 
