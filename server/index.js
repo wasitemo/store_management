@@ -312,6 +312,46 @@ app.post("/add-warehouse", verifyToken, async (req, res) => {
     }
 });
 
+app.patch("/update-warehouse/:warehouse_id", async (req, res) => {
+    let reqId = parseInt(req.params.warehouse_id);
+    let update = req.body;
+    let keys = Object.keys(update);
+    let fields = ["warehouse_name", "warehouse_address"];
+    let invalidField = keys.filter(k => !fields.includes(k));
+
+    if (invalidField.length > 0) {
+        return res.status(400).json({
+            status: 400,
+            message: "Invalid field ", invalidField
+        });
+    }
+
+    if (keys.length === 0) {
+        return res.status(400).json({
+            status: 400,
+            message: "No items updated"
+        });
+    }
+
+    let setQuery = keys.map((key, index) => `${key} = $${index + 1}`).join(",");
+    let values = Object.values(update);
+
+    try {
+        await db.query(`UPDATE warehouse SET ${setQuery} WHERE warehouse_id = $${keys.length + 1}`, [...values, reqId]);
+
+        return res.status(200).json({
+            status: 200,
+            message: "Success updated data"
+        });
+    } catch (err) {
+        console.error(err);
+        return res.status(400).json({
+            status: 400,
+            message: err.message,
+        });
+    }
+});
+
 // SUPPLIER
 app.post("/add-supplier", verifyToken, async (req, res) => {
     let { 
