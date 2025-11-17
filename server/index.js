@@ -276,28 +276,39 @@ app.patch("/update-employee/:employee_id", verifyToken, async (req, res) => {
 });
 
 // WAREHOUSE
-app.post("/add-warehouse", async (req, res) => { 
-    const warehouseName = req.body.warehouseName;
-    const warehouseAddress = req.body.warehouseAddress;
+app.post("/add-warehouse", verifyToken, async (req, res) => { 
+    let { 
+        warehouse_name,
+        warehouse_address,
+    } = req.body;
 
-    if (!warehouseName || !warehouseAddress) {
-        return res.status(404).json({
-            status: 404,
-            message: "Missing required key: warehouseName, warehouseAddress"
+    if (!warehouse_name) {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: warehouse_name"
+        });
+    }
+    else if (!warehouse_address)
+    {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: warehouse_address"
         });
     }
 
     try {
-        const query = await db.query("INSERT INTO warehouse (warehouse_name, warehouse_address) VALUES ($1, $2) RETURNING *", [warehouseName, warehouseAddress]);
-        const result = query.rows[0];
+        await db.query("INSERT INTO warehouse (warehouse_name, warehouse_address) VALUES ($1, $2)", [warehouse_name, warehouse_address]);
 
         return res.status(200).json({
             status: 200,
-            message: "OK",
-            data: result,
+            message: "Success add warehouse",
         });
     } catch (err) {
         console.error(err);
+        return res.status(400).json({
+            status: 400,
+            message: err.message
+        });
     }
 });
 
