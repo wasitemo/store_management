@@ -302,31 +302,51 @@ app.post("/add-warehouse", async (req, res) => {
 });
 
 // SUPPLIER
-app.post("/add-supplier", async (req, res) => { 
-    const supplierName = req.body.supplierName;
-    const supplierContact = req.body.supplierContact;
-    const supplierAddress = req.body.supplierAddress;
+app.post("/add-supplier", verifyToken, async (req, res) => {
+    let { 
+        supplier_name,
+        supplier_contact,
+        supplier_address,
+    } = req.body;
 
-    if (!supplierName || !supplierContact || !supplierAddress) {
-        return res.status(404).json({
-            status: 404,
-            message: "Missing required key: supplierName, supplierContact, supplierAddress"
+    if (!supplier_name) {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: supplier_name"
+        });
+    }
+    else if (!supplier_contact)
+    {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: supplier_contact"
+        });
+    }
+    else if (!supplier_address)
+    {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: supplier_address"
         });
     }
 
     try {
-        const query = await db.query("INSERT INTO supplier (supplier_name, supplier_contact, supplier_address) VALUES ($1, $2, $3) RETURNING *", [supplierName, supplierContact, supplierAddress]);
-        const result = query.rows[0];
+        await db.query("INSERT INTO supplier (supplier_name, supplier_contact, supplier_address) VALUES ($1, $2, $3)", [supplier_name, supplier_contact, supplier_address]);
 
         return res.status(200).json({
             status: 200,
-            message: "OK",
-            data: result,
+            message: "Success add supplier",
         });
     } catch (err) {
         console.log(err);
+        return res.status(400).json({
+            status: 400,
+            message: err.message
+        });
     }
 });
+
+app.patch("/update-supplier/:supplier_id", async (req, res) => { });
 
 // STUFF
 app.use("/add-stuff-category", async (req, res) => { 
