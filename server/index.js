@@ -146,7 +146,7 @@ function convertionToDecimal(value)
         let parsed = parseFloat(newValue);
 
         if (!isNaN(parsed)) {
-            value = parsed;
+            return value = parsed;
         }
     }
 }
@@ -1193,95 +1193,113 @@ app.patch("/update-payment-methode/:payment_methode_id", verifyToken, async (req
 });
 
 // DISCOUNT
-app.post("/add-stuff-discount", async (req, res) => {
-     
-    let employeeId = req.body.employeeId;
-    let stuffId = req.body.stuffId;
-    let discountName = req.body.discountName;
-    let discountType = req.body.discountType.toLowerCase();
-    let discountValue = req.body.discountValue;
-    let discountStart = req.body.discountStart;
-    let discountEnd = req.body.discountEnd;
-    let discountStatus = req.body.discountStatus;
+app.post("/add-stuff-discount", verifyToken, async (req, res) => {
+    let { 
+        stuff_id,
+        discount_name,
+        discount_type,
+        discount_value,
+        discount_start,
+        discount_end,
+        discount_status,
+    } = req.body;
 
-    if (typeof discountValue === "string" && discountValue.includes(",")) {
-        let newValue = discountValue.replace(",", ".");
-        let parse = parseFloat(newValue);
-
-        if (!isNaN(parse)) {
-            discountValue = parse;
-        }
+    if (typeof discount_type === "string") {
+        discount_type = discount_type.toLowerCase();
     }
 
-    if (!employeeId) {
-        return res.status(404).json({
-            status: 404,
-            message: "Missing required key employeeId"
+    if (typeof discount_value === "string") {
+        discount_value = convertionToDecimal(discount_value);
+    }
+    
+    if (!stuff_id)
+    {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: stuff_id"
         });
     }
-    else if (!stuffId)
+    else if (!discount_name)
     {
-        return res.status(404).json({
-            status: 404,
-            message: "Missing required key stuffId"
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: discount_name"
         });
     }
-    else if (!discountName)
+    else if (!discount_type)
     {
-        return res.status(404).json({
-            status: 404,
-            message: "Missing required key discountName"
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: discount_type"
         });
     }
-    else if (!discountValue)
+    else if (!discount_value)
     {
-        return res.status(404).json({
-            status: 404,
-            message: "Missing required key discountValue"
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: discount_value"
         });
     }
-    else if (!discountStart)
+    else if (!discount_start)
     {
-        return res.status(404).json({
-            status: 404,
-            message: "Missing required key discountStart"
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: discount_start"
         });
     }
-    else if (!discountEnd)
+    else if (!discount_end)
     {
-        return res.status(404).json({
-            status: 404,
-            message: "Missing required key discountEnd"
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: discount_end"
         });
     }
-    else if (!discountStatus)
+    else if (!discount_status)
     {
-        return res.status(404).json({
-            status: 404,
-            message: "Missing required key discountStatus"
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: discount_status"
         });
     }
 
     try {
         await db.query("BEGIN");
 
-        let discountQuery = await db.query("INSERT INTO discount (employee_id, discount_name, discount_type, discount_value, started_time, ended_time, discount_status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING discount_id", [employeeId, discountName, discountType, discountValue, discountStart, discountEnd, discountStatus]);
+        let refreshToken = req.cookies.refreshToken;
 
-        let discountId = discountQuery.rows[0].discount_id;
+        jwt.verify(
+            refreshToken,
+            process.env.JWT_REFRESH_SECRET,
+            async (err, account) => 
+            {
+                if (err) {
+                    return res.status(400).json({
+                        status: 400,
+                        message: "Token is no longer valid"
+                    });
+                }
+                else
+                {
+                    let discountQuery = await db.query("INSERT INTO discount (employee_id, discount_name, discount_type, discount_value, started_time, ended_time, discount_status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING discount_id", [account.id, discount_name, discount_type, discount_value, discount_start, discount_end, discount_status]);
 
-        await db.query("INSERT INTO stuff_discount (stuff_id, discount_id) VALUES ($1, $2)", [stuffId, discountId]);
+                    let discountId = discountQuery.rows[0].discount_id;
 
-        await db.query("COMMIT");
+                    await db.query("INSERT INTO stuff_discount (stuff_id, discount_id) VALUES ($1, $2)", [stuff_id, discountId]);
 
-        return res.status(200).json({
-            status: 200,
-            message: "Success",
-        });
+                    await db.query("COMMIT");
+
+                    return res.status(200).json({
+                        status: 200,
+                        message: "Success add stuff discount",
+                    });
+                }
+            }
+        );
     } catch (err) {
         db.query("ROLLBACK");
         console.error(err);
-        return res.status(404).json({
-            status: 404,
+        return res.status(400).json({
+            status: 400,
             message: err.message
         });
     }
