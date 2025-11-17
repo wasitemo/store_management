@@ -396,8 +396,8 @@ app.use("/add-stuff-category", verifyToken, async (req, res) => {
 
     if (!stuff_category_name)
     {
-        return res.status(404).json({
-            status: 404,
+        return res.status(400).json({
+            status: 400,
             message: "Missing required key: stuff_category_name"
         });
     }
@@ -458,27 +458,29 @@ app.patch("/update-stuff-category/:stuff_category_id", verifyToken, async (req, 
     }
 });
 
-app.post("/add-stuff-brand", async (req, res) => {
-    const stuffBrandName = req.body.stuffBrandName;
+app.post("/add-stuff-brand", verifyToken, async (req, res) => {
+    let {stuff_brand_name} = req.body;
 
-    if (!stuffBrandName) {
-        return res.status(404).json({
-            status: 404,
-            message: "Missing required key: stuffBrandName"
+    if (!stuff_brand_name) {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: stuff_brand_name"
         });
     }
 
     try {
-        const query = await db.query("INSERT INTO stuff_brand (stuff_brand_name) VALUES ($1) RETURNING *", [stuffBrandName]);
-        const result = query.rows[0];
+        await db.query("INSERT INTO stuff_brand (stuff_brand_name) VALUES ($1)", [stuff_brand_name]);
 
         return res.status(200).json({
             status: 200,
-            message: "OK",
-            data: result
+            message: "Success add stuff brand",
         });
     } catch (err) {
         console.log(err);
+        return res.status(400).json({
+            status: 400,
+            message: err.message
+        });
     }
 });
 
