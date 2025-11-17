@@ -240,7 +240,7 @@ app.patch("/update-employee/:employee_id", verifyToken, async (req, res) => {
         "employee_contact",
         "employee_address",
     ];
-    let invalidField = fields.filter(k => !fields.includes(k));
+    let invalidField = keys.filter(k => !fields.includes(k));
 
     if (invalidField.length > 0) {
         return res.status(400).json({
@@ -1024,6 +1024,50 @@ app.post("/add-customer", verifyToken, async (req, res) => {
         return res.status(400).json({
             status: 400,
             message: err.message
+        });
+    }
+});
+
+app.patch("/update-customer/:customer_id", verifyToken, async (req, res) => { 
+    let reqId = parseInt(req.params.customer_id);
+    let update = req.body;
+    let keys = Object.keys(update);
+    let fields = [
+        "customer_name",
+        "customer_contact",
+        "customer_address",
+    ];
+    let invalidField = keys.filter(k => !fields.includes(k));
+
+    if (invalidField.length > 0) {
+        return res.status(400).json({
+            status: 400,
+            message: "Invalid field ", invalidField
+        });
+    }
+
+    if (keys.length === 0) {
+        return res.status(400).json({
+            status: 400,
+            message: "No items updated"
+        });
+    }
+
+    let setQuery = keys.map((key, index) => `${key} = $${index + 1}`).join(",");
+    let values = Object.values(update);
+
+    try {
+        await db.query(`UPDATE customer SET ${setQuery} WHERE customer_id = $${keys.length + 1}`, [...values, reqId]);
+
+        return res.status(200).json({
+            status: 200,
+            message: "Success updated data"
+        });
+    } catch (err) {
+        console.error(err);
+        return res.status(400).json({
+            status: 400,
+            message: err.message,
         });
     }
 });
