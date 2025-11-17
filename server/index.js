@@ -1124,27 +1124,31 @@ app.patch("/update-customer/:customer_id", verifyToken, async (req, res) => {
 });
 
 // PAYMENT METHODE
-app.post("/add-payment-methode", async (req, res) => {
-    const paymentMethodeName = req.body.paymentMethodeName;
+app.post("/add-payment-methode", verifyToken, async (req, res) => {
+    let { 
+        payment_methode_name
+    } = req.body;
 
-    if (!paymentMethodeName) {
-        return res.status(404).json({
-            status: 404,
-            message: "Missing required key: paymentMethodeName"
+    if (!payment_methode_name) {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: payment_methode_name"
         });
     }
 
     try {
-        const query = await db.query("INSERT INTO payment_methode (payment_methode_name) VALUES ($1) RETURNING *", [paymentMethodeName]);
-        const result = query.rows[0];
+        await db.query("INSERT INTO payment_methode (payment_methode_name) VALUES ($1)", [payment_methode_name]);
 
         return res.status(200).json({
             status: 200,
-            message: "OK",
-            data: result,
+            message: "Success add payment methode",
         });
     } catch (err) {
         console.error(err);
+        return res.status(400).json({
+            status: 400,
+            message: err.message
+        });
     }
 });
 
