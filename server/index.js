@@ -245,7 +245,7 @@ app.patch("/update-employee/:employee_id", verifyToken, async (req, res) => {
     if (invalidField.length > 0) {
         return res.status(400).json({
             status: 400,
-            message: "Invalid field", invalidField
+            message: "Invalid field ", invalidField
         });
     }
 
@@ -413,6 +413,46 @@ app.use("/add-stuff-category", async (req, res) => {
         });
     } catch (err) {
         console.error(err);
+    }
+});
+
+app.patch("/update-stuff-category/:stuff_category_id", verifyToken, async (req, res) => {
+    let reqId = parseInt(req.params.stuff_category_id);
+    let update = req.body;
+    let keys = Object.keys(update);
+    let fields = ["stuff_category_name"];
+    let invalidFields = keys.filter(k => !fields.includes(k));
+
+    if (invalidFields.length > 0) {
+        return res.status(400).json({
+            status: 200,
+            message: "Invalid field ", invalidFields
+        });
+    }
+
+    if (keys.length === 0) {
+        return res.status(400).json({
+            status: 400,
+            message: "No items updated"
+        });
+    }
+
+    let setQuery = keys.map((key, index) => `${key} = $${index + 1}`).join(",");
+    let values = Object.values(update);
+
+    try {
+        await db.query(`UPDATE stuff_category SET ${setQuery} WHERE stuff_category_id = $${keys.length + 1}`, [...values, reqId]);
+
+        return res.status(200).json({
+            status: 200,
+            message: "Success update stuff category"
+        });
+    } catch (err) {
+        console.error(err);
+        return res.status(400).json({
+            status: 400,
+            message: err.message
+        });
     }
 });
 
