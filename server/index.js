@@ -484,6 +484,46 @@ app.post("/add-stuff-brand", verifyToken, async (req, res) => {
     }
 });
 
+app.patch("/update-stuff-brand/:stuff_brand_id", verifyToken, async (req, res) => {
+    let reqId = parseInt(req.params.stuff_brand_id);
+    let update = req.body;
+    let keys = Object.keys(update);
+    let fields = ["stuff_brand_name"];
+    let invalidField = keys.filter(k => !fields.includes(k));
+
+    if (invalidField.length > 0) {
+        return res.status(400).json({
+            status: 400,
+            message: "Invalid field ", invalidField
+        });
+    }
+
+    if (keys.length === 0) {
+        return res.status(400).json({
+            status: 400,
+            message: "No items updated"
+        });
+    }
+
+    let setQuery = keys.map((key, index) => `${key} = $${index + 1}`).join(",");
+    let values = Object.values(update);
+
+    try {
+        await db.query(`UPDATE stuff_brand SET ${setQuery} WHERE stuff_brand_id = $${keys.length + 1}`, [...values, reqId]);
+
+        return res.status(200).json({
+            status: 200,
+            message: "Success updated data"
+        });
+    } catch (err) {
+        console.error(err);
+        return res.status(400).json({
+            status: 400,
+            message: err.message
+        });
+    }
+});
+
 app.post("/add-stuff", verifyToken, async (req, res) => { 
     let {
         stuff_category_id,
