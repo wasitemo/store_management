@@ -1152,6 +1152,46 @@ app.post("/add-payment-methode", verifyToken, async (req, res) => {
     }
 });
 
+app.patch("/update-payment-methode/:payment_methode_id", verifyToken, async (req, res) => {
+    let reqId = parseInt(req.params.payment_methode_id);
+    let update = req.body;
+    let keys = Object.keys(update);
+    let fields = ["payment_methode_name"];
+    let invalidField = keys.filter(k => !fields.includes(k));
+
+    if (invalidField.length > 0) {
+        return res.status(400).json({
+            status: 400,
+            message: "Invalid field ", invalidField
+        });
+    }
+
+    if (keys.length === 0) {
+        return res.status(400).json({
+            status: 400,
+            message: "No items updated"
+        });
+    }
+
+    let setQuery = keys.map((key, index) => `${key} = $${index + 1}`).join(",");
+    let values = Object.values(update);
+
+    try {
+        await db.query(`UPDATE payment_methode SET ${setQuery} WHERE payment_methode_id = $${keys.length + 1}`, [...values, reqId]);
+
+        return res.status(200).json({
+            status: 200,
+            message: "Success updated data"
+        });
+    } catch (err) {
+        console.error(err);
+        return res.status(400).json({
+            status: 400,
+            message: err.message
+        });
+    }
+});
+
 // DISCOUNT
 app.post("/add-stuff-discount", async (req, res) => {
      
