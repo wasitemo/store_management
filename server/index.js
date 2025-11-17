@@ -984,29 +984,47 @@ app.post("/upload-stuff-purchase", verifyToken, upload.single("file"), async (re
 });
 
 // CUSTOMER
-app.post("/add-customer", async (req, res) => {
-    const customerName = req.body.customerName;
-    const customerContact = req.body.customerContact;
-    const customerAddress = req.body.customerAddress;
+app.post("/add-customer", verifyToken, async (req, res) => {
+    let { 
+        customer_name,
+        customer_contact,
+        customer_address,
+    } = req.body;
 
-    if (!customerName || !customerContact || !customerAddress) {
-        return res.status(404).json({
-            status: 404,
-            message: "Missing required key: customerName, customerContact, customerAddress"
+    if (!customer_name) {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: customer_name"
+        });
+    }
+    else if (!customer_contact)
+    {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: customer_contact"
+        });
+    }
+    else if (!customer_address)
+    {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: customer_address"
         });
     }
 
     try {
-        const query = await db.query("INSERT INTO customer (customer_name, customer_contact, customer_address) VALUES ($1, $2, $3) RETURNING *", [customerName, customerContact, customerAddress]);
-        const result = query.rows[0];
+        await db.query("INSERT INTO customer (customer_name, customer_contact, customer_address) VALUES ($1, $2, $3)", [customer_name, customer_contact, customer_address]);
 
         return res.status(200).json({
             status: 200,
-            message: "OK",
-            data: result,
+            message: "Success add customer",
         });
     } catch (err) {
         console.error(err);
+        return res.status(400).json({
+            status: 400,
+            message: err.message
+        });
     }
 });
 
