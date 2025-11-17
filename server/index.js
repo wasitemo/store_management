@@ -312,7 +312,7 @@ app.post("/add-warehouse", verifyToken, async (req, res) => {
     }
 });
 
-app.patch("/update-warehouse/:warehouse_id", async (req, res) => {
+app.patch("/update-warehouse/:warehouse_id", verifyToken, async (req, res) => {
     let reqId = parseInt(req.params.warehouse_id);
     let update = req.body;
     let keys = Object.keys(update);
