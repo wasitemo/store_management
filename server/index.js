@@ -2063,7 +2063,248 @@ app.post("/upload-stock", upload.single("file"), async (req, res) => {
 });
 
 // CUSTOMER ORDER
-app.post("/add-order", async (req, res) => {
+app.post("/add-order", verifyToken, async (req, res) => {
+    let {
+        customer_id,
+        warehouse_id,
+        payment_methode_id,
+        order_date,
+        payment,
+        items,
+        discounts,
+    } = req.body;
+
+    if (!customer_id) {
+        return res.status(404).json({
+            status: 404,
+            message: "Missing required key: customer_id"
+        });
+    }
+    else if (!warehouse_id)
+        {
+            return res.status(404).json({
+                status: 404,
+                message: "Missing required key: warehouse_id"
+            });
+        }
+    else if (!payment_methode_id)
+    {
+        return res.status(404).json({
+                status: 404,
+                message: "Missing required key: paymentMethode_id"
+        });
+    }
+    else if (!order_date)
+    {
+        return res.status(404).json({
+            status: 404,
+            message: "Missing required key: order_date"
+        });
+    }
+    else if (!payment)
+    {
+        return res.status(404).json({
+            status: 404,
+            message: "Missing required key: payment"
+        });
+    }
+
+    if (typeof payment === "string") {
+        payment = convertionToNumber(payment);
+    }
+
+    let calculateQuantities = (items) => {
+        return Object.values(
+            items.reduce((acc, item) => {
+                if (!acc[item.stuff_id]) {
+                    acc[item.stuff_id] = { stuff_id: item.stuff_id, quantity: 0 };
+                }
+                acc[item.stuff_id].quantity += 1;
+                return acc;
+            }, {})
+        );
+    };
+
+    let calculateItemDiscount = async (stuff_id) => { 
+        let discountItemQuery = await db.query(`
+                SELECT
+                stuff.stuff_id,
+                stuff.stuff_name, 
+                stuff.current_sell_price, 
+                json_agg(
+                    DISTINCT jsonb_build_object(
+                        'discount_type', discount.discount_type,
+                        'discount_status', discount.discount_status,
+                        'discount_value', discount.discount_value
+                    )
+                ) AS discounts
+                FROM stuff
+                LEFT JOIN stuff_discount ON stuff.stuff_id = stuff_discount.stuff_id
+                LEFT JOIN discount ON stuff_discount.discount_id = discount.discount_id
+                WHERE stuff.stuff_id = $1
+                GROUP BY stuff.stuff_id, stuff.stuff_name, stuff.current_sell_price`, [stuff_id]
+        );
+        
+        if (discountItemQuery.rows.length === 0) {
+            return { price: 0, discount: 0 };
+        }
+
+        let item = discountItemQuery.rows[0];
+        let totalDiscount = 0;
+
+        for (let d of item.discounts)
+        {
+            if (d.discount_status === true) {
+                if (d.discount_type === "percentage") {
+                totalDiscount += item.current_sell_price * (d.discount_value / 100);
+                }
+                else if (d.discount_type === "fixed")
+                {
+                    totalDiscount += d.discount_value;
+                }
+            }
+        };
+
+        return {
+            price: parseFloat(item.current_sell_price) - totalDiscount, totalDiscount
+        };
+    };
+
+    let calculateOrderDiscount = async (discounts, grandTotalItem) => { 
+        let totalOrderDiscount = 0;
+
+        for (let d of discounts)
+        {
+            let discountOrderQuery = await db.query("SELECT discount_id, discount_type, discount_status, discount_value FROM discount WHERE discount_id = $1", [d.discount_id]);
+
+            let discountData = discountOrderQuery.rows[0];
+
+            if (discountData && discountData.discount_status === true) {
+                if (discountData.discount_type === "percentage") {
+                    totalOrderDiscount += grandTotalItem * (parseFloat(discountData.discount_value) / 100);
+                }
+                else if (discountData.discount_type === "fixed")
+                {
+                    totalOrderDiscount += parseFloat(discountData.discount_value);
+                }
+            }
+        }
+
+        return parseFloat(totalOrderDiscount);
+    };
+
+    try {
+        await db.query("BEGIN");
+
+        let saveTotalDiscountItem = 0;
+        let saveTotalDiscountOrder = 0;
+        let grandTotalItem = 0;
+        let quantities = calculateQuantities(items);
+
+        for (let item of items)
+        {
+            let { price, totalDiscount } = await calculateItemDiscount(item.stuff_id);
+
+            grandTotalItem += price;
+            saveTotalDiscountItem += totalDiscount;
+        }
+
+        saveTotalDiscountOrder = await calculateOrderDiscount(discounts, grandTotalItem);
+
+        let totalPayment = grandTotalItem - saveTotalDiscountOrder;
+        let remainingPayment = payment - totalPayment;
+        let refreshToken = req.cookies.refreshToken;
+
+        jwt.verify(
+            refreshToken,
+            process.env.JWT_REFRESH_SECRET,
+            async (err, account) => {
+                let employeeQuery = await db.query("SELECT employee.employee_id FROM employee JOIN employee_account ON employee_account.employee_id = employee.employee_id WHERE employee_account.employee_account_id = $1", [account.id]);
+                let employeeId = employeeQuery.rows[0].employee_id;
+
+                if (err) {
+                    return res.status(400).json({
+                        status: 400,
+                        message: "Token no longer valid"
+                    });
+                }
+                else
+                {
+                    let customerOrderQuery = await db.query(`
+                    INSERT INTO customer_order
+                    (customer_id, payment_methode_id, employee_id, order_date, payment, sub_total, remaining_payment)
+                    VALUES
+                    ($1, $2, $3, $4, $5, $6, $7) RETURNING order_id;
+                `, [customer_id, payment_methode_id, employeeId, order_date, payment, totalPayment, remainingPayment]);
+
+                    let order_id = customerOrderQuery.rows[0].order_id;
+
+                    for (let d of discounts)
+                    {
+                        await db.query("INSERT INTO order_discount (order_id, discount_id) VALUES ($1, $2)", [order_id, d.discount_id]);
+                    }
+
+                    for (let q of quantities)
+                    {
+                        let stockQuery = await db.query("SELECT total_stock FROM stuff WHERE stuff_id = $1", [q.stuff_id]);
+
+                        if (stockQuery.rows.length === 0) {
+                            await db.query("ROLLBACK");
+                            return res.status(400).json({
+                                status: 400,
+                                message: "Stuff or stock is not available"
+                            });
+                        }
+
+                        let stock = stockQuery.rows[0]?.total_stock ?? 0;
+
+                        if (stock < q.quantity) {
+                            await db.query("ROLLBACK");
+                            return res.status(400).json({
+                                status: 400,
+                                message: `Stock insufficient for stuff_id ${q.stuff_id}`
+                            });
+                        }
+
+                        if (stock === 0) {
+                            await db.query("ROLLBACK");
+                            return res.status(400).json({
+                                status: 400,
+                                message: `Stock is empty`
+                            });
+                        }
+
+                        await db.query("UPDATE stuff SET total_stock = total_stock - $1 WHERE stuff_id = $2", [q.quantity, q.stuff_id]);
+                        await db.query("UPDATE stock SET stock_type = 'out' WHERE warehouse_id = $1 AND stuff_id = $2", [warehouse_id, q.stuff_id]);
+                        await db.query(`
+                            INSERT INTO customer_order_detail
+                            (stuff_id, order_id, warehouse_id, total_item_discount, total_order_discount)
+                            VALUES
+                            ($1, $2, $3, $4, $5)    
+                        `, [q.stuff_id, order_id, warehouse_id, saveTotalDiscountItem, saveTotalDiscountOrder]);
+                    }
+        
+                    
+                    return res.status(200).json({
+                        status: 200,
+                        message: "Order successfully created",
+                    });
+                }
+            }
+        );
+
+        await db.query("COMMIT");
+    } catch (err) {
+        await db.query("ROLLBACK");
+        console.error("Transaction failed:", err.message);
+        return res.status(500).json({
+            status: 500,
+            message: err.message
+        });
+    }
+});
+
+app.post("/update-order", async (req, res) => {
     let {
         customer_id,
         employee_id,
@@ -2117,13 +2358,8 @@ app.post("/add-order", async (req, res) => {
         });
     }
 
-    if (typeof payment === "string" && payment.includes(",")) {
-        let newValue = payment.replace(",", ".");
-        let parsed = parseFloat(newValue);
-
-        if (!isNaN(parsed)) {
-            payment = parsed;
-        }
+    if (typeof payment === "string") {
+        payment = convertionToNumber(payment);
     }
 
     let calculateQuantities = (items) => {
@@ -2255,7 +2491,7 @@ app.post("/add-order", async (req, res) => {
 
             let stock = stockQuery.rows[0]?.total_stock ?? 0;
 
-            if (stock < q.quantities) {
+            if (stock < q.quantity) {
                 await db.query("ROLLBACK");
                 return res.status(400).json({
                     status: 400,
