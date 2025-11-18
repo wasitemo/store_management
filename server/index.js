@@ -1276,6 +1276,9 @@ app.post("/add-stuff-discount", verifyToken, async (req, res) => {
             process.env.JWT_REFRESH_SECRET,
             async (err, account) => 
             {
+                let employeeQuery = await db.query("SELECT employee.employee_id FROM employee JOIN employee_account ON employee_account.employee_id = employee.employee_id WHERE employee_account.employee_account_id = $1", [account.id]);
+                let employeeId = employeeQuery.rows[0].employee_id;
+
                 if (err) {
                     return res.status(400).json({
                         status: 400,
@@ -1284,7 +1287,7 @@ app.post("/add-stuff-discount", verifyToken, async (req, res) => {
                 }
                 else
                 {
-                    let discountQuery = await db.query("INSERT INTO discount (employee_id, discount_name, discount_type, discount_value, started_time, ended_time, discount_status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING discount_id", [account.id, discount_name, discount_type, discount_value, discount_start, discount_end, discount_status]);
+                    let discountQuery = await db.query("INSERT INTO discount (employee_id, discount_name, discount_type, discount_value, started_time, ended_time, discount_status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING discount_id", [employeeId, discount_name, discount_type, discount_value, discount_start, discount_end, discount_status]);
 
                     let discountId = discountQuery.rows[0].discount_id;
 
