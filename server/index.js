@@ -1316,7 +1316,6 @@ app.patch("/update-stuff-discount/:discount_id", verifyToken, async (req, res) =
     let reqId = parseInt(req.params.discount_id);
     let body = req.body;
     let discountFields = [
-        "employee_id",
         "discount_name",
         "discount_type",
         "discount_value",
@@ -1327,14 +1326,28 @@ app.patch("/update-stuff-discount/:discount_id", verifyToken, async (req, res) =
     let stuffDiscountFields = ["stuff_id"];
     let discountFieldsUpdate = {};
 
-    for (let key of discountFields)
-    {
-        if (body[key] !== undefined && typeof body[key] === "string")
+    if (typeof body.discount_type === "string") {
+        body.discount_type = body.discount_type.toLowerCase();
+    }
+
+    if (typeof body.discount_value === "string") {
+        if (body.discount_type === "percentage") {
+            body.discount_value = convertionToDecimal(body.discount_value);
+        }
+        else if (body.discount_type === "fixed")
         {
-            discountFieldsUpdate[key] = convertionToDecimal(body[key]);
+            body.discount_value = convertionToNumber(body.discount_value);
         }
     }
 
+    for (let key of discountFields)
+    {
+        if (body[key] !== undefined)
+        {
+            discountFieldsUpdate[key] = body[key];
+        }
+    }
+    
     let stuffDiscountFieldsUpdate = {};
 
     for (let key of stuffDiscountFields)
