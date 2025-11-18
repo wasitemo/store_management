@@ -149,6 +149,10 @@ function convertionToDecimal(value)
             return value = parsed;
         }
     }
+    else
+    {
+        return parseFloat(value);
+    }
 }
 
 // EMPLOYEE
@@ -787,7 +791,7 @@ app.patch("/update-stuff/:stuff_id", verifyToken, async (req, res) => {
                     return res.status(200).json({
                         status: 200,
                         message: "Succes updated data"
-        });
+                    });
                 }
             }
         );
@@ -1297,6 +1301,95 @@ app.post("/add-stuff-discount", verifyToken, async (req, res) => {
         );
     } catch (err) {
         db.query("ROLLBACK");
+        console.error(err);
+        return res.status(400).json({
+            status: 400,
+            message: err.message
+        });
+    }
+});
+
+app.patch("/update-stuff-discount/:discount_id", verifyToken, async (req, res) => {
+    let reqId = parseInt(req.params.discount_id);
+    let body = req.body;
+    let discountFields = [
+        "employee_id",
+        "discount_name",
+        "discount_type",
+        "discount_value",
+        "discount_start",
+        "discount_end",
+        "discount_status",
+    ];
+    let stuffDiscountFields = ["stuff_id"];
+    let discountFieldsUpdate = {};
+
+    for (let key of discountFields)
+    {
+        if (body[key] !== undefined && typeof body[key] === "string")
+        {
+            discountFieldsUpdate[key] = convertionToDecimal(body[key]);
+        }
+    }
+
+    let stuffDiscountFieldsUpdate = {};
+
+    for (let key of stuffDiscountFields)
+    {
+        if (body[key] !== undefined) {
+            stuffDiscountFieldsUpdate[key] = body[key];
+        }
+    }
+
+    try {
+        await db.query("BEGIN");
+
+        let refreshToken = req.cookies.refreshToken;
+
+        jwt.verify(
+            refreshToken,
+            process.env.JWT_REFRESH_SECRET,
+            async (err, account) => {
+                let employeeQuery = await db.query("SELECT employee.employee_id FROM employee JOIN employee_account ON employee_account.employee_id = employee.employee_id WHERE employee_account.employee_account_id = $1", [account.id]);
+                let employeeId = employeeQuery.rows[0].employee_id;
+
+                if (err)
+                {
+                    return res.status(400).json({
+                        status: 400,
+                        message: "Token is no longer valid"
+                    });
+                }
+                else
+                {
+                    if (Object.keys(discountFieldsUpdate.length > 0)) {
+                        let setQuery = Object.keys(discountFieldsUpdate).map((key, index) => `${key} = $${index + 1}`).join(", ");
+                        let values = Object.values(discountFieldsUpdate);
+
+                        setQuery += `, employee_id = $${values.length + 1}`;
+
+                        await db.query(`UPDATE discount SET ${setQuery} WHERE discount_id = $${values.length + 2}`, [...values, employeeId, reqId]);
+                    }
+
+                    if (Object.keys(stuffDiscountFieldsUpdate).length > 0) {
+                        let setQuery = Object.keys(stuffDiscountFieldsUpdate).map((key, index) => `${key} = $${index + 1}`).join(", ");
+                        let values = Object.values(stuffDiscountFieldsUpdate);
+
+                        await db.query(`UPDATE stuff_discount SET ${setQuery} WHERE discount_id = $${values.length + 1}`, [...values, reqId]);
+                    }
+
+
+                    return res.status(200).json({
+                        status: 200,
+                        message: "Success updated data"
+                    });
+                }
+            }
+        );
+
+        await db.query("COMMIT");
+    } catch (err) {
+        await db.query("ROLLBACK");
         console.error(err);
         return res.status(400).json({
             status: 400,
