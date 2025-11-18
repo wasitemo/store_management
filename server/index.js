@@ -1401,78 +1401,107 @@ app.patch("/update-stuff-discount/:discount_id", verifyToken, async (req, res) =
     }
 });
 
-app.post("/add-order-discount", async (req, res) => {
-     
-    let employeeId = req.body.employeeId;
-    let discountName = req.body.discountName;
-    let discountType = req.body.discountType.toLowerCase();
-    let discountValue = req.body.discountValue;
-    let discountStart = req.body.discountStart;
-    let discountEnd = req.body.discountEnd;
-    let discountStatus = req.body.discountStatus;
+app.post("/add-order-discount", verifyToken, async (req, res) => {
+    let {
+        discount_name,
+        discount_type,
+        discount_value,
+        discount_start,
+        discount_end,
+        discount_status,
+    } = req.body;
 
-    if (typeof discountValue === "string" && discountValue.includes(",")) {
-        let newValue = discountValue.replace(",", ".");
-        let parse = parseFloat(newValue);
-
-        if (!isNaN(parse)) {
-            discountValue = parse;
+    
+    if (typeof discount_type === "string") {
+        discount_type = discount_type.toLowerCase();
+    }
+    
+    if (typeof discount_value === "string") {
+        if (discount_type === "percentage") {
+            discount_value = convertionToDecimal(discount_value);
+        }
+        else if (discount_type === "fixed")
+        {
+            discount_value = convertionToNumber(discount_value);
+                
         }
     }
 
-    if (!employeeId) {
-        return res.status(404).json({
-            status: 404,
-            message: "Missing required key employeeId"
+    if (!discount_name)
+    {
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: discount_name"
         });
     }
-    else if (!discountName)
+    else if (!discount_type)
     {
-        return res.status(404).json({
-            status: 404,
-            message: "Missing required key discountName"
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: discount_type"
         });
     }
-    else if (!discountValue)
+    else if (!discount_value)
     {
-        return res.status(404).json({
-            status: 404,
-            message: "Missing required key discountValue"
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key: discount_value"
         });
     }
-    else if (!discountStart)
+    else if (!discount_start)
     {
-        return res.status(404).json({
-            status: 404,
-            message: "Missing required key discountStart"
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key discount_start"
         });
     }
-    else if (!discountEnd)
+    else if (!discount_end)
     {
-        return res.status(404).json({
-            status: 404,
-            message: "Missing required key discountEnd"
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key discount_end"
         });
     }
-    else if (!discountStatus)
+    else if (!discount_status)
     {
-        return res.status(404).json({
-            status: 404,
-            message: "Missing required key discountStatus"
+        return res.status(400).json({
+            status: 400,
+            message: "Missing required key discount_status"
         });
     }
 
     try {
-        await db.query("INSERT INTO discount (employee_id, discount_name, discount_type, discount_value, started_time, ended_time, discount_status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING discount_id", [employeeId, discountName, discountType, discountValue, discountStart, discountEnd, discountStatus]);
+        let refreshToken = req.cookies.refreshToken;
 
-        return res.status(200).json({
-            status: 200,
-            message: "Success",
-        });
+        jwt.verify(
+            refreshToken,
+            process.env.JWT_REFRESH_SECRET,
+            async (err, account) => {
+                if (err)
+                {
+                    return res.status(400).json({
+                        status: 400,
+                        message: "Token is no longer valid"
+                    });
+                }
+                else
+                {
+                    let employeeQuery = await db.query("SELECT employee.employee_id FROM employee JOIN employee_account ON employee_account.employee_id = employee.employee_id WHERE employee_account.employee_account_id = $1", [account.id]);
+                    let employeeId = employeeQuery.rows[0].employee_id;
+
+                    await db.query("INSERT INTO discount (employee_id, discount_name, discount_type, discount_value, started_time, ended_time, discount_status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING discount_id", [employeeId, discount_name, discount_type, discount_value, discount_start, discount_end, discount_status]);
+            
+                    return res.status(200).json({
+                        status: 200,
+                        message: "Success add discount",
+                    });
+                }
+            }
+        );
     } catch (err) {
         console.error(err);
-        return res.status(404).json({
-            status: 404,
+        return res.status(400).json({
+            status: 400,
             message: err.message
         });
     }
