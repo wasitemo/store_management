@@ -1213,7 +1213,13 @@ app.post("/add-stuff-discount", verifyToken, async (req, res) => {
     }
 
     if (typeof discount_value === "string") {
-        discount_value = convertionToDecimal(discount_value);
+        if (discount_type === "percentage") {
+            discount_value = convertionToDecimal(discount_value);
+        }
+        else if (discount_type === "fixed")
+        {
+            discount_value = convertionToNumber(discount_value);
+        }
     }
     
     if (!stuff_id)
