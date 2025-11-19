@@ -2075,36 +2075,36 @@ app.post("/add-order", verifyToken, async (req, res) => {
     } = req.body;
 
     if (!customer_id) {
-        return res.status(404).json({
-            status: 404,
+        return res.status(400).json({
+            status: 400,
             message: "Missing required key: customer_id"
         });
     }
     else if (!warehouse_id)
         {
-            return res.status(404).json({
-                status: 404,
+            return res.status(400).json({
+                status: 400,
                 message: "Missing required key: warehouse_id"
             });
         }
     else if (!payment_methode_id)
     {
-        return res.status(404).json({
-                status: 404,
-                message: "Missing required key: paymentMethode_id"
+        return res.status(400).json({
+                status: 400,
+                message: "Missing required key: payment_methode_id"
         });
     }
     else if (!order_date)
     {
-        return res.status(404).json({
-            status: 404,
+        return res.status(400).json({
+            status: 400,
             message: "Missing required key: order_date"
         });
     }
     else if (!payment)
     {
-        return res.status(404).json({
-            status: 404,
+        return res.status(400).json({
+            status: 400,
             message: "Missing required key: payment"
         });
     }
@@ -2235,7 +2235,7 @@ app.post("/add-order", verifyToken, async (req, res) => {
                     (customer_id, payment_methode_id, employee_id, order_date, payment, sub_total, remaining_payment)
                     VALUES
                     ($1, $2, $3, $4, $5, $6, $7) RETURNING order_id;
-                `, [customer_id, payment_methode_id, employeeId, order_date, payment, totalPayment, remainingPayment]);
+                `, [customer_id, payment_methode_id,        employeeId, order_date, payment, totalPayment, remainingPayment]);
 
                     let order_id = customerOrderQuery.rows[0].order_id;
 
@@ -2304,7 +2304,7 @@ app.post("/add-order", verifyToken, async (req, res) => {
     }
 });
 
-app.post("/update-order", async (req, res) => {
+app.post("/update-order/:order_id", async (req, res) => {
     let {
         customer_id,
         employee_id,
