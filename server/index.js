@@ -2101,7 +2101,7 @@ app.post("/upload-stock", upload.single("file"), async (req, res) => {
 });
 
 // CUSTOMER ORDER
-app.post("/add-order", async (req, res) => {
+app.post("/add-order", verifyToken, async (req, res) => {
   let {
     customer_id,
     warehouse_id,
