@@ -954,6 +954,37 @@ app.post("/add-stuff", verifyToken, async (req, res) => {
   }
 });
 
+app.get("/stuff-history", verifyToken, async (req, res) => {
+  try {
+    let query = await db.query(`
+      SELECT
+      employee.employee_id,
+      stuff.stuff_id,
+      employee.employee_name,
+      stuff.stuff_name,
+      operation,
+      change_at,
+      old_data,
+      new_data
+      FROM stuff_history
+      LEFT JOIN employee ON employee.employee_id = stuff_history.employee_id
+      LEFT JOIN stuff ON stuff.stuff_id = stuff_history.stuff_id
+    `);
+    let result = query.rows;
+
+    return res.status(200).json({
+      status: 200,
+      data: result,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json({
+      status: 400,
+      message: err.message,
+    });
+  }
+});
+
 app.get("/stuff/:stuff_id", verifyToken, async (req, res) => {
   let reqId = parseInt(req.params.stuff_id);
 
