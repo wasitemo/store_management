@@ -232,7 +232,7 @@ app.get("/employee/:employee_id", verifyToken, async (req, res) => {
 
     return res.status(200).json({
       status: 200,
-      data: result,
+      data: result[0],
     });
   } catch (err) {
     console.log(err.message);
@@ -357,7 +357,7 @@ app.get("/warehouse/:warehouse_id", verifyToken, async (req, res) => {
 
     return res.status(200).json({
       status: 200,
-      data: result,
+      data: result[0],
     });
   } catch (err) {
     console.log(err);
@@ -577,6 +577,29 @@ app.use("/add-stuff-category", verifyToken, async (req, res) => {
     return res.status(200).json({
       status: 200,
       message: "Success add stuff category",
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json({
+      status: 400,
+      message: err.message,
+    });
+  }
+});
+
+app.get("/stuff-category/:stuff_category_id", async (req, res) => {
+  let reqId = parseInt(req.params.stuff_category_id);
+
+  try {
+    let query = await db.query(
+      "SELECT * FROM stuff_category WHERE stuff_category_id = $1",
+      [reqId]
+    );
+    let result = query.rows;
+
+    return res.status(200).json({
+      status: 200,
+      data: result[0],
     });
   } catch (err) {
     console.error(err);
