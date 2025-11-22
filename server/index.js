@@ -232,7 +232,7 @@ app.get("/employee/:employee_id", verifyToken, async (req, res) => {
 
     return res.status(200).json({
       status: 200,
-      message: result,
+      data: result,
     });
   } catch (err) {
     console.log(err.message);
@@ -293,6 +293,24 @@ app.patch("/update-employee/:employee_id", verifyToken, async (req, res) => {
 });
 
 // WAREHOUSE
+app.get("/warehouse", verifyToken, async (req, res) => {
+  try {
+    let query = await db.query("SELECT * FROM warehouse");
+    let result = query.rows;
+
+    return res.status(200).json({
+      status: 200,
+      data: result,
+    });
+  } catch (err) {
+    console.log(err.message);
+    return res.status(400).json({
+      status: 400,
+      message: err.message,
+    });
+  }
+});
+
 app.post("/add-warehouse", verifyToken, async (req, res) => {
   let { warehouse_name, warehouse_address } = req.body;
 
