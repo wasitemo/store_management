@@ -954,6 +954,68 @@ app.post("/add-stuff", verifyToken, async (req, res) => {
   }
 });
 
+app.get("/stuff/:stuff_id", verifyToken, async (req, res) => {
+  let reqId = parseInt(req.params.stuff_id);
+
+  try {
+    let stuffQuery = await db.query(
+      `
+      SELECT 
+      stuff.stuff_id,
+      stuff_category.stuff_category_id,
+      stuff_brand.stuff_brand_id,
+      supplier.supplier_id,
+      stuff.stuff_name,
+      stuff_category.stuff_category_name,
+      stuff_brand.stuff_brand_name,
+      supplier.supplier_name,
+      stuff.stuff_code,
+      stuff.stuff_sku,
+      stuff.stuff_variant,
+      stuff.barcode,
+      stuff.has_sn,
+      stuff.current_sell_price
+      FROM stuff
+      LEFT JOIN stuff_category ON stuff_category.stuff_category_id = stuff.stuff_category_id
+      LEFT JOIN stuff_brand ON stuff_brand.stuff_brand_id = stuff.stuff_brand_id
+      LEFT JOIN supplier ON supplier.supplier_id = stuff.supplier_id
+      WHERE stuff_id = $1   
+    `,
+      [reqId]
+    );
+    let stuffResult = stuffQuery.rows[0];
+
+    let stuffCategoryQuery = await db.query(
+      "SELECT stuff_category_id, stuff_category_name FROM stuff_category"
+    );
+    let resultStuffCategory = stuffCategoryQuery.rows;
+
+    let stuffBrandQuery = await db.query(
+      "SELECT stuff_brand_id, stuff_brand_name FROM stuff_brand"
+    );
+    let resultStuffBrand = stuffBrandQuery.rows;
+
+    let supplierQuery = await db.query(
+      "SELECT supplier_id, supplier_name FROM supplier"
+    );
+    let resultSupplier = supplierQuery.rows;
+
+    return res.status(200).json({
+      status: 200,
+      data: stuffResult,
+      list_category: resultStuffCategory,
+      list_brand: resultStuffBrand,
+      list_suppleir: resultSupplier,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json({
+      status: 400,
+      message: err.message,
+    });
+  }
+});
+
 app.patch("/update-stuff/:stuff_id", verifyToken, async (req, res) => {
   let reqId = parseInt(req.params.stuff_id);
   let update = req.body;
