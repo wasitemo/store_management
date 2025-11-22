@@ -540,31 +540,9 @@ app.patch("/update-supplier/:supplier_id", verifyToken, async (req, res) => {
 });
 
 // STUFF
-app.get("/stuff", async (req, res) => {
+app.get("/stuff-category", verifyToken, async (req, res) => {
   try {
-    let query = await db.query(`
-      SELECT 
-      stuff.stuff_id,
-      stuff_category.stuff_category_name,
-      stuff_brand.stuff_brand_name,
-      supplier.supplier_name,
-      stuff.stuff_name,
-      stuff.stuff_code,
-      stuff.stuff_sku,
-      stuff.stuff_variant,
-      stuff.current_sell_price,
-      stuff.barcode,
-      stuff.has_sn,
-      stuff_information.imei_1,
-      stuff_information.imei_2,
-      stuff_information.sn,
-      stuff_information.stock_status
-      FROM stuff
-      LEFT JOIN stuff_category ON stuff.stuff_category_id = stuff_category.stuff_category_id
-      LEFT JOIN stuff_brand ON stuff.stuff_brand_id = stuff_brand.stuff_brand_id
-      LEFT JOIN stuff_information ON stuff.stuff_id = stuff_information.stuff_information_id
-      LEFT JOIN supplier ON stuff.supplier_id = stuff_brand.stuff_brand_id
-    `);
+    let query = await db.query("SELECT * FROM stuff_category");
     let result = query.rows;
 
     return res.status(200).json({
@@ -736,6 +714,46 @@ app.patch(
     }
   }
 );
+
+app.get("/stuff", verifyToken, async (req, res) => {
+  try {
+    let query = await db.query(`
+      SELECT 
+      stuff.stuff_id,
+      stuff_category.stuff_category_name,
+      stuff_brand.stuff_brand_name,
+      supplier.supplier_name,
+      stuff.stuff_name,
+      stuff.stuff_code,
+      stuff.stuff_sku,
+      stuff.stuff_variant,
+      stuff.current_sell_price,
+      stuff.barcode,
+      stuff.has_sn,
+      stuff_information.imei_1,
+      stuff_information.imei_2,
+      stuff_information.sn,
+      stuff_information.stock_status
+      FROM stuff
+      LEFT JOIN stuff_category ON stuff.stuff_category_id = stuff_category.stuff_category_id
+      LEFT JOIN stuff_brand ON stuff.stuff_brand_id = stuff_brand.stuff_brand_id
+      LEFT JOIN stuff_information ON stuff.stuff_id = stuff_information.stuff_information_id
+      LEFT JOIN supplier ON stuff.supplier_id = stuff_brand.stuff_brand_id
+    `);
+    let result = query.rows;
+
+    return res.status(200).json({
+      status: 200,
+      data: result,
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(400).json({
+      status: 400,
+      message: err.message,
+    });
+  }
+});
 
 app.post("/add-stuff", verifyToken, async (req, res) => {
   let {
