@@ -833,36 +833,28 @@ app.post("/add-stuff", verifyToken, async (req, res) => {
     barcode,
   } = req.body;
 
-  if (
-    typeof current_sell_price === "string" &&
-    current_sell_price.includes(",")
-  ) {
-    let newValue = current_sell_price.replace(",", ".");
-    let parsed = parseFloat(newValue);
-
-    if (!isNaN(parsed)) {
-      payment = parsed;
-    }
+  if (typeof current_sell_price === "string") {
+    current_sell_price = convertionToNumber(current_sell_price);
   }
 
   if (!stuff_category_id) {
-    return res.status(404).json({
-      status: 404,
+    return res.status(400).json({
+      status: 400,
       message: "Missing required key: stuff_category_id",
     });
   } else if (!stuff_brand_id) {
-    return res.status(404).json({
-      status: 404,
+    return res.status(400).json({
+      status: 400,
       message: "Missing required key: stuff_brand_id",
     });
   } else if (!supplier_id) {
-    return res.status(404).json({
-      status: 404,
+    return res.status(400).json({
+      status: 400,
       message: "Missing required key: supplier_id",
     });
   } else if (!stuff_code) {
-    return res.status(404).json({
-      status: 404,
+    return res.status(400).json({
+      status: 400,
       message: "Missing required key: stuff_code",
     });
   } else if (!stuff_sku) {
@@ -871,28 +863,28 @@ app.post("/add-stuff", verifyToken, async (req, res) => {
       message: "Missing required key: stuff_sku",
     });
   } else if (!stuff_name) {
-    return res.status(404).json({
-      status: 404,
+    return res.status(400).json({
+      status: 400,
       message: "Missing required key: stuff_name",
     });
   } else if (!stuff_variant) {
-    return res.status(404).json({
-      status: 404,
+    return res.status(400).json({
+      status: 400,
       message: "Missing required key: stuff_variant",
     });
   } else if (!current_sell_price) {
-    return res.status(404).json({
-      status: 404,
+    return res.status(400).json({
+      status: 400,
       message: "Missing required key: current_sell_price",
     });
   } else if (!has_sn) {
-    return res.status(404).json({
-      status: 404,
+    return res.status(400).json({
+      status: 400,
       message: "Missing required key: has_sn",
     });
   } else if (!barcode) {
-    return res.status(404).json({
-      status: 404,
+    return res.status(400).json({
+      status: 400,
       message: "Missing required key: barcode",
     });
   }
@@ -901,41 +893,49 @@ app.post("/add-stuff", verifyToken, async (req, res) => {
     await db.query("BEGIN");
 
     let refreshToken = req.cookies.refreshToken;
-
-    jwt.verify(
-      refreshToken,
-      process.env.JWT_REFRESH_SECRET,
-      async (err, account) => {
-        if (err) {
-          return res.status(403).json({
-            status: 403,
-            message: "Token is no longer valid",
-          });
-        } else {
-          let stuffQuery = await db.query(
-            "INSERT INTO stuff (stuff_category_id, stuff_brand_id, supplier_id, stuff_code, stuff_sku, stuff_name, stuff_variant, current_sell_price, has_sn, barcode) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *",
-            [
-              stuff_category_id,
-              stuff_brand_id,
-              supplier_id,
-              stuff_code,
-              stuff_sku,
-              stuff_name,
-              stuff_variant,
-              current_sell_price,
-              has_sn,
-              barcode,
-            ]
-          );
-          let stuffData = stuffQuery.rows[0];
-          let stuffId = stuffQuery.rows[0].stuff_id;
-
-          await db.query(
-            "INSERT INTO stuff_history (stuff_id, employee_id, operation, new_data) VALUES ($1, $2, 'insert', $3)",
-            [stuffId, account.id, stuffData]
-          );
+    let account = await new Promise((resolve, reject) => {
+      jwt.verify(
+        refreshToken,
+        process.env.JWT_REFRESH_SECRET,
+        (err, account) => {
+          if (err) return reject(err);
+          resolve(account);
         }
-      }
+      );
+    });
+    let employeeQuery = await db.query(
+      `
+        SELECT employee.employee_id
+        FROM employee
+        JOIN employee_account
+        ON employee_account.employee_id = employee.employee_id
+        WHERE employee.employee_id = $1
+    `,
+      [account.id]
+    );
+    let employeeId = employeeQuery.rows[0].employee_id;
+
+    let stuffQuery = await db.query(
+      "INSERT INTO stuff (stuff_category_id, stuff_brand_id, supplier_id, stuff_code, stuff_sku, stuff_name, stuff_variant, current_sell_price, has_sn, barcode) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *",
+      [
+        stuff_category_id,
+        stuff_brand_id,
+        supplier_id,
+        stuff_code,
+        stuff_sku,
+        stuff_name,
+        stuff_variant,
+        current_sell_price,
+        has_sn,
+        barcode,
+      ]
+    );
+    let stuffData = stuffQuery.rows[0];
+    let stuffId = stuffQuery.rows[0].stuff_id;
+
+    await db.query(
+      "INSERT INTO stuff_history (stuff_id, employee_id, operation, new_data) VALUES ($1, $2, 'insert', $3)",
+      [stuffId, employeeId, stuffData]
     );
 
     await db.query("COMMIT");
