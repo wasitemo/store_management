@@ -345,6 +345,29 @@ app.post("/add-warehouse", verifyToken, async (req, res) => {
   }
 });
 
+app.get("/warehouse/:warehouse_id", verifyToken, async (req, res) => {
+  let reqId = parseInt(req.params.warehouse_id);
+
+  try {
+    let query = await db.query(
+      "SELECT * FROM warehouse WHERE warehouse_id = $1",
+      [reqId]
+    );
+    let result = query.rows;
+
+    return res.status(200).json({
+      status: 200,
+      data: result,
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(400).json({
+      status: 400,
+      message: err.message,
+    });
+  }
+});
+
 app.patch("/update-warehouse/:warehouse_id", verifyToken, async (req, res) => {
   let reqId = parseInt(req.params.warehouse_id);
   let update = req.body;
