@@ -484,7 +484,7 @@ app.get("/supplier/:supplier_id", verifyToken, async (req, res) => {
 
     return res.status(200).json({
       status: 200,
-      data: result,
+      data: result[0],
     });
   } catch (err) {
     console.log(err);
@@ -659,6 +659,24 @@ app.patch(
     }
   }
 );
+
+app.get("/stuff-brand", async (req, res) => {
+  try {
+    let query = await db.query("SELECT * FROM stuff_brand");
+    let result = query.rows;
+
+    return res.status(200).json({
+      status: 200,
+      data: result,
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(400).json({
+      status: 400,
+      message: err.message,
+    });
+  }
+});
 
 app.post("/add-stuff-brand", verifyToken, async (req, res) => {
   let { stuff_brand_name } = req.body;
