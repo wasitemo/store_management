@@ -415,6 +415,24 @@ app.patch("/update-warehouse/:warehouse_id", verifyToken, async (req, res) => {
 });
 
 // SUPPLIER
+app.get("/supplier", verifyToken, async (req, res) => {
+  try {
+    let query = await db.query("SELECT * FROM supplier");
+    let result = query.rows;
+
+    return res.status(200).json({
+      status: 200,
+      data: result,
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(400).json({
+      status: 400,
+      message: err.message,
+    });
+  }
+});
+
 app.post("/add-supplier", verifyToken, async (req, res) => {
   let { supplier_name, supplier_contact, supplier_address } = req.body;
 
@@ -444,6 +462,29 @@ app.post("/add-supplier", verifyToken, async (req, res) => {
     return res.status(200).json({
       status: 200,
       message: "Success add supplier",
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(400).json({
+      status: 400,
+      message: err.message,
+    });
+  }
+});
+
+app.get("/supplier/:supplier_id", verifyToken, async (req, res) => {
+  let reqId = parseInt(req.params.supplier_id);
+
+  try {
+    let query = await db.query(
+      "SELECT * FROM supplier WHERE supplier_id = $1",
+      [reqId]
+    );
+    let result = query.rows;
+
+    return res.status(200).json({
+      status: 200,
+      data: result,
     });
   } catch (err) {
     console.log(err);
