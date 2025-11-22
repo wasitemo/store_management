@@ -1147,6 +1147,35 @@ app.patch("/update-stuff/:stuff_id", verifyToken, async (req, res) => {
   }
 });
 
+app.get("/stuff-purchase", verifyToken, async (req, res) => {
+  try {
+    let query = await db.query(`
+      SELECT
+      stuff_purchase_id,
+      supplier.supplier_id,
+      employee.employee_id,
+      supplier.supplier_name,
+      employee.employee_name
+      buy_date,
+      total_price  
+      FROM stuff_purchase
+      LEFT JOIN supplier ON supplier.supplier_id = stuff_purchase.supplier_id
+      LEFT JOIN employee ON employee.employee_id = stuff_purchase.employee_id
+    `);
+    let result = query.rows;
+
+    return res.status(200).json({
+      status: 200,
+      data: result,
+    });
+  } catch (err) {
+    return res.status(400).json({
+      status: 400,
+      message: err.message,
+    });
+  }
+});
+
 app.post("/add-stuff-purchase", verifyToken, async (req, res) => {
   let {
     supplier_id,
