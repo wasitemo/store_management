@@ -1176,12 +1176,15 @@ app.get("/stuff-purchase", verifyToken, async (req, res) => {
   }
 });
 
-app.get("/stuff-purchase-detail/:stuff_purchase_id", async (req, res) => {
-  let reqId = parseInt(req.params.stuff_purchase_id);
+app.get(
+  "/stuff-purchase-detail/:stuff_purchase_id",
+  verifyToken,
+  async (req, res) => {
+    let reqId = parseInt(req.params.stuff_purchase_id);
 
-  try {
-    let query = await db.query(
-      `
+    try {
+      let query = await db.query(
+        `
       SELECT
       stuff_purchase.stuff_purchase_id,
       supplier.supplier_id,
@@ -1205,22 +1208,23 @@ app.get("/stuff-purchase-detail/:stuff_purchase_id", async (req, res) => {
       LEFT JOIN stuff ON stuff_purchase_detail.stuff_id = stuff.stuff_id
       WHERE stuff_purchase.stuff_purchase_id = $1
     `,
-      [reqId]
-    );
-    let result = query.rows[0];
+        [reqId]
+      );
+      let result = query.rows[0];
 
-    return res.status(200).json({
-      status: 200,
-      data: result,
-    });
-  } catch (err) {
-    console.error(err);
-    return res.status(400).json({
-      status: 400,
-      message: err.message,
-    });
+      return res.status(200).json({
+        status: 200,
+        data: result,
+      });
+    } catch (err) {
+      console.error(err);
+      return res.status(400).json({
+        status: 400,
+        message: err.message,
+      });
+    }
   }
-});
+);
 
 app.post("/add-stuff-purchase", verifyToken, async (req, res) => {
   let {
@@ -1462,7 +1466,7 @@ app.post(
 );
 
 // CUSTOMER
-app.get("/customers", async (req, res) => {
+app.get("/customers", verifyToken, async (req, res) => {
   try {
     let query = await db.query("SELECT * FROM customer");
     let result = query.rows;
@@ -1509,6 +1513,29 @@ app.post("/add-customer", verifyToken, async (req, res) => {
     return res.status(200).json({
       status: 200,
       message: "Success add customer",
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json({
+      status: 400,
+      message: err.message,
+    });
+  }
+});
+
+app.get("/customer/:customer_id", verifyToken, async (req, res) => {
+  let reqId = parseInt(req.params.customer_id);
+
+  try {
+    let query = await db.query(
+      "SELECT * FROM customer WHERE customer_id = $1",
+      [reqId]
+    );
+    let result = query.rows[0];
+
+    return res.status(200).json({
+      status: 200,
+      data: result,
     });
   } catch (err) {
     console.error(err);
