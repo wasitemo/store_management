@@ -1462,6 +1462,24 @@ app.post(
 );
 
 // CUSTOMER
+app.get("/customers", async (req, res) => {
+  try {
+    let query = await db.query("SELECT * FROM customer");
+    let result = query.rows;
+
+    return res.status(200).json({
+      status: 200,
+      data: result,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json({
+      status: 400,
+      message: err.message,
+    });
+  }
+});
+
 app.post("/add-customer", verifyToken, async (req, res) => {
   let { customer_name, customer_contact, customer_address } = req.body;
 
