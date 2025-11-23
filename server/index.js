@@ -1176,6 +1176,52 @@ app.get("/stuff-purchase", verifyToken, async (req, res) => {
   }
 });
 
+app.get("/stuff-purchase-detail/:stuff_purchase_id", async (req, res) => {
+  let reqId = parseInt(req.params.stuff_purchase_id);
+
+  try {
+    let query = await db.query(
+      `
+      SELECT
+      stuff_purchase.stuff_purchase_id,
+      supplier.supplier_id,
+      employee.employee_id,
+      warehouse.warehouse_id,
+      stuff.stuff_id,
+      supplier_name,
+      employee_name,
+      warehouse_name,
+      stuff_name,
+      buy_batch,
+      buy_date,
+      quantity,
+      buy_price,
+      total_price
+      FROM stuff_purchase
+      LEFT JOIN supplier ON supplier.supplier_id = stuff_purchase.supplier_id
+      LEFT JOIN employee ON employee.employee_id = stuff_purchase.employee_id
+      LEFT JOIN stuff_purchase_detail ON stuff_purchase_detail.stuff_purchase_id = stuff_purchase.stuff_purchase_id
+      LEFT JOIN warehouse ON stuff_purchase_detail.warehouse_id = warehouse.warehouse_id
+      LEFT JOIN stuff ON stuff_purchase_detail.stuff_id = stuff.stuff_id
+      WHERE stuff_purchase.stuff_purchase_id = $1
+    `,
+      [reqId]
+    );
+    let result = query.rows[0];
+
+    return res.status(200).json({
+      status: 200,
+      data: result,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json({
+      status: 400,
+      message: err.message,
+    });
+  }
+});
+
 app.post("/add-stuff-purchase", verifyToken, async (req, res) => {
   let {
     supplier_id,
