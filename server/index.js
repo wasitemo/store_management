@@ -1591,6 +1591,24 @@ app.patch("/update-customer/:customer_id", verifyToken, async (req, res) => {
 });
 
 // PAYMENT METHODE
+app.get("/payment-methods", verifyToken, async (req, res) => {
+  try {
+    let query = await db.query("SELECT * FROM payment_methode");
+    let result = query.rows;
+
+    return res.status(200).json({
+      status: 200,
+      data: result,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json({
+      status: 400,
+      message: err.message,
+    });
+  }
+});
+
 app.post("/add-payment-methode", verifyToken, async (req, res) => {
   let { payment_methode_name } = req.body;
 
