@@ -1366,82 +1366,80 @@ app.post(
       await db.query("BEGIN");
 
       let refreshToken = req.cookies.refreshToken;
-
-      jwt.verify(
-        refreshToken,
-        process.env.JWT_REFRESH_SECRET,
-        async (err, account) => {
-          if (err) {
-            await db.query("ROLLBACK");
-            return res.status(400).json({
-              status: 400,
-              message: "Token is no longer valid",
-            });
-          } else {
-            for (let i = 0; i < rows.length; i++) {
-              let item = rows[i];
-
-              for (let key in item) {
-                if (typeof item[key] === "string") {
-                  item[key] = item[key].toLowerCase().trim();
-                }
-              }
-
-              let {
-                supplier_name,
-                buy_date,
-                total_price,
-                warehouse_name,
-                stuff_name,
-                buy_batch,
-                quantity,
-                buy_price,
-              } = item;
-
-              let supplierQuery = await db.query(
-                "SELECT supplier_id FROM supplier WHERE LOWER (supplier_name) = $1",
-                [supplier_name]
-              );
-              if (supplierQuery.rows.length === 0)
-                throw new Error("Supplier not registered");
-              let supplierId = supplierQuery.rows[0].supplier_id;
-
-              let warehouseQuery = await db.query(
-                "SELECT warehouse_id FROM warehouse WHERE LOWER (warehouse_name) = $1",
-                [warehouse_name]
-              );
-              if (warehouseQuery.rows.length === 0)
-                throw new Error("Warehouse not registered");
-              let warehouseId = warehouseQuery.rows[0].warehouse_id;
-
-              let stuffQuery = await db.query(
-                "SELECT stuff_id FROM stuff WHERE LOWER (stuff_name) = $1",
-                [stuff_name]
-              );
-              if (stuffQuery.rows.length === 0)
-                throw new Error("Stuff not registered");
-              let stuffId = stuffQuery.rows[0].stuff_id;
-
-              let purchaseQuery = await db.query(
-                "INSERT INTO stuff_purchase (supplier_id, employee_id, buy_date, total_price) VALUES ($1, $2, $3, $4) RETURNING stuff_purchase_id",
-                [supplierId, account.id, buy_date, total_price]
-              );
-              let purchaseId = purchaseQuery.rows[0].stuff_purchase_id;
-
-              await db.query(
-                "INSERT INTO stuff_purchase_detail (warehouse_id, stuff_id, stuff_purchase_id, buy_batch, quantity, buy_price) VALUES ($1, $2, $3, $4, $5, $6)",
-                [
-                  warehouseId,
-                  stuffId,
-                  purchaseId,
-                  buy_batch,
-                  quantity,
-                  buy_price,
-                ]
-              );
-            }
+      let account = await new Promise((resolve, reject) => {
+        jwt.verify(
+          refreshToken,
+          process.env.JWT_REFRESH_SECRET,
+          (err, account) => {
+            if (err) return reject(err);
+            resolve(account);
           }
+        );
+      });
+
+      let employeeQuery = await db.query(
+        `
+        SELECT employee.employee_id
+        FROM employee
+        JOIN employee_account
+        ON employee_account.employee_id = employee.employee_id
+        WHERE employee.employee_id = $1
+    `,
+        [account.id]
+      );
+      let employeeId = employeeQuery.rows[0].employee_id;
+
+      let item = rows[i];
+
+      for (let key in item) {
+        if (typeof item[key] === "string") {
+          item[key] = item[key].toLowerCase().trim();
         }
+      }
+
+      let {
+        supplier_name,
+        buy_date,
+        total_price,
+        warehouse_name,
+        stuff_name,
+        buy_batch,
+        quantity,
+        buy_price,
+      } = item;
+
+      let supplierQuery = await db.query(
+        "SELECT supplier_id FROM supplier WHERE LOWER (supplier_name) = $1",
+        [supplier_name]
+      );
+      if (supplierQuery.rows.length === 0)
+        throw new Error("Supplier not registered");
+      let supplierId = supplierQuery.rows[0].supplier_id;
+
+      let warehouseQuery = await db.query(
+        "SELECT warehouse_id FROM warehouse WHERE LOWER (warehouse_name) = $1",
+        [warehouse_name]
+      );
+      if (warehouseQuery.rows.length === 0)
+        throw new Error("Warehouse not registered");
+      let warehouseId = warehouseQuery.rows[0].warehouse_id;
+
+      let stuffQuery = await db.query(
+        "SELECT stuff_id FROM stuff WHERE LOWER (stuff_name) = $1",
+        [stuff_name]
+      );
+      if (stuffQuery.rows.length === 0) throw new Error("Stuff not registered");
+      let stuffId = stuffQuery.rows[0].stuff_id;
+
+      let purchaseQuery = await db.query(
+        "INSERT INTO stuff_purchase (supplier_id, employee_id, buy_date, total_price) VALUES ($1, $2, $3, $4) RETURNING stuff_purchase_id",
+        [supplierId, employeeId, buy_date, total_price]
+      );
+      let purchaseId = purchaseQuery.rows[0].stuff_purchase_id;
+
+      await db.query(
+        "INSERT INTO stuff_purchase_detail (warehouse_id, stuff_id, stuff_purchase_id, buy_batch, quantity, buy_price) VALUES ($1, $2, $3, $4, $5, $6)",
+        [warehouseId, stuffId, purchaseId, buy_batch, quantity, buy_price]
       );
 
       await db.query("COMMIT");
