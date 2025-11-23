@@ -1638,6 +1638,29 @@ app.post("/add-payment-methode", verifyToken, async (req, res) => {
   }
 });
 
+app.get("/payment-method/:payment_method_id", async (req, res) => {
+  let reqId = parseInt(req.params.payment_method_id);
+
+  try {
+    let query = await db.query(
+      "SELECT * FROM payment_methode WHERE payment_methode_id = $1",
+      [reqId]
+    );
+    let result = query.rows[0];
+
+    return res.status(200).json({
+      status: 200,
+      data: result,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json({
+      status: 400,
+      message: err.message,
+    });
+  }
+});
+
 app.patch(
   "/update-payment-methode/:payment_methode_id",
   verifyToken,
