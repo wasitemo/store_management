@@ -2904,7 +2904,49 @@ app.post("/upload-stock", upload.single("file"), async (req, res) => {
 });
 
 // CUSTOMER ORDER
-app.get("/customer-order", verifyToken, async (req, res) => {
+app.get("/customer-orders", async (req, res) => {
+  try {
+    let query = await db.query(`
+      SELECT
+      customer_order.order_id,
+      customer.customer_id,
+      payment_methode.payment_methode_id,
+      employee.employee_id,
+      customer_name,
+      payment_methode_name,
+      employee_name,
+      order_date,
+      payment,
+      sub_total,
+      remaining_payment
+      FROM customer_order
+      LEFT JOIN customer ON customer.customer_id = customer_order.customer_id
+      LEFT JOIN payment_methode ON payment_methode.payment_methode_id = customer_order.payment_methode_id
+      LEFT JOIN employee ON employee.employee_id = customer_order.employee_id
+    `);
+    let result = query.rows;
+
+    if (query.rows.length === 0) {
+      return res.status(400).json({
+        status: 400,
+        message: "Data not found",
+      });
+    }
+
+    return res.status(200).json({
+      status: 200,
+      data: result,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json({
+      status: 400,
+      message: err.message,
+    });
+  }
+});
+
+app.get("/customer-order-detail", verifyToken, async (req, res) => {
   try {
     let orderQuery = await db.query(`
       SELECT
