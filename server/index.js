@@ -2904,7 +2904,7 @@ app.post("/upload-stock", upload.single("file"), async (req, res) => {
 });
 
 // CUSTOMER ORDER
-app.get("/customer-orders", async (req, res) => {
+app.get("/customer-orders", verifyToken, async (req, res) => {
   try {
     let query = await db.query(`
       SELECT
@@ -2946,9 +2946,12 @@ app.get("/customer-orders", async (req, res) => {
   }
 });
 
-app.get("/customer-order-detail", verifyToken, async (req, res) => {
+app.get("/customer-order-detail/:order_id", verifyToken, async (req, res) => {
+  let reqId = parseInt(req.params.order_id);
+
   try {
-    let orderQuery = await db.query(`
+    let orderQuery = await db.query(
+      `
       SELECT
       customer_order.order_id,
       customer_order.order_date,
@@ -3017,7 +3020,7 @@ app.get("/customer-order-detail", verifyToken, async (req, res) => {
   LEFT JOIN warehouse ON warehouse.warehouse_id = customer_order_detail.warehouse_id
   LEFT JOIN stuff_category ON stuff.stuff_category_id = stuff_category.stuff_category_id
   LEFT JOIN stuff_brand ON stuff.stuff_brand_id = stuff_brand.stuff_brand_id
-
+  WHERE customer_order.order_id = $1
   GROUP BY
       customer_order.order_id,
       employee.employee_id,
@@ -3033,8 +3036,17 @@ app.get("/customer-order-detail", verifyToken, async (req, res) => {
       customer_order.payment,
       customer_order.sub_total,
       customer_order.remaining_payment
-    `);
-    let order = orderQuery.rows;
+    `,
+      [reqId]
+    );
+    let order = orderQuery.rows[0];
+
+    if (orderQuery.rows.length === 0) {
+      return res.status(400).json({
+        status: 400,
+        message: "Data not found",
+      });
+    }
 
     return res.status(200).json({
       status: 200,
