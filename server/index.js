@@ -2318,6 +2318,42 @@ app.patch(
 );
 
 // ACCOUNT
+app.get("/employee-accounts", verifyToken, async (req, res) => {
+  try {
+    let query = await db.query(`
+      SELECT
+      employee_account.employee_account_id,
+      employee.employee_id,
+      employee_name,
+      username,
+      password,
+      role,
+      account_status
+      FROM employee_account
+      LEFT JOIN employee ON employee.employee_id = employee_account.employee_id
+    `);
+    let result = query.rows;
+
+    if (result.length === 0) {
+      return res.status(400).json({
+        status: 400,
+        message: "Data not found",
+      });
+    }
+
+    return res.status(200).json({
+      status: 200,
+      data: result,
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(400).json({
+      status: 400,
+      message: err.message,
+    });
+  }
+});
+
 app.post("/create-account", verifyToken, async (req, res) => {
   let { employee_id, username, password, role, account_status } = req.body;
 
