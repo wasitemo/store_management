@@ -2501,6 +2501,48 @@ app.post("/login", async (req, res) => {
   }
 });
 
+app.get("/employee-account/:account_id", async (req, res) => {
+  let reqId = parseInt(req.params.account_id);
+
+  try {
+    let query = await db.query(
+      `
+      SELECT
+      employee_account.employee_account_id,
+      employee.employee_id,
+      employee_name,
+      username,
+      password,
+      role,
+      account_status
+      FROM employee_account
+      LEFT JOIN employee ON employee.employee_id = employee_account.employee_id
+      WHERE employee_account.employee_account_id = $1
+    `,
+      [reqId]
+    );
+    let result = query.rows[0];
+
+    if (query.rows.length === 0) {
+      return res.status(400).json({
+        status: 400,
+        message: "Data not found",
+      });
+    }
+
+    return res.status(200).json({
+      status: 200,
+      data: result,
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(400).json({
+      status: 400,
+      message: err.message,
+    });
+  }
+});
+
 app.patch("/update-account/:employee_account_id", async (req, res) => {
   let reqId = parseInt(req.params.employee_account_id);
   let update = req.body;
