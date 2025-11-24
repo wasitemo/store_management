@@ -2713,6 +2713,42 @@ app.get("/stocks", verifyToken, async (req, res) => {
   }
 });
 
+app.get("/stock-history", verifyToken, async (req, res) => {
+  try {
+    let query = await db.query(`
+      SELECT
+      stock.stock_id,
+      warehouse.warehouse_id,
+      stuff.stuff_id,
+      stuff_information.stuff_information_id,
+      warehouse_name,
+      stuff_name,
+      imei_1,
+      imei_2,
+      sn,
+      stock_date,
+      stock_type,
+      stock_status
+      FROM stock
+      LEFT JOIN warehouse ON warehouse.warehouse_id = stock.warehouse_id
+      LEFT JOIN stuff ON stuff.stuff_id = stock.stuff_id
+      LEFT JOIN stuff_information ON stuff_information.stuff_information_id = stock.stuff_information_id  
+    `);
+    let result = query.rows;
+
+    return res.status(200).json({
+      status: 200,
+      data: result,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json({
+      status: 400,
+      message: err.message,
+    });
+  }
+});
+
 app.post("/add-stock", async (req, res) => {
   let { warehouse_id, stuff_id, imei_1, imei_2, sn } = req.body;
 
