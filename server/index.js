@@ -1712,7 +1712,7 @@ app.patch(
 );
 
 // DISCOUNT
-app.get("/stuff-discounts", async (req, res) => {
+app.get("/stuff-discounts", verifyToken, async (req, res) => {
   try {
     let query = await db.query(`
       SELECT
@@ -1869,7 +1869,7 @@ app.post("/add-stuff-discount", verifyToken, async (req, res) => {
   }
 });
 
-app.get("/stuff-discount/:stuff_id", async (req, res) => {
+app.get("/stuff-discount/:stuff_id", verifyToken, async (req, res) => {
   let reqId = parseInt(req.params.stuff_id);
 
   try {
