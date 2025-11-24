@@ -1638,7 +1638,7 @@ app.post("/add-payment-methode", verifyToken, async (req, res) => {
   }
 });
 
-app.get("/payment-method/:payment_method_id", async (req, res) => {
+app.get("/payment-method/:payment_method_id", verifyToken, async (req, res) => {
   let reqId = parseInt(req.params.payment_method_id);
 
   try {
@@ -1712,6 +1712,43 @@ app.patch(
 );
 
 // DISCOUNT
+app.get("/stuff-discounts", async (req, res) => {
+  try {
+    let query = await db.query(`
+      SELECT
+      stuff.stuff_id,
+      stuff_name,
+      json_agg(
+        DISTINCT jsonb_build_object(
+          'discount_id', discount.discount_id,
+          'discount_name', discount_name,
+          'discount_type', discount_type,
+          'discount_value', discount_value,
+          'started_time', started_time,
+          'ended_time', ended_time,
+          'discount_status', discount_status
+        )
+      ) AS stuff_discounts
+      FROM stuff_discount
+      LEFT JOIN stuff ON stuff_discount.stuff_id = stuff.stuff_id
+      LEFT JOIN discount ON stuff_discount.discount_id = discount.discount_id
+      GROUP BY stuff.stuff_id, stuff.stuff_name
+    `);
+    let result = query.rows;
+
+    return res.status(200).json({
+      status: 200,
+      data: result,
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(400).json({
+      status: 400,
+      message: err.message,
+    });
+  }
+});
+
 app.post("/add-stuff-discount", verifyToken, async (req, res) => {
   let {
     stuff_id,
