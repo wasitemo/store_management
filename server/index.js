@@ -1721,6 +1721,8 @@ app.get("/stuff-discounts", verifyToken, async (req, res) => {
       json_agg(
         DISTINCT jsonb_build_object(
           'discount_id', discount.discount_id,
+          'employee_id', employee.employee_id,
+          'employee_name', employee_name,
           'discount_name', discount_name,
           'discount_type', discount_type,
           'discount_value', discount_value,
@@ -1732,7 +1734,8 @@ app.get("/stuff-discounts", verifyToken, async (req, res) => {
       FROM stuff_discount
       LEFT JOIN stuff ON stuff_discount.stuff_id = stuff.stuff_id
       LEFT JOIN discount ON stuff_discount.discount_id = discount.discount_id
-      GROUP BY stuff.stuff_id, stuff.stuff_name
+      LEFT JOIN employee ON employee.employee_id = discount.employee_id
+      GROUP BY stuff.stuff_id, stuff_name
     `);
     let result = query.rows;
 
@@ -1881,6 +1884,8 @@ app.get("/stuff-discount/:stuff_id", verifyToken, async (req, res) => {
       json_agg(
         DISTINCT jsonb_build_object(
           'discount_id', discount.discount_id,
+          'employee_id', employee.employee_id,
+          'employee_name', employee_name,
           'discount_name', discount_name,
           'discount_type', discount_type,
           'discount_value', discount_value,
@@ -1892,6 +1897,7 @@ app.get("/stuff-discount/:stuff_id", verifyToken, async (req, res) => {
       FROM stuff_discount
       LEFT JOIN stuff ON stuff_discount.stuff_id = stuff.stuff_id
       LEFT JOIN discount ON stuff_discount.discount_id = discount.discount_id
+      LEFT JOIN employee ON employee.employee_id = discount.employee_id
       WHERE stuff.stuff_id = $1
       GROUP BY stuff.stuff_id, stuff.stuff_name
     `,
@@ -2035,7 +2041,20 @@ app.patch(
 
 app.get("/order-discounts", verifyToken, async (req, res) => {
   try {
-    let query = await db.query("SELECT * FROM discount");
+    let query = await db.query(`
+      SELECT
+      discount.discount_id,
+      employee.employee_id,
+      employee_name,
+      discount_name,
+      discount_type,
+      discount_value,
+      started_time,
+      ended_time,
+      discount_status
+      FROM discount
+      LEFT JOIN employee ON employee.employee_id = discount.employee_id  
+    `);
     let result = query.rows;
 
     if (query.rows.length === 0) {
@@ -2153,6 +2172,50 @@ app.post("/add-order-discount", verifyToken, async (req, res) => {
     );
   } catch (err) {
     console.error(err);
+    return res.status(400).json({
+      status: 400,
+      message: err.message,
+    });
+  }
+});
+
+app.get("/order-discount/:discount_id", verifyToken, async (req, res) => {
+  let reqId = parseInt(req.params.discount_id);
+
+  try {
+    let query = await db.query(
+      `
+      SELECT
+      discount.discount_id,
+      employee.employee_id,
+      employee_name,
+      discount_name,
+      discount_type,
+      discount_value,
+      started_time,
+      ended_time,
+      discount_status
+      FROM discount
+      LEFT JOIN employee ON employee.employee_id = discount.employee_id
+      WHERE discount_id = $1  
+    `,
+      [reqId]
+    );
+    let result = query.rows[0];
+
+    if (query.rows.length === 0) {
+      return res.status(400).json({
+        status: 400,
+        message: "Data not found",
+      });
+    }
+
+    return res.status(200).json({
+      status: 200,
+      data: result,
+    });
+  } catch (err) {
+    console.log(err);
     return res.status(400).json({
       status: 400,
       message: err.message,
