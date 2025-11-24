@@ -1869,6 +1869,56 @@ app.post("/add-stuff-discount", verifyToken, async (req, res) => {
   }
 });
 
+app.get("/stuff-discount/:stuff_id", async (req, res) => {
+  let reqId = parseInt(req.params.stuff_id);
+
+  try {
+    let query = await db.query(
+      `
+      SELECT
+      stuff.stuff_id,
+      stuff_name,
+      json_agg(
+        DISTINCT jsonb_build_object(
+          'discount_id', discount.discount_id,
+          'discount_name', discount_name,
+          'discount_type', discount_type,
+          'discount_value', discount_value,
+          'started_time', started_time,
+          'ended_time', ended_time,
+          'discount_status', discount_status
+        )
+      ) AS stuff_discounts
+      FROM stuff_discount
+      LEFT JOIN stuff ON stuff_discount.stuff_id = stuff.stuff_id
+      LEFT JOIN discount ON stuff_discount.discount_id = discount.discount_id
+      WHERE stuff.stuff_id = $1
+      GROUP BY stuff.stuff_id, stuff.stuff_name
+    `,
+      [reqId]
+    );
+    let result = query.rows[0];
+
+    if (query.rows.length === 0) {
+      return res.status(400).json({
+        status: 400,
+        message: "Data not found",
+      });
+    }
+
+    return res.status(200).json({
+      status: 200,
+      data: result,
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(400).json({
+      status: 400,
+      message: err.message,
+    });
+  }
+});
+
 app.patch(
   "/update-stuff-discount/:discount_id",
   verifyToken,
