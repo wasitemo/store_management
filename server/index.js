@@ -2501,7 +2501,7 @@ app.post("/login", async (req, res) => {
   }
 });
 
-app.get("/employee-account/:account_id", async (req, res) => {
+app.get("/employee-account/:account_id", verifyToken, async (req, res) => {
   let reqId = parseInt(req.params.account_id);
 
   try {
@@ -2543,70 +2543,74 @@ app.get("/employee-account/:account_id", async (req, res) => {
   }
 });
 
-app.patch("/update-account/:employee_account_id", async (req, res) => {
-  let reqId = parseInt(req.params.employee_account_id);
-  let update = req.body;
-  let keys = Object.keys(update);
-  let fields = {
-    employee_id: "number",
-    username: "string",
-    password: "string",
-    role: "string",
-    account_status: "string",
-  };
-  let invalidField = keys.filter((k) => !fields[k]);
+app.patch(
+  "/update-account/:employee_account_id",
+  verifyToken,
+  async (req, res) => {
+    let reqId = parseInt(req.params.employee_account_id);
+    let update = req.body;
+    let keys = Object.keys(update);
+    let fields = {
+      employee_id: "number",
+      username: "string",
+      password: "string",
+      role: "string",
+      account_status: "string",
+    };
+    let invalidField = keys.filter((k) => !fields[k]);
 
-  if (invalidField.length > 0) {
-    return res.status(400).json({
-      status: 400,
-      message: "Invalid field ",
-      invalidField,
-    });
-  }
-
-  if (keys.length === 0) {
-    return res.status("400").json({
-      status: 400,
-      message: "No item updated",
-    });
-  }
-
-  for (let key of keys) {
-    let expextedType = fields[key];
-    let value = update[key];
-
-    if (expextedType === "number") {
-      update[key] = convertionToNumber(value);
+    if (invalidField.length > 0) {
+      return res.status(400).json({
+        status: 400,
+        message: "Invalid field ",
+        invalidField,
+      });
     }
 
-    if (key === "password") {
-      update[key] = await bcrypt.hash(value, saltRounds);
+    if (keys.length === 0) {
+      return res.status("400").json({
+        status: 400,
+        message: "No item updated",
+      });
+    }
+
+    for (let key of keys) {
+      let expextedType = fields[key];
+      let value = update[key];
+
+      if (expextedType === "number") {
+        update[key] = convertionToNumber(value);
+      }
+
+      if (key === "password") {
+        update[key] = await bcrypt.hash(value, saltRounds);
+      }
+    }
+
+    let setQuery = keys.map((key, index) => `${key} = $${index + 1}`).join(",");
+    let values = Object.values(update);
+
+    try {
+      await db.query(
+        `UPDATE employee_account SET ${setQuery} WHERE employee_account_id = $${
+          keys.length + 1
+        }`,
+        [...values, reqId]
+      );
+
+      return res.status(200).json({
+        status: 200,
+        message: "Success updated data",
+      });
+    } catch (err) {
+      console.error(err);
+      return res.status(400).json({
+        status: 400,
+        message: err.message,
+      });
     }
   }
-
-  let setQuery = keys.map((key, index) => `${key} = $${index + 1}`).join(",");
-  let values = Object.values(update);
-
-  try {
-    await db.query(
-      `UPDATE employee_account SET ${setQuery} WHERE employee_account_id = $${
-        keys.length + 1
-      }`,
-      [...values, reqId]
-    );
-
-    return res.status(200).json({
-      status: 200,
-      message: "Success updated data",
-    });
-  } catch (err) {
-    console.error(err);
-    return res.status(400).json({
-      status: 400,
-      message: err.message,
-    });
-  }
-});
+);
 
 app.use("/refresh-token", async (req, res) => {
   try {
@@ -2681,6 +2685,34 @@ app.post("/logout", async (req, res) => {
 });
 
 // STOCK
+app.get("/stocks", verifyToken, async (req, res) => {
+  try {
+    let query = await db.query(`
+        SELECT DISTINCT
+        warehouse.warehouse_id,
+        stuff.stuff_id,
+        warehouse_name,
+        stuff_name,
+        total_stock
+        FROM stock
+        LEFT JOIN warehouse ON warehouse.warehouse_id = stock.warehouse_id
+        LEFT JOIN stuff ON stuff.stuff_id = stock.stuff_id
+    `);
+    let result = query.rows;
+
+    return res.status(200).json({
+      status: 200,
+      data: result,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(400).json({
+      status: 400,
+      message: err.message,
+    });
+  }
+});
+
 app.post("/add-stock", async (req, res) => {
   let { warehouse_id, stuff_id, imei_1, imei_2, sn } = req.body;
 
