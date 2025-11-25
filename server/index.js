@@ -1534,19 +1534,42 @@ app.get(
 
 app.get("/stuff-purchase", verifyToken, async (req, res) => {
   try {
-    let query = await db.query("SELECT * FROM supplier");
-    let result = query.rows;
+    let supplierQuery = await db.query("SELECT * FROM supplier");
+    let warehouseQuery = await db.query("SELECT * FROM warehouse");
+    let stuffQuery = await db.query("SELECT * FROM stuff");
 
-    if (query.rows.length === 0) {
+    let supplierResult = supplierQuery.rows;
+    let warehouseResult = warehouseQuery.rows;
+    let stuffResult = stuffQuery.rows;
+
+    if (supplierQuery.rows.length === 0) {
       return res.status(404).json({
         status: 404,
-        message: "Data not found",
+        message: "Supplier data not found",
+      });
+    }
+
+    if (warehouseQuery.rows.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: "Warehouse data not found",
+      });
+    }
+
+    if (stuffQuery.rows.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: "Stuff data not found",
       });
     }
 
     return res.status(200).json({
       status: 200,
-      data: result,
+      data: {
+        supplier: supplierResult,
+        warehouse: warehouseResult,
+        stuff: stuffResult,
+      },
     });
   } catch (err) {
     console.error(err);
@@ -1557,7 +1580,7 @@ app.get("/stuff-purchase", verifyToken, async (req, res) => {
   }
 });
 
-app.post("/add-stuff-purchase", verifyToken, async (req, res) => {
+app.post("/stuff-purchase", verifyToken, async (req, res) => {
   let {
     supplier_id,
     buy_date,
@@ -1623,48 +1646,65 @@ app.post("/add-stuff-purchase", verifyToken, async (req, res) => {
     quantity = convertionToNumber(quantity);
   }
 
+  if (typeof buy_date === "string") {
+    buy_date = buy_date.trim();
+  }
+
+  if (typeof buy_batch === "string") {
+    buy_batch = buy_batch.trim();
+  }
+
   try {
     await db.query("BEGIN");
 
     let refreshToken = req.cookies.refreshToken;
-
-    jwt.verify(
-      refreshToken,
-      process.env.JWT_REFRESH_SECRET,
-      async (err, account) => {
-        if (err) {
-          return res.status(400).json({
-            status: 400,
-            message: "Token is no longer valid",
-          });
-        } else {
-          const stuffPurchaseQuery = await db.query(
-            "INSERT INTO stuff_purchase (supplier_id, employee_id, buy_date, total_price) VALUES ($1, $2, $3, $4) RETURNING stuff_purchase_id",
-            [supplier_id, account.id, buy_date, total_price]
-          );
-
-          const purchaseId = stuffPurchaseQuery.rows[0].stuff_purchase_id;
-
-          await db.query(
-            "INSERT INTO stuff_purchase_detail (warehouse_id, stuff_id, stuff_purchase_id, buy_batch, quantity, buy_price) VALUES ($1, $2, $3, $4, $5, $6)",
-            [warehouse_id, stuff_id, purchaseId, buy_batch, quantity, buy_price]
-          );
-
-          await db.query("COMMIT");
-
-          return res.status(200).json({
-            status: 200,
-            message: "Purchase success",
-          });
+    let account = await new Promise((resolve, reject) => {
+      jwt.verify(
+        refreshToken,
+        process.env.JWT_REFRESH_SECRET,
+        (err, account) => {
+          if (err) return reject(err);
+          resolve(account);
         }
-      }
+      );
+    });
+
+    let employeeQuery = await db.query(
+      `
+        SELECT employee.employee_id
+        FROM employee
+        JOIN employee_account
+        ON employee_account.employee_id = employee.employee_id
+        WHERE employee.employee_id = $1
+    `,
+      [account.id]
     );
+    let employeeId = employeeQuery.rows[0].employee_id;
+
+    const stuffPurchaseQuery = await db.query(
+      "INSERT INTO stuff_purchase (supplier_id, employee_id, buy_date, total_price) VALUES ($1, $2, $3, $4) RETURNING stuff_purchase_id",
+      [supplier_id, employeeId, buy_date, total_price]
+    );
+
+    const purchaseId = stuffPurchaseQuery.rows[0].stuff_purchase_id;
+
+    await db.query(
+      "INSERT INTO stuff_purchase_detail (warehouse_id, stuff_id, stuff_purchase_id, buy_batch, quantity, buy_price) VALUES ($1, $2, $3, $4, $5, $6)",
+      [warehouse_id, stuff_id, purchaseId, buy_batch, quantity, buy_price]
+    );
+
+    await db.query("COMMIT");
+
+    return res.status(200).json({
+      status: 200,
+      message: "Purchase success",
+    });
   } catch (err) {
     await db.query("ROLLBACK");
     console.error(err);
     return res.status(500).json({
       status: 500,
-      message: err.message,
+      message: "Internal server error",
     });
   }
 });
