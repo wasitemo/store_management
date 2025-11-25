@@ -1439,7 +1439,7 @@ app.patch("/stuff/:stuff_id", verifyToken, async (req, res) => {
   }
 });
 
-app.get("/stuff-purchase", verifyToken, async (req, res) => {
+app.get("/stuff-purchases", verifyToken, async (req, res) => {
   try {
     let query = await db.query(`
       SELECT
@@ -1456,14 +1456,21 @@ app.get("/stuff-purchase", verifyToken, async (req, res) => {
     `);
     let result = query.rows;
 
+    if (query.rows.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: "Data not found",
+      });
+    }
+
     return res.status(200).json({
       status: 200,
       data: result,
     });
   } catch (err) {
-    return res.status(400).json({
-      status: 400,
-      message: err.message,
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
     });
   }
 });
