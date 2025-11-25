@@ -1282,23 +1282,51 @@ app.get("/stuff/:stuff_id", verifyToken, async (req, res) => {
     );
     let resultSupplier = supplierQuery.rows;
 
+    if (stuffQuery.rows.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: "Stuff data not found",
+      });
+    }
+
+    if (stuffCategoryQuery.rows.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: "Category data not found",
+      });
+    }
+
+    if (stuffBrandQuery.rows.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: "Brand data not found",
+      });
+    }
+
+    if (supplierQuery.rows.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: "Supplier data not found",
+      });
+    }
+
     return res.status(200).json({
       status: 200,
       data: stuffResult,
-      list_category: resultStuffCategory,
-      list_brand: resultStuffBrand,
-      list_suppleir: resultSupplier,
+      stuff_category: resultStuffCategory,
+      stuff_brand: resultStuffBrand,
+      suppleir: resultSupplier,
     });
   } catch (err) {
     console.error(err);
-    return res.status(400).json({
-      status: 400,
-      message: err.message,
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
     });
   }
 });
 
-app.patch("/update-stuff/:stuff_id", verifyToken, async (req, res) => {
+app.patch("/stuff/:stuff_id", verifyToken, async (req, res) => {
   let reqId = parseInt(req.params.stuff_id);
   let update = req.body;
   let keys = Object.keys(update);
@@ -1322,6 +1350,10 @@ app.patch("/update-stuff/:stuff_id", verifyToken, async (req, res) => {
 
     if (expectedType === "number") {
       update[key] = convertionToNumber(value);
+    }
+
+    if (expectedType === "string") {
+      update[key] = value.trim();
     }
   }
 
@@ -1349,51 +1381,60 @@ app.patch("/update-stuff/:stuff_id", verifyToken, async (req, res) => {
     await db.query("BEGIN");
 
     let refreshToken = req.cookies.refreshToken;
-
-    jwt.verify(
-      refreshToken,
-      process.env.JWT_REFRESH_SECRET,
-      async (err, account) => {
-        if (err) {
-          return res.status(400).json({
-            status: 400,
-            message: "Token is no longer valid",
-          });
-        } else {
-          let oldDataQuery = await db.query(
-            "SELECT * FROM stuff WHERE stuff_id = $1",
-            [reqId]
-          );
-          let stuffQuery = await db.query(
-            `UPDATE stuff SET ${setQuery} WHERE stuff_id = $${
-              keys.length + 1
-            } RETURNING *`,
-            [...values, reqId]
-          );
-          let stuffId = stuffQuery.rows[0].stuff_id;
-          let oldData = oldDataQuery.rows[0];
-          let newData = stuffQuery.rows[0];
-
-          await db.query(
-            "INSERT INTO stuff_history (stuff_id, employee_id, operation, old_data, new_data) VALUES ($1, $2, 'update', $3, $4)",
-            [stuffId, account.id, oldData, newData]
-          );
-
-          return res.status(200).json({
-            status: 200,
-            message: "Succes updated data",
-          });
+    let account = await new Promise((resolve, reject) => {
+      jwt.verify(
+        refreshToken,
+        process.env.JWT_REFRESH_SECRET,
+        (err, account) => {
+          if (err) return reject(err);
+          resolve(account);
         }
-      }
+      );
+    });
+
+    let employeeQuery = await db.query(
+      `
+        SELECT employee.employee_id
+        FROM employee
+        JOIN employee_account
+        ON employee_account.employee_id = employee.employee_id
+        WHERE employee.employee_id = $1
+    `,
+      [account.id]
+    );
+    let employeeId = employeeQuery.rows[0].employee_id;
+
+    let oldDataQuery = await db.query(
+      "SELECT * FROM stuff WHERE stuff_id = $1",
+      [reqId]
+    );
+    let stuffQuery = await db.query(
+      `UPDATE stuff SET ${setQuery} WHERE stuff_id = $${
+        keys.length + 1
+      } RETURNING *`,
+      [...values, reqId]
+    );
+    let stuffId = stuffQuery.rows[0].stuff_id;
+    let oldData = oldDataQuery.rows[0];
+    let newData = stuffQuery.rows[0];
+
+    await db.query(
+      "INSERT INTO stuff_history (stuff_id, employee_id, operation, old_data, new_data) VALUES ($1, $2, 'update', $3, $4)",
+      [stuffId, employeeId, oldData, newData]
     );
 
     await db.query("COMMIT");
+
+    return res.status(200).json({
+      status: 200,
+      message: "Succes updated data",
+    });
   } catch (err) {
     await db.query("ROLLBACK");
     console.error(err);
-    return res.status(400).json({
-      status: 400,
-      message: err.message,
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
     });
   }
 });
