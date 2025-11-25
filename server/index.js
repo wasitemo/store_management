@@ -721,7 +721,7 @@ app.get("/stuff-category/:stuff_category_id", verifyToken, async (req, res) => {
 });
 
 app.patch(
-  "/update-stuff-category/:stuff_category_id",
+  "/stuff-category/:stuff_category_id",
   verifyToken,
   async (req, res) => {
     let reqId = parseInt(req.params.stuff_category_id);
@@ -745,6 +745,12 @@ app.patch(
       });
     }
 
+    for (let k of keys) {
+      if (typeof k === "string") {
+        update[k] = update[k].trim();
+      }
+    }
+
     let setQuery = keys.map((key, index) => `${key} = $${index + 1}`).join(",");
     let values = Object.values(update);
 
@@ -758,13 +764,13 @@ app.patch(
 
       return res.status(200).json({
         status: 200,
-        message: "Success update stuff category",
+        message: "Success updated data",
       });
     } catch (err) {
       console.error(err);
-      return res.status(400).json({
-        status: 400,
-        message: err.message,
+      return res.status(500).json({
+        status: 500,
+        message: "Internal server error",
       });
     }
   }
