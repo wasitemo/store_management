@@ -247,17 +247,24 @@ app.get("/employee/:employee_id", verifyToken, async (req, res) => {
       "SELECT * FROM employee WHERE employee_id = $1",
       [reqId]
     );
-    let result = query.rows;
+    let result = query.rows[0];
+
+    if (query.rows.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: "Data not found",
+      });
+    }
 
     return res.status(200).json({
       status: 200,
-      data: result[0],
+      data: result,
     });
   } catch (err) {
     console.log(err.message);
-    return res.status(400).json({
-      status: 400,
-      message: err.message,
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
     });
   }
 });
