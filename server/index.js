@@ -995,6 +995,54 @@ app.get("/imei-sn", verifyToken, async (req, res) => {
   }
 });
 
+app.get("/stuff", verifyToken, async (req, res) => {
+  try {
+    let categoryQuery = await db.query("SELECT * FROM stuff_category");
+    let brandQuery = await db.query("SELECT * FROM stuff_brand");
+    let supplierQuery = await db.query("SELECT * FROM supplier");
+
+    if (categoryQuery.rows.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: "Category data not found",
+      });
+    }
+
+    if (brandQuery.rows.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: "Brand data not found",
+      });
+    }
+
+    if (supplierQuery.rows.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: "Supplier data not found",
+      });
+    }
+
+    let categoryResult = categoryQuery.rows;
+    let brandResult = brandQuery.rows;
+    let supplierResult = supplierQuery.rows;
+
+    return res.status(200).json({
+      status: 200,
+      data: {
+        stuff_category: categoryResult,
+        stuff_brand: brandResult,
+        supplier: supplierResult,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
+    });
+  }
+});
+
 app.post("/add-stuff", verifyToken, async (req, res) => {
   let {
     stuff_category_id,
