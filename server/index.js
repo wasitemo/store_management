@@ -1695,8 +1695,8 @@ app.post("/stuff-purchase", verifyToken, async (req, res) => {
 
     await db.query("COMMIT");
 
-    return res.status(200).json({
-      status: 200,
+    return res.status(201).json({
+      status: 201,
       message: "Purchase success",
     });
   } catch (err) {
@@ -1817,20 +1817,20 @@ app.post(
         [warehouseId, stuffId, purchaseId, buy_batch, quantity, buy_price]
       );
 
-      await db.query("COMMIT");
-
       fs.unlinkSync(filePath);
 
-      return res.status(200).json({
-        status: 200,
-        message: "Success created data",
+      await db.query("COMMIT");
+
+      return res.status(201).json({
+        status: 201,
+        message: "Purchase success",
       });
     } catch (err) {
       await db.query("ROLLBACK");
       console.error(err.message);
       return res.status(500).json({
         status: 500,
-        message: err.message,
+        message: "Internal server",
       });
     }
   }
