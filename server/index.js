@@ -801,7 +801,7 @@ app.get("/stuff-brands", verifyToken, async (req, res) => {
   }
 });
 
-app.post("/add-stuff-brand", verifyToken, async (req, res) => {
+app.post("/stuff-brand", verifyToken, async (req, res) => {
   let { stuff_brand_name } = req.body;
 
   if (!stuff_brand_name) {
@@ -811,20 +811,24 @@ app.post("/add-stuff-brand", verifyToken, async (req, res) => {
     });
   }
 
+  if (typeof stuff_brand_name === "string") {
+    stuff_brand_name = stuff_brand_name.trim();
+  }
+
   try {
     await db.query("INSERT INTO stuff_brand (stuff_brand_name) VALUES ($1)", [
       stuff_brand_name,
     ]);
 
-    return res.status(200).json({
-      status: 200,
+    return res.status(201).json({
+      status: 201,
       message: "Success add stuff brand",
     });
   } catch (err) {
     console.log(err);
-    return res.status(400).json({
-      status: 400,
-      message: err.message,
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
     });
   }
 });
