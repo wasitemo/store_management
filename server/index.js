@@ -920,24 +920,19 @@ app.get("/stuffs", async (req, res) => {
     let query = await db.query(`
       SELECT 
       stuff.stuff_id,
+      stuff.stuff_name,
       stuff_category.stuff_category_name,
       stuff_brand.stuff_brand_name,
       supplier.supplier_name,
-      stuff.stuff_name,
       stuff.stuff_code,
       stuff.stuff_sku,
       stuff.stuff_variant,
       stuff.current_sell_price,
       stuff.barcode,
-      stuff.has_sn,
-      stuff_information.imei_1,
-      stuff_information.imei_2,
-      stuff_information.sn,
-      stuff_information.stock_status
+      stuff.has_sn
       FROM stuff
       LEFT JOIN stuff_category ON stuff.stuff_category_id = stuff_category.stuff_category_id
       LEFT JOIN stuff_brand ON stuff.stuff_brand_id = stuff_brand.stuff_brand_id
-      LEFT JOIN stuff_information ON stuff.stuff_id = stuff_information.stuff_information_id
       LEFT JOIN supplier ON stuff.supplier_id = stuff_brand.stuff_brand_id
     `);
     let result = query.rows;
@@ -955,6 +950,44 @@ app.get("/stuffs", async (req, res) => {
     });
   } catch (err) {
     console.log(err);
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
+    });
+  }
+});
+
+app.get("/imei-sn", verifyToken, async (req, res) => {
+  try {
+    let query = await db.query(`
+      SELECT
+      stuff_information.stuff_information_id,
+      stuff_name,
+      warehouse_name,
+      imei_1,
+      imei_2,
+      sn,
+      stock_status
+      FROM stuff_information
+      LEFT JOIN stuff ON stuff.stuff_id = stuff_information.stuff_id
+      LEFT JOIN stock ON stock.stuff_information_id = stuff_information.stuff_information_id
+      LEFT JOIN warehouse ON warehouse.warehouse_id = stock.warehouse_id  
+    `);
+    let result = query.rows;
+
+    if (query.rows.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: "Data not found",
+      });
+    }
+
+    return res.status(200).json({
+      status: 200,
+      data: result,
+    });
+  } catch (err) {
+    console.error(err);
     return res.status(500).json({
       status: 500,
       message: "Internal server error",
