@@ -1043,7 +1043,7 @@ app.get("/stuff", verifyToken, async (req, res) => {
   }
 });
 
-app.post("/add-stuff", verifyToken, async (req, res) => {
+app.post("/stuff", verifyToken, async (req, res) => {
   let {
     stuff_category_id,
     stuff_brand_id,
@@ -1056,10 +1056,6 @@ app.post("/add-stuff", verifyToken, async (req, res) => {
     has_sn,
     barcode,
   } = req.body;
-
-  if (typeof current_sell_price === "string") {
-    current_sell_price = convertionToNumber(current_sell_price);
-  }
 
   if (!stuff_category_id) {
     return res.status(400).json({
@@ -1111,6 +1107,30 @@ app.post("/add-stuff", verifyToken, async (req, res) => {
       status: 400,
       message: "Missing required key: barcode",
     });
+  }
+
+  if (typeof current_sell_price === "string") {
+    current_sell_price = convertionToNumber(current_sell_price);
+  }
+
+  if (typeof stuff_code === "string") {
+    stuff_code = stuff_code.trim();
+  }
+
+  if (typeof stuff_sku === "string") {
+    stuff_sku = stuff_sku.trim();
+  }
+
+  if (typeof stuff_name === "string") {
+    stuff_name = stuff_name.trim();
+  }
+
+  if (typeof stuff_variant === "string") {
+    stuff_variant = stuff_variant.trim();
+  }
+
+  if (typeof barcode === "string") {
+    barcode = barcode.trim();
   }
 
   try {
@@ -1165,15 +1185,15 @@ app.post("/add-stuff", verifyToken, async (req, res) => {
     await db.query("COMMIT");
 
     return res.json({
-      status: 200,
+      status: 201,
       message: "Success add stuff",
     });
   } catch (err) {
     await db.query("ROLLBACK");
     console.error(err);
-    return res.status(400).json({
-      status: 400,
-      message: err.message,
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
     });
   }
 });
