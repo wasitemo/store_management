@@ -107,8 +107,8 @@ async function verifyToken(req, res, next) {
 
   jwt.verify(token, process.env.JWT_ACCESS_SECRET, (err, account) => {
     if (err) {
-      return res.status(403).json({
-        status: 403,
+      return res.status(401).json({
+        status: 401,
         message: "Invalid or expired token",
       });
     }
@@ -145,7 +145,7 @@ function convertionToDecimal(value) {
 }
 
 // EMPLOYEE
-app.get("/employees", async (req, res) => {
+app.get("/employees", verifyToken, async (req, res) => {
   try {
     const query = await db.query("SELECT * FROM employee");
     const result = query.rows;
@@ -170,7 +170,7 @@ app.get("/employees", async (req, res) => {
   }
 });
 
-app.post("/add-employee", verifyToken, async (req, res) => {
+app.post("/employee", verifyToken, async (req, res) => {
   let { employee_nik, employee_name, employee_address, employee_contact } =
     req.body;
 
@@ -196,15 +196,28 @@ app.post("/add-employee", verifyToken, async (req, res) => {
     });
   }
 
+  if (typeof employee_nik === "string") {
+    employee_nik = employee_nik.trim();
+  }
+
+  if (typeof employee_name === "string") {
+    employee_name = employee_name.trim();
+  }
+  if (typeof employee_contact === "string") {
+    employee_contact = employee_contact.trim();
+  }
+  if (typeof employee_address === "string") {
+    employee_address = employee_address.trim();
+  }
+
   try {
     const checkResult = await db.query(
       "SELECT * FROM employee WHERE employee_nik = $1",
       [employee_nik]
     );
-
     if (checkResult.rows.length > 0) {
-      return res.status(400).json({
-        status: 400,
+      return res.status(409).json({
+        status: 409,
         message: "NIK already used",
       });
     } else {
@@ -212,17 +225,16 @@ app.post("/add-employee", verifyToken, async (req, res) => {
         "INSERT INTO employee (employee_nik, employee_name, employee_contact, employee_address) VALUES ($1, $2, $3, $4)",
         [employee_nik, employee_name, employee_contact, employee_address]
       );
-
-      return res.status(200).json({
-        status: 200,
+      return res.status(201).json({
+        status: 201,
         message: "Success add employee",
       });
     }
   } catch (err) {
     console.error(err);
-    return res.status(400).json({
-      status: 400,
-      message: err.message,
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
     });
   }
 });
