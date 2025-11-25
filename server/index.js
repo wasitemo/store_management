@@ -657,8 +657,8 @@ app.get("/stuff-categories", verifyToken, async (req, res) => {
   }
 });
 
-app.use("/add-stuff-category", verifyToken, async (req, res) => {
-  const { stuff_category_name } = req.body;
+app.post("/stuff-category", verifyToken, async (req, res) => {
+  let { stuff_category_name } = req.body;
 
   if (!stuff_category_name) {
     return res.status(400).json({
@@ -667,21 +667,25 @@ app.use("/add-stuff-category", verifyToken, async (req, res) => {
     });
   }
 
+  if (typeof stuff_category_name === "string") {
+    stuff_category_name = stuff_category_name.trim();
+  }
+
   try {
     await db.query(
       "INSERT INTO stuff_category (stuff_category_name) VALUES ($1)",
       [stuff_category_name]
     );
 
-    return res.status(200).json({
-      status: 200,
+    return res.status(201).json({
+      status: 201,
       message: "Success add stuff category",
     });
   } catch (err) {
     console.error(err);
-    return res.status(400).json({
-      status: 400,
-      message: err.message,
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
     });
   }
 });
