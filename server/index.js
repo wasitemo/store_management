@@ -325,7 +325,7 @@ app.patch("/employee/:employee_id", verifyToken, async (req, res) => {
 });
 
 // WAREHOUSE
-app.get("/warehouse", verifyToken, async (req, res) => {
+app.get("/warehouses", verifyToken, async (req, res) => {
   try {
     let query = await db.query("SELECT * FROM warehouse");
     let result = query.rows;
@@ -475,10 +475,17 @@ app.patch("/warehouse/:warehouse_id", verifyToken, async (req, res) => {
 });
 
 // SUPPLIER
-app.get("/supplier", verifyToken, async (req, res) => {
+app.get("/suppliers", verifyToken, async (req, res) => {
   try {
     let query = await db.query("SELECT * FROM supplier");
     let result = query.rows;
+
+    if (query.rows.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: "Data not found",
+      });
+    }
 
     return res.status(200).json({
       status: 200,
@@ -486,14 +493,14 @@ app.get("/supplier", verifyToken, async (req, res) => {
     });
   } catch (err) {
     console.log(err);
-    return res.status(400).json({
-      status: 400,
-      message: err.message,
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
     });
   }
 });
 
-app.post("/add-supplier", verifyToken, async (req, res) => {
+app.post("/supplier", verifyToken, async (req, res) => {
   let { supplier_name, supplier_contact, supplier_address } = req.body;
 
   if (!supplier_name) {
@@ -513,21 +520,33 @@ app.post("/add-supplier", verifyToken, async (req, res) => {
     });
   }
 
+  if (typeof supplier_name === "string") {
+    supplier_name = supplier_name.trim();
+  }
+
+  if (typeof supplier_contact === "string") {
+    supplier_contact = supplier_contact.trim();
+  }
+
+  if (typeof supplier_address === "string") {
+    supplier_address = supplier_address.trim();
+  }
+
   try {
     await db.query(
       "INSERT INTO supplier (supplier_name, supplier_contact, supplier_address) VALUES ($1, $2, $3)",
       [supplier_name, supplier_contact, supplier_address]
     );
 
-    return res.status(200).json({
-      status: 200,
+    return res.status(201).json({
+      status: 201,
       message: "Success add supplier",
     });
   } catch (err) {
     console.log(err);
-    return res.status(400).json({
-      status: 400,
-      message: err.message,
+    return res.status(5000).json({
+      status: 500,
+      message: "Internal server error",
     });
   }
 });
