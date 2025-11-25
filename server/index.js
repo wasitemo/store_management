@@ -350,7 +350,7 @@ app.get("/warehouse", verifyToken, async (req, res) => {
   }
 });
 
-app.post("/add-warehouse", verifyToken, async (req, res) => {
+app.post("/warehouse", verifyToken, async (req, res) => {
   let { warehouse_name, warehouse_address } = req.body;
 
   if (!warehouse_name) {
@@ -365,21 +365,32 @@ app.post("/add-warehouse", verifyToken, async (req, res) => {
     });
   }
 
+  if (typeof warehouse_name === "string") {
+    warehouse_name = warehouse_name.trim();
+  }
+
+  if (typeof warehouse_address === "string") {
+    warehouse_address = warehouse_address.trim();
+  }
+
   try {
     await db.query(
       "INSERT INTO warehouse (warehouse_name, warehouse_address) VALUES ($1, $2)",
       [warehouse_name, warehouse_address]
     );
 
-    return res.status(200).json({
-      status: 200,
-      message: "Success add warehouse",
+    return res.status(201).json({
+      status: 201,
+      message: {
+        warehouse_name: warehouse_name,
+        warehouse_address: warehouse_address,
+      },
     });
   } catch (err) {
     console.error(err);
-    return res.status(400).json({
-      status: 400,
-      message: err.message,
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
     });
   }
 });
