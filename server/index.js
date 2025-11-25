@@ -422,7 +422,7 @@ app.get("/warehouse/:warehouse_id", verifyToken, async (req, res) => {
   }
 });
 
-app.patch("/update-warehouse/:warehouse_id", verifyToken, async (req, res) => {
+app.patch("/warehouse/:warehouse_id", verifyToken, async (req, res) => {
   let reqId = parseInt(req.params.warehouse_id);
   let update = req.body;
   let keys = Object.keys(update);
@@ -444,6 +444,12 @@ app.patch("/update-warehouse/:warehouse_id", verifyToken, async (req, res) => {
     });
   }
 
+  for (let k of keys) {
+    if (typeof k === "string") {
+      update[k] = update[k].trim();
+    }
+  }
+
   let setQuery = keys.map((key, index) => `${key} = $${index + 1}`).join(",");
   let values = Object.values(update);
 
@@ -461,9 +467,9 @@ app.patch("/update-warehouse/:warehouse_id", verifyToken, async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    return res.status(400).json({
-      status: 400,
-      message: err.message,
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
     });
   }
 });
