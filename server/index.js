@@ -2733,99 +2733,106 @@ app.get("/order-discount/:discount_id", verifyToken, async (req, res) => {
   }
 });
 
-app.patch(
-  "/update-order-discount/:discount_id",
-  verifyToken,
-  async (req, res) => {
-    let reqId = parseInt(req.params.discount_id);
-    let body = req.body;
-    let fields = [
-      "discount_name",
-      "discount_type",
-      "discount_value",
-      "discount_start",
-      "discount_end",
-      "discount_status",
-    ];
-    let keys = Object.keys(body);
-    let invalidField = keys.filter((k) => !fields.includes(k));
+app.patch("order-discount/:discount_id", verifyToken, async (req, res) => {
+  let reqId = parseInt(req.params.discount_id);
+  let body = req.body;
+  let fields = [
+    "discount_name",
+    "discount_type",
+    "discount_value",
+    "discount_start",
+    "discount_end",
+    "discount_status",
+  ];
+  let keys = Object.keys(body);
+  let invalidField = keys.filter((k) => !fields.includes(k));
 
-    if (invalidField.length > 0) {
-      return res.status(400).json({
-        status: 400,
-        message: "Invalid field",
-        invalidField,
-      });
+  if (invalidField.length > 0) {
+    return res.status(400).json({
+      status: 400,
+      message: "Invalid field",
+      invalidField,
+    });
+  }
+
+  if (keys.length === 0) {
+    return res.status(400).json({
+      status: 400,
+      message: "No items updated",
+    });
+  }
+
+  if (typeof body.discount_type === "string") {
+    body.discount_type = body.discount_type.toLowerCase().trim();
+  }
+
+  if (typeof body.discount_name === "string") {
+    body.discount_name = body.discount_name.trim();
+  }
+
+  if (typeof body.discount_start === "string") {
+    body.discount_start = body.discount_start.trim();
+  }
+
+  if (typeof body.discount_end === "string") {
+    body.discount_end = body.discount_end.trim();
+  }
+
+  if (typeof body.discount_value === "string") {
+    if (body.discount_type === "percentage") {
+      body.discount_value = convertionToDecimal(body.discount_value);
+    } else if (body.discount_type === "fixed") {
+      body.discount_value = convertionToNumber(body.discount_value);
     }
+  }
 
-    if (keys.length === 0) {
-      return res.status(400).json({
-        status: 400,
-        message: "No items updated",
-      });
-    }
+  let setQuery = keys.map((key, index) => `${key} = $${index + 1}`).join(", ");
+  let values = Object.values(body);
 
-    if (typeof body.discount_type === "string") {
-      body.discount_type = body.discount_type.toLowerCase();
-    }
-
-    if (typeof body.discount_value === "string") {
-      if (body.discount_type === "percentage") {
-        body.discount_value = convertionToDecimal(body.discount_value);
-      } else if (body.discount_type === "fixed") {
-        body.discount_value = convertionToNumber(body.discount_value);
-      }
-    }
-
-    let setQuery = keys
-      .map((key, index) => `${key} = $${index + 1}`)
-      .join(", ");
-    let values = Object.values(body);
-
-    try {
-      let refreshToken = req.cookies.refreshToken;
-
+  try {
+    let refreshToken = req.cookies.refreshToken;
+    let account = await new Promise((resolve, reject) => {
       jwt.verify(
         refreshToken,
         process.env.JWT_REFRESH_SECRET,
-        async (err, account) => {
-          let employeeQuery = await db.query(
-            "SELECT employee.employee_id FROM employee JOIN employee_account ON employee_account.employee_id = employee.employee_id WHERE employee_account.employee_account_id = $1",
-            [account.id]
-          );
-          let employeeId = employeeQuery.rows[0].employee_id;
-
-          if (err) {
-            return res.status(400).json({
-              status: 400,
-              message: "Token is no longer valid",
-            });
-          } else {
-            setQuery += `, employee_id = $${keys.length + 1}`;
-
-            await db.query(
-              `UPDATE discount SET ${setQuery} WHERE discount_id = $${
-                keys.length + 2
-              }`,
-              [...values, employeeId, reqId]
-            );
-
-            return res.status(200).json({
-              status: 200,
-              message: "Success updated data",
-            });
-          }
+        (err, account) => {
+          if (err) return reject(err);
+          resolve(account);
         }
       );
-    } catch (err) {
-      console.error(err);
-      return res.status(400).json({
-        status: 400,
-        message: err.message,
-      });
-    }
+    });
+
+    let employeeQuery = await db.query(
+      `
+        SELECT employee.employee_id
+        FROM employee
+        JOIN employee_account
+        ON employee_account.employee_id = employee.employee_id
+        WHERE employee.employee_id = $1
+    `,
+      [account.id]
+    );
+    let employeeId = employeeQuery.rows[0].employee_id;
+
+    setQuery += `, employee_id = $${keys.length + 1}`;
+
+    await db.query(
+      `UPDATE discount SET ${setQuery} WHERE discount_id = $${keys.length + 2}`,
+      [...values, employeeId, reqId]
+    );
+
+    return res.status(200).json({
+      status: 200,
+      message: "Success updated data",
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
+    });
   }
-);
+});
 
 // ACCOUNT
 app.get("/employee-accounts", verifyToken, async (req, res) => {
