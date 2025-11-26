@@ -3387,7 +3387,19 @@ app.post("/stock", async (req, res) => {
   }
 
   if (typeof stock_status === "string") {
-    stock_status = stock_status.toLowerCase();
+    stock_status = stock_status.toLowerCase().trim();
+  }
+
+  if (typeof imei_1 === "string") {
+    imei_1 = imei_1.trim();
+  }
+
+  if (typeof imei_2 === "string") {
+    imei_2 = imei_2.trim();
+  }
+
+  if (typeof sn === "string") {
+    sn = sn.trim();
   }
 
   try {
@@ -3412,16 +3424,16 @@ app.post("/stock", async (req, res) => {
 
     await db.query("COMMIT");
 
-    return res.json({
-      status: 200,
+    return res.status(201).json({
+      status: 201,
       message: "Success update stock",
     });
   } catch (err) {
     await db.query("ROLLBACK");
     console.error(err);
-    return res.status(400).json({
-      status: 400,
-      message: err.message,
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
     });
   }
 });
