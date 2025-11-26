@@ -1943,7 +1943,7 @@ app.get("/customer/:customer_id", verifyToken, async (req, res) => {
   }
 });
 
-app.patch("/update-customer/:customer_id", verifyToken, async (req, res) => {
+app.patch("/customer/:customer_id", verifyToken, async (req, res) => {
   let reqId = parseInt(req.params.customer_id);
   let update = req.body;
   let keys = Object.keys(update);
@@ -2019,7 +2019,7 @@ app.get("/payment-methods", verifyToken, async (req, res) => {
   }
 });
 
-app.post("/add-payment-methode", verifyToken, async (req, res) => {
+app.post("/payment-method", verifyToken, async (req, res) => {
   let { payment_methode_name } = req.body;
 
   if (!payment_methode_name) {
@@ -2029,21 +2029,25 @@ app.post("/add-payment-methode", verifyToken, async (req, res) => {
     });
   }
 
+  if (typeof payment_methode_name === "string") {
+    payment_methode_name = payment_methode_name.trim();
+  }
+
   try {
     await db.query(
       "INSERT INTO payment_methode (payment_methode_name) VALUES ($1)",
       [payment_methode_name]
     );
 
-    return res.status(200).json({
-      status: 200,
+    return res.status(201).json({
+      status: 201,
       message: "Success add payment methode",
     });
   } catch (err) {
     console.error(err);
-    return res.status(400).json({
-      status: 400,
-      message: err.message,
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
     });
   }
 });
