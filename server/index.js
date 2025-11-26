@@ -2871,6 +2871,31 @@ app.get("/employee-accounts", verifyToken, async (req, res) => {
   }
 });
 
+app.get("/employee-account", verifyToken, async (req, res) => {
+  try {
+    let query = await db.query("SELECT * FROM employee");
+    let result = query.rows;
+
+    if (query.rows.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: "Data not found",
+      });
+    }
+
+    return res.status(200).json({
+      status: 200,
+      data: result,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
+    });
+  }
+});
+
 app.post("/create-account", verifyToken, async (req, res) => {
   let { employee_id, username, password, role, account_status } = req.body;
 
@@ -2902,7 +2927,19 @@ app.post("/create-account", verifyToken, async (req, res) => {
   }
 
   if (typeof account_status === "string") {
-    account_status = account_status.toLowerCase();
+    account_status = account_status.toLowerCase().trim();
+  }
+
+  if (typeof account_name === "string") {
+    account_name = account_name.trim();
+  }
+
+  if (typeof password === "string") {
+    password = password.trim();
+  }
+
+  if (typeof role === "string") {
+    role = role.trim();
   }
 
   try {
@@ -2912,8 +2949,8 @@ app.post("/create-account", verifyToken, async (req, res) => {
     );
 
     if (checkResult.rows.length > 0) {
-      return res.status(400).json({
-        status: 400,
+      return res.status(409).json({
+        status: 409,
         message: "Username already used",
       });
     } else {
