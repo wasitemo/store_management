@@ -1965,6 +1965,12 @@ app.patch("/update-customer/:customer_id", verifyToken, async (req, res) => {
     });
   }
 
+  for (let k of keys) {
+    if (typeof k === "string") {
+      update[k] = update.trim();
+    }
+  }
+
   let setQuery = keys.map((key, index) => `${key} = $${index + 1}`).join(",");
   let values = Object.values(update);
 
@@ -1980,9 +1986,9 @@ app.patch("/update-customer/:customer_id", verifyToken, async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    return res.status(400).json({
-      status: 400,
-      message: err.message,
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
     });
   }
 });
