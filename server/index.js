@@ -2211,7 +2211,7 @@ app.get("/stuff-discount", verifyToken, async (req, res) => {
   }
 });
 
-app.post("/add-stuff-discount", verifyToken, async (req, res) => {
+app.post("/stuff-discount", verifyToken, async (req, res) => {
   let {
     stuff_id,
     discount_name,
@@ -2221,18 +2221,6 @@ app.post("/add-stuff-discount", verifyToken, async (req, res) => {
     discount_end,
     discount_status,
   } = req.body;
-
-  if (typeof discount_type === "string") {
-    discount_type = discount_type.toLowerCase();
-  }
-
-  if (typeof discount_value === "string") {
-    if (discount_type === "percentage") {
-      discount_value = convertionToDecimal(discount_value);
-    } else if (discount_type === "fixed") {
-      discount_value = convertionToNumber(discount_value);
-    }
-  }
 
   if (!stuff_id) {
     return res.status(400).json({
@@ -2271,62 +2259,89 @@ app.post("/add-stuff-discount", verifyToken, async (req, res) => {
     });
   }
 
+  if (typeof discount_type === "string") {
+    discount_type = discount_type.toLowerCase().trim();
+  }
+
+  if (typeof discount_value === "string") {
+    if (discount_type === "percentage") {
+      discount_value = convertionToDecimal(discount_value);
+    } else if (discount_type === "fixed") {
+      discount_value = convertionToNumber(discount_value);
+    }
+  }
+
+  if (typeof discount_name === "string") {
+    discount_name = discount_name.trim();
+  }
+
+  if (typeof discount_start === "string") {
+    discount_start = discount_start.trim();
+  }
+
+  if (typeof discount_end === "string") {
+    discount_end = discount_end.trim();
+  }
+
   try {
     await db.query("BEGIN");
 
     let refreshToken = req.cookies.refreshToken;
-
-    jwt.verify(
-      refreshToken,
-      process.env.JWT_REFRESH_SECRET,
-      async (err, account) => {
-        let employeeQuery = await db.query(
-          "SELECT employee.employee_id FROM employee JOIN employee_account ON employee_account.employee_id = employee.employee_id WHERE employee_account.employee_account_id = $1",
-          [account.id]
-        );
-        let employeeId = employeeQuery.rows[0].employee_id;
-
-        if (err) {
-          return res.status(400).json({
-            status: 400,
-            message: "Token is no longer valid",
-          });
-        } else {
-          let discountQuery = await db.query(
-            "INSERT INTO discount (employee_id, discount_name, discount_type, discount_value, started_time, ended_time, discount_status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING discount_id",
-            [
-              employeeId,
-              discount_name,
-              discount_type,
-              discount_value,
-              discount_start,
-              discount_end,
-              discount_status,
-            ]
-          );
-
-          let discountId = discountQuery.rows[0].discount_id;
-
-          await db.query(
-            "INSERT INTO stuff_discount (stuff_id, discount_id) VALUES ($1, $2)",
-            [stuff_id, discountId]
-          );
-
-          await db.query("COMMIT");
-
-          return res.status(200).json({
-            status: 200,
-            message: "Success add stuff discount",
-          });
+    let account = await new Promise((resolve, reject) => {
+      jwt.verify(
+        refreshToken,
+        process.env.JWT_REFRESH_SECRET,
+        (err, account) => {
+          if (err) return reject(err);
+          resolve(account);
         }
-      }
+      );
+    });
+
+    let employeeQuery = await db.query(
+      `
+        SELECT employee.employee_id
+        FROM employee
+        JOIN employee_account
+        ON employee_account.employee_id = employee.employee_id
+        WHERE employee.employee_id = $1
+    `,
+      [account.id]
     );
+    let employeeId = employeeQuery.rows[0].employee_id;
+
+    let discountQuery = await db.query(
+      "INSERT INTO discount (employee_id, discount_name, discount_type, discount_value, started_time, ended_time, discount_status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING discount_id",
+      [
+        employeeId,
+        discount_name,
+        discount_type,
+        discount_value,
+        discount_start,
+        discount_end,
+        discount_status,
+      ]
+    );
+
+    let discountId = discountQuery.rows[0].discount_id;
+
+    await db.query(
+      "INSERT INTO stuff_discount (stuff_id, discount_id) VALUES ($1, $2)",
+      [stuff_id, discountId]
+    );
+
+    await db.query("COMMIT");
+
+    return res.status(201).json({
+      status: 201,
+      message: "Success add stuff discount",
+    });
   } catch (err) {
     db.query("ROLLBACK");
     console.error(err);
-    return res.status(400).json({
-      status: 400,
-      message: err.message,
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
     });
   }
 });
