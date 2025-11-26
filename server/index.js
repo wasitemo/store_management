@@ -3098,7 +3098,7 @@ app.get("/employee-account/:account_id", verifyToken, async (req, res) => {
 });
 
 app.patch(
-  "/update-account/:employee_account_id",
+  "/employee-account/:employee_account_id",
   verifyToken,
   async (req, res) => {
     let reqId = parseInt(req.params.employee_account_id);
@@ -3132,6 +3132,10 @@ app.patch(
       let expextedType = fields[key];
       let value = update[key];
 
+      if (expextedType === "string") {
+        update[key] = value.trim();
+      }
+
       if (expextedType === "number") {
         update[key] = convertionToNumber(value);
       }
@@ -3158,9 +3162,9 @@ app.patch(
       });
     } catch (err) {
       console.error(err);
-      return res.status(400).json({
-        status: 400,
-        message: err.message,
+      return res.status(500).json({
+        status: 500,
+        message: "Internal server error",
       });
     }
   }
