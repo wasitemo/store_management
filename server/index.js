@@ -3321,7 +3321,42 @@ app.get("/stock-history", verifyToken, async (req, res) => {
   }
 });
 
-app.post("/add-stock", async (req, res) => {
+app.get("/stock", verifyToken, async (req, res) => {
+  try {
+    let stuffQuery = await db.query("SELECT * FROM stuff");
+    let warehouseQuery = await db.query("SELECT * FROM warehouse");
+
+    let stuffResult = stuffQuery.rows;
+    let warehouseResult = warehouseQuery.rows;
+
+    if (stuffQuery.rows.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: "Stuff data not found",
+      });
+    }
+
+    if (warehouseQuery.rows.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: "Warehouse data not found",
+      });
+    }
+
+    return res.status(200).json({
+      status: 200,
+      data: { stuff: stuffResult, warehouse: warehouseResult },
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
+    });
+  }
+});
+
+app.post("/stock", async (req, res) => {
   let { warehouse_id, stuff_id, imei_1, imei_2, sn } = req.body;
 
   if (!warehouse_id) {
