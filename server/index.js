@@ -2852,8 +2852,8 @@ app.get("/employee-accounts", verifyToken, async (req, res) => {
     let result = query.rows;
 
     if (result.length === 0) {
-      return res.status(400).json({
-        status: 400,
+      return res.status(404).json({
+        status: 404,
         message: "Data not found",
       });
     }
@@ -2864,9 +2864,9 @@ app.get("/employee-accounts", verifyToken, async (req, res) => {
     });
   } catch (err) {
     console.log(err);
-    return res.status(400).json({
-      status: 400,
-      message: err.message,
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
     });
   }
 });
