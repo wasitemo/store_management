@@ -2186,6 +2186,31 @@ app.get("/stuff-discounts", verifyToken, async (req, res) => {
   }
 });
 
+app.get("/stuff-discount", verifyToken, async (req, res) => {
+  try {
+    let query = await db.query("SELECT * FROM stuff");
+    let result = query.rows;
+
+    if (query.rows.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: "Stuff data not found",
+      });
+    }
+
+    return res.status(200).json({
+      status: 200,
+      stuff: result,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
+    });
+  }
+});
+
 app.post("/add-stuff-discount", verifyToken, async (req, res) => {
   let {
     stuff_id,
