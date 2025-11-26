@@ -2441,6 +2441,18 @@ app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
     body.discount_type = body.discount_type.toLowerCase().trim();
   }
 
+  if (typeof body.discount_name === "string") {
+    body.discount_name = body.discount_name.trim();
+  }
+
+  if (typeof body.discount_start === "string") {
+    body.discount_start = body.discount_start.trim();
+  }
+
+  if (typeof body.discount_end === "string") {
+    body.discount_end = body.discount_end.trim();
+  }
+
   if (typeof body.discount_value === "string") {
     if (body.discount_type === "percentage") {
       body.discount_value = convertionToDecimal(body.discount_value);
@@ -2560,7 +2572,7 @@ app.get("/order-discounts", verifyToken, async (req, res) => {
   }
 });
 
-app.post("/add-order-discount", verifyToken, async (req, res) => {
+app.post("/order-discount", verifyToken, async (req, res) => {
   let {
     discount_name,
     discount_type,
@@ -2569,18 +2581,6 @@ app.post("/add-order-discount", verifyToken, async (req, res) => {
     discount_end,
     discount_status,
   } = req.body;
-
-  if (typeof discount_type === "string") {
-    discount_type = discount_type.toLowerCase();
-  }
-
-  if (typeof discount_value === "string") {
-    if (discount_type === "percentage") {
-      discount_value = convertionToDecimal(discount_value);
-    } else if (discount_type === "fixed") {
-      discount_value = convertionToNumber(discount_value);
-    }
-  }
 
   if (!discount_name) {
     return res.status(400).json({
@@ -2614,50 +2614,77 @@ app.post("/add-order-discount", verifyToken, async (req, res) => {
     });
   }
 
+  if (typeof discount_type === "string") {
+    discount_type = discount_type.toLowerCase();
+  }
+
+  if (typeof discount_name === "string") {
+    discount_name = discount_name.trim();
+  }
+
+  if (typeof discount_start === "string") {
+    discount_start = discount_start.trim();
+  }
+
+  if (typeof discount_end === "string") {
+    discount_end = discount_end.trim();
+  }
+
+  if (typeof discount_value === "string") {
+    if (discount_type === "percentage") {
+      discount_value = convertionToDecimal(discount_value);
+    } else if (discount_type === "fixed") {
+      discount_value = convertionToNumber(discount_value);
+    }
+  }
+
   try {
     let refreshToken = req.cookies.refreshToken;
-
-    jwt.verify(
-      refreshToken,
-      process.env.JWT_REFRESH_SECRET,
-      async (err, account) => {
-        if (err) {
-          return res.status(400).json({
-            status: 400,
-            message: "Token is no longer valid",
-          });
-        } else {
-          let employeeQuery = await db.query(
-            "SELECT employee.employee_id FROM employee JOIN employee_account ON employee_account.employee_id = employee.employee_id WHERE employee_account.employee_account_id = $1",
-            [account.id]
-          );
-          let employeeId = employeeQuery.rows[0].employee_id;
-
-          await db.query(
-            "INSERT INTO discount (employee_id, discount_name, discount_type, discount_value, started_time, ended_time, discount_status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING discount_id",
-            [
-              employeeId,
-              discount_name,
-              discount_type,
-              discount_value,
-              discount_start,
-              discount_end,
-              discount_status,
-            ]
-          );
-
-          return res.status(200).json({
-            status: 200,
-            message: "Success add discount",
-          });
+    let account = await new Promise((resolve, reject) => {
+      jwt.verify(
+        refreshToken,
+        process.env.JWT_REFRESH_SECRET,
+        (err, account) => {
+          if (err) return reject(err);
+          resolve(account);
         }
-      }
+      );
+    });
+
+    let employeeQuery = await db.query(
+      `
+        SELECT employee.employee_id
+        FROM employee
+        JOIN employee_account
+        ON employee_account.employee_id = employee.employee_id
+        WHERE employee.employee_id = $1
+    `,
+      [account.id]
     );
+    let employeeId = employeeQuery.rows[0].employee_id;
+
+    await db.query(
+      "INSERT INTO discount (employee_id, discount_name, discount_type, discount_value, started_time, ended_time, discount_status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING discount_id",
+      [
+        employeeId,
+        discount_name,
+        discount_type,
+        discount_value,
+        discount_start,
+        discount_end,
+        discount_status,
+      ]
+    );
+
+    return res.status(201).json({
+      status: 201,
+      message: "Success add discount",
+    });
   } catch (err) {
     console.error(err);
-    return res.status(400).json({
-      status: 400,
-      message: err.message,
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
     });
   }
 });
