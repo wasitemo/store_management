@@ -2896,7 +2896,7 @@ app.get("/employee-account", verifyToken, async (req, res) => {
   }
 });
 
-app.post("/create-account", verifyToken, async (req, res) => {
+app.post("/register", verifyToken, async (req, res) => {
   let { employee_id, username, password, role, account_status } = req.body;
 
   if (!employee_id) {
@@ -2930,8 +2930,8 @@ app.post("/create-account", verifyToken, async (req, res) => {
     account_status = account_status.toLowerCase().trim();
   }
 
-  if (typeof account_name === "string") {
-    account_name = account_name.trim();
+  if (typeof username === "string") {
+    username = username.trim();
   }
 
   if (typeof password === "string") {
@@ -2963,18 +2963,18 @@ app.post("/create-account", verifyToken, async (req, res) => {
             [employee_id, username, hash, role, account_status]
           );
 
-          return res.status(200).json({
-            status: 200,
-            message: "Create account success",
+          return res.status(201).json({
+            status: 201,
+            message: "Register account success",
           });
         }
       });
     }
   } catch (err) {
     console.error(err);
-    return res.status(400).json({
-      status: 400,
-      message: err.message,
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
     });
   }
 });
