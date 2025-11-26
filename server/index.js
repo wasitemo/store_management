@@ -2999,8 +2999,8 @@ app.post("/login", async (req, res) => {
       }
 
       if (accountQuery.rows[0].account_status === "non-active") {
-        return res.status(400).json({
-          status: 400,
+        return res.status(401).json({
+          status: 401,
           message: "You can't access this account anymore",
         });
       }
@@ -3048,8 +3048,8 @@ app.post("/login", async (req, res) => {
     }
   } catch (err) {
     console.error(err);
-    return res.status(400).json({
-      status: 400,
+    return res.status(500).json({
+      status: 500,
       message: err.message,
     });
   }
