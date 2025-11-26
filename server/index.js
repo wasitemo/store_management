@@ -1862,7 +1862,7 @@ app.get("/customers", verifyToken, async (req, res) => {
   }
 });
 
-app.post("/add-customer", verifyToken, async (req, res) => {
+app.post("/customer", verifyToken, async (req, res) => {
   let { customer_name, customer_contact, customer_address } = req.body;
 
   if (!customer_name) {
@@ -1882,21 +1882,33 @@ app.post("/add-customer", verifyToken, async (req, res) => {
     });
   }
 
+  if (typeof customer_name === "string") {
+    customer_name = customer_name.trim();
+  }
+
+  if (typeof customer_contact === "string") {
+    customer_contact = customer_contact.trim();
+  }
+
+  if (typeof customer_address === "string") {
+    customer_address = customer_address.trim();
+  }
+
   try {
     await db.query(
       "INSERT INTO customer (customer_name, customer_contact, customer_address) VALUES ($1, $2, $3)",
       [customer_name, customer_contact, customer_address]
     );
 
-    return res.status(200).json({
-      status: 200,
+    return res.status(201).json({
+      status: 201,
       message: "Success add customer",
     });
   } catch (err) {
     console.error(err);
-    return res.status(400).json({
-      status: 400,
-      message: err.message,
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
     });
   }
 });
