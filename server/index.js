@@ -3356,7 +3356,7 @@ app.get("/stock", verifyToken, async (req, res) => {
   }
 });
 
-app.post("/stock", async (req, res) => {
+app.post("/stock", verifyToken, async (req, res) => {
   let { warehouse_id, stuff_id, imei_1, imei_2, sn } = req.body;
 
   if (!warehouse_id) {
@@ -3438,89 +3438,95 @@ app.post("/stock", async (req, res) => {
   }
 });
 
-app.post("/upload-stock", upload.single("file"), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({
-      status: 400,
-      message: "File not found",
-    });
-  }
-
-  let filePath = req.file.path;
-  let ext = req.file.originalname.split(".").pop().toLowerCase();
-  let rows = [];
-
-  try {
-    if (ext === "csv") {
-      rows = await parseCSV(filePath);
-    } else if (ext === "xlsx" || ext === "xls") {
-      rows = parseExcel(filePath);
-    } else {
-      throw new Error("File format must be csv or excel");
+app.post(
+  "/upload-stock",
+  verifyToken,
+  upload.single("file"),
+  async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({
+        status: 400,
+        message: "File not found",
+      });
     }
 
-    if (rows.length === 0) {
-      throw new Error("Empty file or format is wrong");
-    }
+    let filePath = req.file.path;
+    let ext = req.file.originalname.split(".").pop().toLowerCase();
+    let rows = [];
 
-    await db.query("BEGIN");
-
-    for (let i = 0; i < rows.length; i++) {
-      let item = rows[i];
-
-      for (let key in item) {
-        if (typeof item[key] === "string") {
-          item[key] = item[key].toLowerCase();
-        }
+    try {
+      if (ext === "csv") {
+        rows = await parseCSV(filePath);
+      } else if (ext === "xlsx" || ext === "xls") {
+        rows = parseExcel(filePath);
+      } else {
+        throw new Error("File format must be csv or excel");
       }
 
-      let { warehouse_name, stuff_name, imei_1, imei_2, sn } = item;
+      if (rows.length === 0) {
+        throw new Error("Empty file or format is wrong");
+      }
 
-      let warehouseQuery = await db.query(
-        "SELECT warehouse_id FROM warehouse WHERE LOWER (warehouse_name) = $1",
-        [warehouse_name]
-      );
-      if (warehouseQuery.rows.length === 0)
-        throw new Error("Warehouse not registered");
-      let warehouseId = warehouseQuery.rows[0].warehouse_id;
+      await db.query("BEGIN");
 
-      let stuffQuery = await db.query(
-        "SELECT stuff_id FROM stuff WHERE LOWER (stuff_name) = $1",
-        [stuff_name]
-      );
-      if (stuffQuery.rows.length === 0) throw new Error("Stuff not registered");
-      let stuffId = stuffQuery.rows[0].stuff_id;
+      for (let i = 0; i < rows.length; i++) {
+        let item = rows[i];
 
-      let stuffInfoQuery = await db.query(
-        "INSERT INTO stuff_information (stuff_id, imei_1, imei_2, sn, stock_status) VALUES ($1, $2, $3, $4, 'ready') RETURNING stuff_information_id",
-        [stuffId, imei_1, imei_2, sn]
-      );
-      let stuffInfoId = stuffInfoQuery.rows[0].stuff_information_id;
+        for (let key in item) {
+          if (typeof item[key] === "string") {
+            item[key] = item[key].toLowerCase().trim();
+          }
+        }
 
-      await db.query(
-        "INSERT INTO stock (warehouse_id, stuff_id, stuff_information_id, stock_type) VALUES ($1, $2, $3, 'in')",
-        [warehouseId, stuffId, stuffInfoId]
-      );
-      await db.query(
-        "UPDATE stuff SET total_stock = (SELECT COUNT(*) FROM stuff_information WHERE stuff_id = $1 AND stock_status = 'ready') WHERE stuff_id = $2",
-        [stuffId, stuffId]
-      );
+        let { warehouse_name, stuff_name, imei_1, imei_2, sn } = item;
+
+        let warehouseQuery = await db.query(
+          "SELECT warehouse_id FROM warehouse WHERE LOWER (warehouse_name) = $1",
+          [warehouse_name]
+        );
+        if (warehouseQuery.rows.length === 0)
+          throw new Error("Warehouse not registered");
+        let warehouseId = warehouseQuery.rows[0].warehouse_id;
+
+        let stuffQuery = await db.query(
+          "SELECT stuff_id FROM stuff WHERE LOWER (stuff_name) = $1",
+          [stuff_name]
+        );
+        if (stuffQuery.rows.length === 0)
+          throw new Error("Stuff not registered");
+        let stuffId = stuffQuery.rows[0].stuff_id;
+
+        let stuffInfoQuery = await db.query(
+          "INSERT INTO stuff_information (stuff_id, imei_1, imei_2, sn, stock_status) VALUES ($1, $2, $3, $4, 'ready') RETURNING stuff_information_id",
+          [stuffId, imei_1, imei_2, sn]
+        );
+        let stuffInfoId = stuffInfoQuery.rows[0].stuff_information_id;
+
+        await db.query(
+          "INSERT INTO stock (warehouse_id, stuff_id, stuff_information_id, stock_type) VALUES ($1, $2, $3, 'in')",
+          [warehouseId, stuffId, stuffInfoId]
+        );
+        await db.query(
+          "UPDATE stuff SET total_stock = (SELECT COUNT(*) FROM stuff_information WHERE stuff_id = $1 AND stock_status = 'ready') WHERE stuff_id = $2",
+          [stuffId, stuffId]
+        );
+      }
+
+      await db.query("COMMIT");
+      return res.status(201).json({
+        status: 201,
+        message: "Success update stock",
+      });
+    } catch (err) {
+      await db.query("ROLLBACK");
+      console.error(err);
+      return res.status(500).json({
+        status: 500,
+        message: "Internal server error",
+      });
     }
-
-    await db.query("COMMIT");
-    return res.status(200).json({
-      status: 200,
-      message: "Success update stock",
-    });
-  } catch (err) {
-    await db.query("ROLLBACK");
-    console.error(err);
-    return res.status(400).json({
-      status: 400,
-      message: err.message,
-    });
   }
-});
+);
 
 // CUSTOMER ORDER
 app.get("/customer-orders", verifyToken, async (req, res) => {
