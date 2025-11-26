@@ -2083,10 +2083,10 @@ app.get("/payment-method/:payment_method_id", verifyToken, async (req, res) => {
 });
 
 app.patch(
-  "/update-payment-methode/:payment_methode_id",
+  "/payment-method/:payment_method_id",
   verifyToken,
   async (req, res) => {
-    let reqId = parseInt(req.params.payment_methode_id);
+    let reqId = parseInt(req.params.payment_method_id);
     let update = req.body;
     let keys = Object.keys(update);
     let fields = ["payment_methode_name"];
@@ -2107,6 +2107,12 @@ app.patch(
       });
     }
 
+    for (let k of keys) {
+      if (typeof k === "string") {
+        update[k] = update[k].trim();
+      }
+    }
+
     let setQuery = keys.map((key, index) => `${key} = $${index + 1}`).join(",");
     let values = Object.values(update);
 
@@ -2124,9 +2130,9 @@ app.patch(
       });
     } catch (err) {
       console.error(err);
-      return res.status(400).json({
-        status: 400,
-        message: err.message,
+      return res.status(500).json({
+        status: 500,
+        message: "Internal server error",
       });
     }
   }
