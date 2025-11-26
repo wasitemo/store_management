@@ -2377,7 +2377,10 @@ app.get("/stuff-discount/:stuff_id", verifyToken, async (req, res) => {
     `,
       [reqId]
     );
+    let stuffQuery = await db.query("SELECT * FROM stuff");
+
     let result = query.rows[0];
+    let stuffResult = stuffQuery.rows;
 
     if (query.rows.length === 0) {
       return res.status(404).json({
@@ -2386,9 +2389,16 @@ app.get("/stuff-discount/:stuff_id", verifyToken, async (req, res) => {
       });
     }
 
+    if (stuffQuery.rows.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: "Stuff data not found",
+      });
+    }
+
     return res.status(200).json({
       status: 200,
-      data: result,
+      data: { stuff_discount: result, stuff: stuffResult },
     });
   } catch (err) {
     console.log(err);
@@ -2399,119 +2409,118 @@ app.get("/stuff-discount/:stuff_id", verifyToken, async (req, res) => {
   }
 });
 
-app.patch(
-  "/update-stuff-discount/:discount_id",
-  verifyToken,
-  async (req, res) => {
-    let reqId = parseInt(req.params.discount_id);
-    let body = req.body;
-    let discountFields = [
-      "discount_name",
-      "discount_type",
-      "discount_value",
-      "discount_start",
-      "discount_end",
-      "discount_status",
-    ];
-    let stuffDiscountFields = ["stuff_id"];
-    let discountFieldsUpdate = {};
+app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
+  let reqId = parseInt(req.params.discount_id);
+  let body = req.body;
+  let discountFields = [
+    "discount_name",
+    "discount_type",
+    "discount_value",
+    "discount_start",
+    "discount_end",
+    "discount_status",
+  ];
+  let stuffDiscountFields = ["stuff_id"];
+  let discountFieldsUpdate = {};
 
-    if (typeof body.discount_type === "string") {
-      body.discount_type = body.discount_type.toLowerCase();
+  for (let key of discountFields) {
+    if (body[key] !== undefined) {
+      discountFieldsUpdate[key] = body[key];
     }
+  }
 
-    if (typeof body.discount_value === "string") {
-      if (body.discount_type === "percentage") {
-        body.discount_value = convertionToDecimal(body.discount_value);
-      } else if (body.discount_type === "fixed") {
-        body.discount_value = convertionToNumber(body.discount_value);
-      }
+  let stuffDiscountFieldsUpdate = {};
+
+  for (let key of stuffDiscountFields) {
+    if (body[key] !== undefined) {
+      stuffDiscountFieldsUpdate[key] = body[key];
     }
+  }
 
-    for (let key of discountFields) {
-      if (body[key] !== undefined) {
-        discountFieldsUpdate[key] = body[key];
-      }
+  if (typeof body.discount_type === "string") {
+    body.discount_type = body.discount_type.toLowerCase().trim();
+  }
+
+  if (typeof body.discount_value === "string") {
+    if (body.discount_type === "percentage") {
+      body.discount_value = convertionToDecimal(body.discount_value);
+    } else if (body.discount_type === "fixed") {
+      body.discount_value = convertionToNumber(body.discount_value);
     }
+  }
 
-    let stuffDiscountFieldsUpdate = {};
+  try {
+    await db.query("BEGIN");
 
-    for (let key of stuffDiscountFields) {
-      if (body[key] !== undefined) {
-        stuffDiscountFieldsUpdate[key] = body[key];
-      }
-    }
-
-    try {
-      await db.query("BEGIN");
-
-      let refreshToken = req.cookies.refreshToken;
-
+    let refreshToken = req.cookies.refreshToken;
+    let account = await new Promise((resolve, reject) => {
       jwt.verify(
         refreshToken,
         process.env.JWT_REFRESH_SECRET,
-        async (err, account) => {
-          let employeeQuery = await db.query(
-            "SELECT employee.employee_id FROM employee JOIN employee_account ON employee_account.employee_id = employee.employee_id WHERE employee_account.employee_account_id = $1",
-            [account.id]
-          );
-          let employeeId = employeeQuery.rows[0].employee_id;
-
-          if (err) {
-            return res.status(400).json({
-              status: 400,
-              message: "Token is no longer valid",
-            });
-          } else {
-            if (Object.keys(discountFieldsUpdate.length > 0)) {
-              let setQuery = Object.keys(discountFieldsUpdate)
-                .map((key, index) => `${key} = $${index + 1}`)
-                .join(", ");
-              let values = Object.values(discountFieldsUpdate);
-
-              setQuery += `, employee_id = $${values.length + 1}`;
-
-              await db.query(
-                `UPDATE discount SET ${setQuery} WHERE discount_id = $${
-                  values.length + 2
-                }`,
-                [...values, employeeId, reqId]
-              );
-            }
-
-            if (Object.keys(stuffDiscountFieldsUpdate).length > 0) {
-              let setQuery = Object.keys(stuffDiscountFieldsUpdate)
-                .map((key, index) => `${key} = $${index + 1}`)
-                .join(", ");
-              let values = Object.values(stuffDiscountFieldsUpdate);
-
-              await db.query(
-                `UPDATE stuff_discount SET ${setQuery} WHERE discount_id = $${
-                  values.length + 1
-                }`,
-                [...values, reqId]
-              );
-            }
-
-            return res.status(200).json({
-              status: 200,
-              message: "Success updated data",
-            });
-          }
+        (err, account) => {
+          if (err) return reject(err);
+          resolve(account);
         }
       );
+    });
 
-      await db.query("COMMIT");
-    } catch (err) {
-      await db.query("ROLLBACK");
-      console.error(err);
-      return res.status(400).json({
-        status: 400,
-        message: err.message,
-      });
+    let employeeQuery = await db.query(
+      `
+        SELECT employee.employee_id
+        FROM employee
+        JOIN employee_account
+        ON employee_account.employee_id = employee.employee_id
+        WHERE employee.employee_id = $1
+    `,
+      [account.id]
+    );
+    let employeeId = employeeQuery.rows[0].employee_id;
+
+    if (Object.keys(discountFieldsUpdate.length > 0)) {
+      let setQuery = Object.keys(discountFieldsUpdate)
+        .map((key, index) => `${key} = $${index + 1}`)
+        .join(", ");
+      let values = Object.values(discountFieldsUpdate);
+
+      setQuery += `, employee_id = $${values.length + 1}`;
+
+      await db.query(
+        `UPDATE discount SET ${setQuery} WHERE discount_id = $${
+          values.length + 2
+        }`,
+        [...values, employeeId, reqId]
+      );
     }
+
+    if (Object.keys(stuffDiscountFieldsUpdate).length > 0) {
+      let setQuery = Object.keys(stuffDiscountFieldsUpdate)
+        .map((key, index) => `${key} = $${index + 1}`)
+        .join(", ");
+      let values = Object.values(stuffDiscountFieldsUpdate);
+
+      await db.query(
+        `UPDATE stuff_discount SET ${setQuery} WHERE discount_id = $${
+          values.length + 1
+        }`,
+        [...values, reqId]
+      );
+    }
+
+    await db.query("COMMIT");
+
+    return res.status(200).json({
+      status: 200,
+      message: "Success updated data",
+    });
+  } catch (err) {
+    await db.query("ROLLBACK");
+    console.error(err);
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
+    });
   }
-);
+});
 
 app.get("/order-discounts", verifyToken, async (req, res) => {
   try {
