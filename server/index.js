@@ -3218,7 +3218,7 @@ app.post("/refresh-token", async (req, res) => {
   }
 });
 
-app.post("/logout", async (req, res) => {
+app.post("/logout", verifyToken, async (req, res) => {
   try {
     let refreshToken = req.cookies.refreshToken;
 
@@ -3237,7 +3237,7 @@ app.post("/logout", async (req, res) => {
     console.error(err);
     return res.status(500).json({
       status: 500,
-      message: "Server error",
+      message: "Internal server error",
     });
   }
 });
