@@ -3170,7 +3170,7 @@ app.patch(
   }
 );
 
-app.use("/refresh-token", async (req, res) => {
+app.post("/refresh-token", async (req, res) => {
   try {
     let refreshToken = req.cookies.refreshToken;
 
@@ -3188,16 +3188,16 @@ app.use("/refresh-token", async (req, res) => {
     let queryToken = query.rows[0];
 
     if (!queryToken) {
-      return res.status(403).json({
-        status: 403,
+      return res.status(401).json({
+        status: 401,
         message: "Invalid refresh token",
       });
     }
 
     jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, (err, account) => {
       if (err) {
-        return res.status(403).json({
-          status: 403,
+        return res.status(401).json({
+          status: 401,
           message: "Token is no longer valid",
         });
       }
@@ -3213,7 +3213,7 @@ app.use("/refresh-token", async (req, res) => {
     console.error(err);
     return res.status(500).json({
       status: 500,
-      message: "Server error",
+      message: "Internal server error",
     });
   }
 });
