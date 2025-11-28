@@ -3754,7 +3754,7 @@ app.get("/customer-order", verifyToken, async (req, res) => {
   }
 });
 
-app.post("/add-order", verifyToken, async (req, res) => {
+app.post("/customer-order", verifyToken, async (req, res) => {
   let {
     customer_id,
     warehouse_id,
@@ -3794,6 +3794,10 @@ app.post("/add-order", verifyToken, async (req, res) => {
 
   if (typeof payment === "string") {
     payment = convertionToNumber(payment);
+  }
+
+  if (typeof order_date === "string") {
+    order_date = order_date.trim();
   }
 
   let calculateQuantities = (items) => {
@@ -3883,45 +3887,36 @@ app.post("/add-order", verifyToken, async (req, res) => {
       { key: "imei_2", value: item.imei_2 },
       { key: "sn", value: item.sn },
     ].filter((stuff_id) => stuff_id.value);
-
     if (identifiers.length === 0) {
       throw new Error("No validated imei/sn provided for item");
     }
-
     let stuffQuery = await db.query(
       "SELECT stuff_name FROM stuff WHERE stuff_id = $1",
       [item.stuff_id]
     );
     let stuffName = stuffQuery.rows[0]?.stuff_name || "Unknwon stuff";
-
     let validStuffInfoId = null;
     let errors = [];
-
     for (let identifier of identifiers) {
       let { key, value } = identifier;
-
       let query = `
         SELECT * FROM stuff_information
         WHERE stuff_id = $1 AND ${key} = $2
       `;
       let result = await db.query(query, [item.stuff_id, value]);
-
       if (result.rows.length === 0) {
         errors.push(
           `Identifer ${key} "${value}" is not registered for ${stuffName} (ID: ${item.stuff_id})`
         );
         continue;
       }
-
       let row = result.rows[0];
-
       if (row.stock_status !== "ready") {
         errors.push(
           `Identifier ${key} "${value}" for ${stuffName} is already ${row.stock_status}`
         );
         continue;
       }
-
       if (validStuffInfoId && validStuffInfoId !== row.stuff_information_id) {
         errors.push(
           `Data inconsictency detected for ${stuffName}. The provided identifiers point to different internal records`
@@ -3930,17 +3925,14 @@ app.post("/add-order", verifyToken, async (req, res) => {
         validStuffInfoId = row.stuff_information_id;
       }
     }
-
     if (errors.length > 0) {
       throw new Error(errors.join(" "));
     }
-
     if (!validStuffInfoId) {
       throw new Error(
         `Could not determine valid stock information for ${stuffName}`
       );
     }
-
     return { stuff_information_id: validStuffInfoId };
   }
 
@@ -4022,6 +4014,22 @@ app.post("/add-order", verifyToken, async (req, res) => {
         warehouse_id
       );
 
+      if (typeof item.imei_1 === "string") {
+        item.imei_1 = item.imei_1.trim();
+      }
+
+      if (typeof item.imei_2 === "string") {
+        item.imei_2 = item.imei_2.trim();
+      }
+
+      if (typeof item.sn === "string") {
+        item.sn = item.sn.trim();
+      }
+
+      if (typeof item.barcode === "string") {
+        item.barcode = item.barcode.trim();
+      }
+
       await db.query(
         `
         INSERT INTO stock
@@ -4086,16 +4094,16 @@ app.post("/add-order", verifyToken, async (req, res) => {
       let stuffName = stuffQuery.rows[0].stuff_name;
 
       if (stuffWarehouseQuery.rows.length === 0) {
-        return res.status(400).json({
-          status: 400,
+        return res.status(404).json({
+          status: 404,
           message: `${stuffName} is not available in ${warehouseName}`,
         });
       }
 
       if (stockQuery.rows.length === 0) {
         await db.query("ROLLBACK");
-        return res.status(400).json({
-          status: 400,
+        return res.status(404).json({
+          status: 404,
           message: "Stuff not found",
         });
       }
@@ -4106,7 +4114,7 @@ app.post("/add-order", verifyToken, async (req, res) => {
         await db.query("ROLLBACK");
         return res.status(400).json({
           status: 400,
-          message: `Stock insufficient for stuff id ${q.stuff_id}`,
+          message: `Stock insufficient for ${stuffName}`,
         });
       }
 
@@ -4118,16 +4126,16 @@ app.post("/add-order", verifyToken, async (req, res) => {
 
     await db.query("COMMIT");
 
-    return res.status(200).json({
-      status: 200,
+    return res.status(201).json({
+      status: 201,
       message: "Success create order",
     });
   } catch (err) {
     await db.query("ROLLBACK");
     console.error("Transaction failed:", err);
-    return res.status(400).json({
-      status: 400,
-      message: err.message,
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
     });
   }
 });
