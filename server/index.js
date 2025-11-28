@@ -3667,8 +3667,8 @@ app.get("/customer-order-detail/:order_id", verifyToken, async (req, res) => {
     let order = orderQuery.rows[0];
 
     if (orderQuery.rows.length === 0) {
-      return res.status(400).json({
-        status: 400,
+      return res.status(404).json({
+        status: 404,
         message: "Data not found",
       });
     }
@@ -3679,9 +3679,9 @@ app.get("/customer-order-detail/:order_id", verifyToken, async (req, res) => {
     });
   } catch (err) {
     console.error(err);
-    return res.status(400).json({
-      status: 400,
-      message: err.message,
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
     });
   }
 });
