@@ -3686,6 +3686,74 @@ app.get("/customer-order-detail/:order_id", verifyToken, async (req, res) => {
   }
 });
 
+app.get("/customer-order", verifyToken, async (req, res) => {
+  try {
+    let customerQuery = await db.query("SELECT * FROM customer");
+    let warehouseQuery = await db.query("SELECT * FROM warehouse");
+    let paymentMethodQuery = await db.query("SELECT * FROM payment_methode");
+    let stuffQuery = await db.query("SELECT * FROM stuff");
+    let orderDiscountQuery = await db.query("SELECT * FROM discount");
+
+    if (customerQuery.rows.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: "Customer data not found",
+      });
+    }
+
+    if (warehouseQuery.rows.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: "Warehouse data not found",
+      });
+    }
+
+    if (paymentMethodQuery.rows.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: "Payment methode data not found",
+      });
+    }
+
+    if (stuffQuery.rows.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: "Stuff data not found",
+      });
+    }
+
+    if (orderDiscountQuery.rows.length === 0) {
+      return res.status(404).json({
+        status: 404,
+        message: "Discount data not found",
+      });
+    }
+
+    let customerResult = customerQuery.rows;
+    let warehouseResult = warehouseQuery.rows;
+    let paymentMethodeResult = paymentMethodQuery.rows;
+    let stuffResult = stuffQuery.rows;
+    let orderDiscountResult = orderDiscountQuery.rows;
+
+    return res.status(200).json({
+      status: 200,
+      data: {
+        customer: customerResult,
+        warehouse: warehouseResult,
+        stuff: stuffResult,
+        payment_methode: paymentMethodeResult,
+        order_discount: orderDiscountResult,
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
+    });
+  }
+});
+
 app.post("/add-order", verifyToken, async (req, res) => {
   let {
     customer_id,
