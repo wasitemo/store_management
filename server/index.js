@@ -1996,7 +1996,7 @@ app.patch("/customer/:customer_id", verifyToken, async (req, res) => {
 // PAYMENT METHODE
 app.get("/payment-methods", verifyToken, async (req, res) => {
   try {
-    let query = await db.query("SELECT * FROM payment_methode");
+    let query = await db.query("SELECT * FROM payment_method");
     let result = query.rows;
 
     if (query.rows.length === 0) {
@@ -2020,28 +2020,28 @@ app.get("/payment-methods", verifyToken, async (req, res) => {
 });
 
 app.post("/payment-method", verifyToken, async (req, res) => {
-  let { payment_methode_name } = req.body;
+  let { payment_method_name } = req.body;
 
-  if (!payment_methode_name) {
+  if (!payment_method_name) {
     return res.status(400).json({
       status: 400,
-      message: "Missing required key: payment_methode_name",
+      message: "Missing required key: payment_method_name",
     });
   }
 
-  if (typeof payment_methode_name === "string") {
-    payment_methode_name = payment_methode_name.trim();
+  if (typeof payment_method_name === "string") {
+    payment_method_name = payment_method_name.trim();
   }
 
   try {
     await db.query(
-      "INSERT INTO payment_methode (payment_methode_name) VALUES ($1)",
-      [payment_methode_name]
+      "INSERT INTO payment_method (payment_method_name) VALUES ($1)",
+      [payment_method_name]
     );
 
     return res.status(201).json({
       status: 201,
-      message: "Success add payment methode",
+      message: "Success add payment method",
     });
   } catch (err) {
     console.error(err);
@@ -2057,7 +2057,7 @@ app.get("/payment-method/:payment_method_id", verifyToken, async (req, res) => {
 
   try {
     let query = await db.query(
-      "SELECT * FROM payment_methode WHERE payment_methode_id = $1",
+      "SELECT * FROM payment_method WHERE payment_method_id = $1",
       [reqId]
     );
     let result = query.rows[0];
@@ -2089,7 +2089,7 @@ app.patch(
     let reqId = parseInt(req.params.payment_method_id);
     let update = req.body;
     let keys = Object.keys(update);
-    let fields = ["payment_methode_name"];
+    let fields = ["payment_method_name"];
     let invalidField = keys.filter((k) => !fields.includes(k));
 
     if (invalidField.length > 0) {
@@ -2118,7 +2118,7 @@ app.patch(
 
     try {
       await db.query(
-        `UPDATE payment_methode SET ${setQuery} WHERE payment_methode_id = $${
+        `UPDATE payment_method SET ${setQuery} WHERE payment_method_id = $${
           keys.length + 1
         }`,
         [...values, reqId]
@@ -3017,7 +3017,7 @@ app.post("/login", async (req, res) => {
           expiresAt.setDate(expiresAt.getDate() + 7);
 
           await db.query(
-            "INSERT INTO refresh_token (employee_account_id, token_jti, expires_at) VALUES ($1, $2, $3)",
+            "INSERT INTO refresh_token (employee_account_id, token, expires_at) VALUES ($1, $2, $3)",
             [account.employee_account_id, refreshToken, expiresAt]
           );
 
@@ -3181,10 +3181,9 @@ app.post("/refresh-token", async (req, res) => {
       });
     }
 
-    let query = await db.query(
-      "SELECT * FROM refresh_token WHERE token_jti = $1",
-      [refreshToken]
-    );
+    let query = await db.query("SELECT * FROM refresh_token WHERE token = $1", [
+      refreshToken,
+    ]);
     let queryToken = query.rows[0];
 
     if (!queryToken) {
@@ -3223,7 +3222,7 @@ app.post("/logout", verifyToken, async (req, res) => {
     let refreshToken = req.cookies.refreshToken;
 
     if (refreshToken) {
-      await db.query("DELETE from refresh_token WHERE token_jti = $1", [
+      await db.query("DELETE from refresh_token WHERE token = $1", [
         refreshToken,
       ]);
       res.clearCookie("refreshToken");
@@ -3535,10 +3534,10 @@ app.get("/customer-orders", verifyToken, async (req, res) => {
       SELECT
       customer_order.order_id,
       customer.customer_id,
-      payment_methode.payment_methode_id,
+      payment_method.payment_method_id,
       employee.employee_id,
       customer_name,
-      payment_methode_name,
+      payment_method_name,
       employee_name,
       order_date,
       payment,
@@ -3546,7 +3545,7 @@ app.get("/customer-orders", verifyToken, async (req, res) => {
       remaining_payment
       FROM customer_order
       LEFT JOIN customer ON customer.customer_id = customer_order.customer_id
-      LEFT JOIN payment_methode ON payment_methode.payment_methode_id = customer_order.payment_methode_id
+      LEFT JOIN payment_method ON payment_method.payment_method_id = customer_order.payment_method_id
       LEFT JOIN employee ON employee.employee_id = customer_order.employee_id
     `);
     let result = query.rows;
@@ -3586,7 +3585,7 @@ app.get("/customer-order-detail/:order_id", verifyToken, async (req, res) => {
       customer.customer_name,
       customer.customer_contact,
       customer.customer_address,
-      payment_methode.payment_methode_name,
+      payment_method.payment_method_name,
       json_agg(
           DISTINCT jsonb_build_object(
               'stuff_id', stuff.stuff_id,
@@ -3606,8 +3605,8 @@ app.get("/customer-order-detail/:order_id", verifyToken, async (req, res) => {
                       jsonb_build_object(
                           'discount_id', discount.discount_id,
                           'discount_name', discount.discount_name,
-              'discount_type', discount.discount_type,
-              'discount_status', discount.discount_status,
+                          'discount_type', discount.discount_type,
+                          'discount_status', discount.discount_status,
                           'discount_value', discount.discount_value
                       )
                   )
@@ -3638,7 +3637,7 @@ app.get("/customer-order-detail/:order_id", verifyToken, async (req, res) => {
       customer_order.remaining_payment
   FROM customer_order
   LEFT JOIN customer ON customer.customer_id = customer_order.customer_id
-  LEFT JOIN payment_methode ON payment_methode.payment_methode_id = customer_order.payment_methode_id
+  LEFT JOIN payment_method ON payment_method.payment_method_id = customer_order.payment_method_id
   LEFT JOIN employee ON employee.employee_id = customer_order.employee_id
   LEFT JOIN customer_order_detail ON customer_order_detail.order_id = customer_order.order_id
   LEFT JOIN stuff ON stuff.stuff_id = customer_order_detail.stuff_id
@@ -3654,7 +3653,7 @@ app.get("/customer-order-detail/:order_id", verifyToken, async (req, res) => {
       customer.customer_name,
       customer.customer_contact,
       customer.customer_address,
-      payment_methode.payment_methode_name,
+      payment_method.payment_method_name,
       customer_order.order_date,
       customer_order_detail.total_item_discount,
       customer_order_detail.total_order_discount,
@@ -3690,7 +3689,7 @@ app.get("/customer-order", verifyToken, async (req, res) => {
   try {
     let customerQuery = await db.query("SELECT * FROM customer");
     let warehouseQuery = await db.query("SELECT * FROM warehouse");
-    let paymentMethodQuery = await db.query("SELECT * FROM payment_methode");
+    let paymentMethodQuery = await db.query("SELECT * FROM payment_method");
     let stuffQuery = await db.query("SELECT * FROM stuff");
     let orderDiscountQuery = await db.query("SELECT * FROM discount");
 
@@ -3731,7 +3730,7 @@ app.get("/customer-order", verifyToken, async (req, res) => {
 
     let customerResult = customerQuery.rows;
     let warehouseResult = warehouseQuery.rows;
-    let paymentMethodeResult = paymentMethodQuery.rows;
+    let paymentMethodResult = paymentMethodQuery.rows;
     let stuffResult = stuffQuery.rows;
     let orderDiscountResult = orderDiscountQuery.rows;
 
@@ -3741,7 +3740,7 @@ app.get("/customer-order", verifyToken, async (req, res) => {
         customer: customerResult,
         warehouse: warehouseResult,
         stuff: stuffResult,
-        payment_methode: paymentMethodeResult,
+        payment_method: paymentMethodResult,
         order_discount: orderDiscountResult,
       },
     });
@@ -3758,7 +3757,7 @@ app.post("/customer-order", verifyToken, async (req, res) => {
   let {
     customer_id,
     warehouse_id,
-    payment_methode_id,
+    payment_method_id,
     order_date,
     payment,
     items,
@@ -3775,10 +3774,10 @@ app.post("/customer-order", verifyToken, async (req, res) => {
       status: 400,
       message: "Missing required key: warehouse_id",
     });
-  } else if (!payment_methode_id) {
+  } else if (!payment_method_id) {
     return res.status(400).json({
       status: 400,
-      message: "Missing required key: payment_methode_id",
+      message: "Missing required key: payment_method_id",
     });
   } else if (!order_date) {
     return res.status(400).json({
@@ -3985,13 +3984,13 @@ app.post("/customer-order", verifyToken, async (req, res) => {
     let orderQuery = await db.query(
       `
         INSERT INTO customer_order
-        (customer_id, payment_methode_id, employee_id, order_date, payment, sub_total, remaining_payment)
+        (customer_id, payment_method_id, employee_id, order_date, payment, sub_total, remaining_payment)
         VALUES
         ($1, $2, $3, $4, $5, $6, $7) RETURNING order_id
     `,
       [
         customer_id,
-        payment_methode_id,
+        payment_method_id,
         employeeId,
         order_date,
         payment,
