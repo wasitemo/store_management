@@ -3486,16 +3486,24 @@ app.post(
           "SELECT warehouse_id FROM warehouse WHERE LOWER (warehouse_name) = $1",
           [warehouse_name]
         );
-        if (warehouseQuery.rows.length === 0)
-          throw new Error("Warehouse not registered");
+        if (warehouseQuery.rows.length === 0) {
+          return res.status(404).json({
+            status: 404,
+            message: `${warehouse_name} not registered`,
+          });
+        }
         let warehouseId = warehouseQuery.rows[0].warehouse_id;
 
         let stuffQuery = await db.query(
           "SELECT stuff_id FROM stuff WHERE LOWER (stuff_name) = $1",
           [stuff_name]
         );
-        if (stuffQuery.rows.length === 0)
-          throw new Error("Stuff not registered");
+        if (stuffQuery.rows.length === 0) {
+          return res.status(404).json({
+            status: 404,
+            message: `${stuff_name} not registered`,
+          });
+        }
         let stuffId = stuffQuery.rows[0].stuff_id;
 
         let stuffInfoQuery = await db.query(
