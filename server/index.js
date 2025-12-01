@@ -2888,7 +2888,7 @@ app.get("/employee-account", verifyToken, async (req, res) => {
 
     return res.status(200).json({
       status: 200,
-      data: result,
+      data: { employee: result },
     });
   } catch (err) {
     console.error(err);
