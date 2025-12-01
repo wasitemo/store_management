@@ -1788,24 +1788,36 @@ app.post(
           "SELECT supplier_id FROM supplier WHERE LOWER (supplier_name) = $1",
           [supplier_name]
         );
-        if (supplierQuery.rows.length === 0)
-          throw new Error("Supplier not registered");
+        if (supplierQuery.rows.length === 0) {
+          return res.status(404).json({
+            status: 404,
+            message: `${supplier_name} not registered`,
+          });
+        }
         let supplierId = supplierQuery.rows[0].supplier_id;
 
         let warehouseQuery = await db.query(
           "SELECT warehouse_id FROM warehouse WHERE LOWER (warehouse_name) = $1",
           [warehouse_name]
         );
-        if (warehouseQuery.rows.length === 0)
-          throw new Error("Warehouse not registered");
+        if (warehouseQuery.rows.length === 0) {
+          return res.status(404).json({
+            status: 404,
+            message: `${warehouse_name} not registered`,
+          });
+        }
         let warehouseId = warehouseQuery.rows[0].warehouse_id;
 
         let stuffQuery = await db.query(
           "SELECT stuff_id FROM stuff WHERE LOWER (stuff_name) = $1",
           [stuff_name]
         );
-        if (stuffQuery.rows.length === 0)
-          throw new Error("Stuff not registered");
+        if (stuffQuery.rows.length === 0) {
+          return res.status(404).json({
+            status: 404,
+            message: `${stuff_name} not registered`,
+          });
+        }
         let stuffId = stuffQuery.rows[0].stuff_id;
 
         let purchaseQuery = await db.query(
@@ -1818,9 +1830,8 @@ app.post(
           "INSERT INTO stuff_purchase_detail (warehouse_id, stuff_id, stuff_purchase_id, buy_batch, quantity, buy_price) VALUES ($1, $2, $3, $4, $5, $6)",
           [warehouseId, stuffId, purchaseId, buy_batch, quantity, buy_price]
         );
+        fs.unlinkSync(filePath);
       }
-
-      fs.unlinkSync(filePath);
 
       await db.query("COMMIT");
 
