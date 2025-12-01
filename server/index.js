@@ -960,7 +960,7 @@ app.get("/stuffs", async (req, res) => {
 app.get("/imei-sn", verifyToken, async (req, res) => {
   try {
     let query = await db.query(`
-      SELECT
+      SELECT DISTINCT
       stuff_information.stuff_information_id,
       stuff_name,
       warehouse_name,
@@ -3999,7 +3999,7 @@ app.post("/customer-order", verifyToken, async (req, res) => {
         FROM employee
         JOIN employee_account
         ON employee_account.employee_id = employee.employee_id
-        WHERE employee.employee_id = $1
+        WHERE employee_account.employee_account_id = $1
     `,
       [account.id]
     );
