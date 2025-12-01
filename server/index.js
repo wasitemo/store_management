@@ -1970,7 +1970,7 @@ app.patch("/customer/:customer_id", verifyToken, async (req, res) => {
 
   for (let k of keys) {
     if (typeof k === "string") {
-      update[k] = update.trim();
+      update[k] = update[k].trim();
     }
   }
 
