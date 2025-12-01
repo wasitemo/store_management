@@ -3531,6 +3531,8 @@ app.post(
           "UPDATE stuff SET total_stock = (SELECT COUNT(*) FROM stuff_information WHERE stuff_id = $1 AND stock_status = 'ready') WHERE stuff_id = $2",
           [stuffId, stuffId]
         );
+
+        fs.unlinkSync(filePath);
       }
 
       await db.query("COMMIT");
