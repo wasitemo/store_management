@@ -2203,7 +2203,7 @@ app.get("/stuff-discount", verifyToken, async (req, res) => {
 
     return res.status(200).json({
       status: 200,
-      stuff: result,
+      data: { stuff: result },
     });
   } catch (err) {
     console.error(err);
@@ -2736,7 +2736,7 @@ app.get("/order-discount/:discount_id", verifyToken, async (req, res) => {
   }
 });
 
-app.patch("order-discount/:discount_id", verifyToken, async (req, res) => {
+app.patch("/order-discount/:discount_id", verifyToken, async (req, res) => {
   let reqId = parseInt(req.params.discount_id);
   let body = req.body;
   let fields = [
