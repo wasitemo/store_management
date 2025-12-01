@@ -918,7 +918,7 @@ app.patch("/stuff-brand/:stuff_brand_id", verifyToken, async (req, res) => {
 app.get("/stuffs", async (req, res) => {
   try {
     let query = await db.query(`
-      SELECT 
+      SELECT DISTINCT 
       stuff.stuff_id,
       stuff.stuff_name,
       stuff_category.stuff_category_name,
@@ -933,7 +933,7 @@ app.get("/stuffs", async (req, res) => {
       FROM stuff
       LEFT JOIN stuff_category ON stuff.stuff_category_id = stuff_category.stuff_category_id
       LEFT JOIN stuff_brand ON stuff.stuff_brand_id = stuff_brand.stuff_brand_id
-      LEFT JOIN supplier ON stuff.supplier_id = stuff_brand.stuff_brand_id
+      LEFT JOIN supplier ON stuff.supplier_id = supplier.supplier_id
     `);
     let result = query.rows;
 
