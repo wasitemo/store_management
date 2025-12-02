@@ -2671,7 +2671,7 @@ app.post("/order-discount", verifyToken, async (req, res) => {
         FROM employee
         JOIN employee_account
         ON employee_account.employee_id = employee.employee_id
-        WHERE employee.employee_id = $1
+        WHERE employee_account.employee_account_id = $1
     `,
       [account.id]
     );
