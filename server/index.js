@@ -313,7 +313,7 @@ app.patch("/employee/:employee_id", verifyToken, async (req, res) => {
 
     return res.status(200).json({
       status: 200,
-      message: "Success update data",
+      message: "Success updated data",
     });
   } catch (err) {
     console.log(err);
@@ -440,7 +440,7 @@ app.patch("/warehouse/:warehouse_id", verifyToken, async (req, res) => {
   if (keys.length === 0) {
     return res.status(400).json({
       status: 400,
-      message: "No items updated",
+      message: "No item updated",
     });
   }
 
@@ -591,7 +591,7 @@ app.patch("/supplier/:supplier_id", verifyToken, async (req, res) => {
   if (invalidField.length > 0) {
     return res.status(400).json({
       status: 400,
-      message: "Invalid field",
+      message: "Invalid field ",
       invalidField,
     });
   }
@@ -620,7 +620,7 @@ app.patch("/supplier/:supplier_id", verifyToken, async (req, res) => {
 
     return res.status(200).json({
       status: 200,
-      message: "Sucess updated data",
+      message: "Success updated data",
     });
   } catch (err) {
     console.error(err);
@@ -741,7 +741,7 @@ app.patch(
     if (keys.length === 0) {
       return res.status(400).json({
         status: 400,
-        message: "No items updated",
+        message: "No item updated",
       });
     }
 
@@ -881,7 +881,7 @@ app.patch("/stuff-brand/:stuff_brand_id", verifyToken, async (req, res) => {
   if (keys.length === 0) {
     return res.status(400).json({
       status: 400,
-      message: "No items updated",
+      message: "No item updated",
     });
   }
 
@@ -1370,7 +1370,7 @@ app.patch("/stuff/:stuff_id", verifyToken, async (req, res) => {
     await db.query("ROLLBACK");
     return res.status(400).json({
       status: 400,
-      message: "No items updated",
+      message: "No item updated",
     });
   }
 
@@ -1427,7 +1427,7 @@ app.patch("/stuff/:stuff_id", verifyToken, async (req, res) => {
 
     return res.status(200).json({
       status: 200,
-      message: "Succes updated data",
+      message: "Success updated data",
     });
   } catch (err) {
     await db.query("ROLLBACK");
@@ -1975,7 +1975,7 @@ app.patch("/customer/:customer_id", verifyToken, async (req, res) => {
   if (keys.length === 0) {
     return res.status(400).json({
       status: 400,
-      message: "No items updated",
+      message: "No item updated",
     });
   }
 
@@ -2117,7 +2117,7 @@ app.patch(
     if (keys.length === 0) {
       return res.status(400).json({
         status: 400,
-        message: "No items updated",
+        message: "No item updated",
       });
     }
 
@@ -3044,7 +3044,7 @@ app.post("/login", async (req, res) => {
 
           return res.status(200).json({
             status: 200,
-            message: accessToken,
+            access_token: accessToken,
           });
         } else {
           return res.status(400).json({
@@ -3064,7 +3064,7 @@ app.post("/login", async (req, res) => {
     console.error(err);
     return res.status(500).json({
       status: 500,
-      message: err.message,
+      message: "Internal server error",
     });
   }
 });
@@ -3219,7 +3219,7 @@ app.post("/refresh-token", async (req, res) => {
 
       res.status(200).json({
         status: 200,
-        message: newAccessToken,
+        access_token: newAccessToken,
       });
     });
   } catch (err) {
@@ -3439,7 +3439,7 @@ app.post("/stock", verifyToken, async (req, res) => {
 
     return res.status(201).json({
       status: 201,
-      message: "Success update stock",
+      message: "Success updated stock",
     });
   } catch (err) {
     await db.query("ROLLBACK");
@@ -3538,7 +3538,7 @@ app.post(
       await db.query("COMMIT");
       return res.status(201).json({
         status: 201,
-        message: "Success update stock",
+        message: "Success updated stock",
       });
     } catch (err) {
       await db.query("ROLLBACK");
@@ -3734,7 +3734,7 @@ app.get("/customer-order", verifyToken, async (req, res) => {
     if (paymentMethodQuery.rows.length === 0) {
       return res.status(404).json({
         status: 404,
-        message: "Payment methode data not found",
+        message: "Payment method data not found",
       });
     }
 
@@ -4155,7 +4155,7 @@ app.post("/customer-order", verifyToken, async (req, res) => {
     });
   } catch (err) {
     await db.query("ROLLBACK");
-    console.error("Transaction failed:", err);
+    console.error(err);
     return res.status(500).json({
       status: 500,
       message: "Internal server error",
