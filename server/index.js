@@ -9,6 +9,7 @@ import fs from "fs";
 import XLSX from "xlsx";
 import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
+import cors from "cors";
 
 env.config();
 pg.types.setTypeParser(1082, (val) => val);
@@ -23,10 +24,22 @@ const db = new pg.Client({
   port: process.env.PG_PORT,
 });
 db.connect();
-
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "http://localhost:3000");
+  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Credentials", "true");
+
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+
+  next();
+});
 
 function parseCSV(filePath) {
   return new Promise((resolve, reject) => {
