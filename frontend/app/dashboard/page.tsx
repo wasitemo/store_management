@@ -85,12 +85,14 @@ export default function DashboardPage() {
               <span className="px-3 py-1 rounded-full bg-success/10 text-success text-sm">Active</span>
             </div>
 
-            <div className="flex justify-between items-center pb-3 border-b border-border">
-              <span className="text-text-secondary">Access Token</span>
-              <span className="text-xs bg-surface-hover px-2 py-1 rounded text-text-secondary max-w-[200px] truncate">
-                {token ? `${token.substring(0, 10)}...` : 'N/A'}
-              </span>
+            <div className="pb-3 border-b border-border">
+              <span className="text-text-secondary block mb-1">Access Token</span>
+
+              <div className="bg-surface-hover px-3 py-2 rounded text-text-secondary text-xs break-all select-text">
+                {token ?? "N/A"}
+              </div>
             </div>
+
 
             <div className="flex justify-between items-center pb-3 border-b border-border">
               <span className="text-text-secondary">Last Login</span>

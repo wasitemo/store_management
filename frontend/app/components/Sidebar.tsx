@@ -5,38 +5,58 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 /* =======================
-   MENU CONFIG (WAJIB ADA)
+   MENU CONFIG + STATUS
 ======================= */
 const menus = [
-  { name: "Dashboard", path: "/dashboard", icon: "📊" },
-  { name: "Account", path: "/account", icon: "👤" },
-  { name: "Employee", path: "/employee", icon: "👥" },
-  { name: "Warehouse", path: "/warehouse", icon: "🏭" },
-  { name: "Supplier", path: "/supplier", icon: "📦" },
-  { name: "Customer", path: "/customer", icon: "👥" },
-  { name: "Payment Method", path: "/payment-method", icon: "💳" },
+  { name: "Dashboard", path: "/dashboard", icon: "📊", status: "ok" },
+  { name: "Account", path: "/account", icon: "👤", status: "ok" },
+  { name: "Employee", path: "/employee", icon: "👥", status: "ok" },
+  { name: "Warehouse", path: "/warehouse", icon: "🏭", status: "ok" },
+  { name: "Supplier", path: "/supplier", icon: "📦", status: "ok" },
+  { name: "Customer", path: "/customer", icon: "👥", status: "ok" },
+  { name: "Payment Method", path: "/payment-method", icon: "💳", status: "ok" },
+
   {
     name: "Stuff",
     icon: "📦",
     children: [
-      { name: "Stuff", path: "/stuff", icon: "📦" },
-      { name: "Stuff Brand", path: "/stuff-brand", icon: "🏷️" },
-      { name: "Stuff Category", path: "/stuff-category", icon: "🗂️" },
-      { name: "Stuff Purchase", path: "/stuff-purchase", icon: "📥" },
+      { name: "Stuff", path: "/stuff", icon: "📦", status: "fix" },
+      { name: "Stuff Brand", path: "/stuff-brand", icon: "🏷️", status: "ok" },
+      { name: "Stuff Category", path: "/stuff-category", icon: "🗂️", status: "ok" },
+      { name: "Stuff Purchase", path: "/stuff-purchase", icon: "📥", status: "fix" },
     ],
   },
-  { name: "Imei", path: "/imei-sn", icon: "📱" },
+
+  { name: "Imei", path: "/imei-sn", icon: "📱", status: "ok" },
+
   {
     name: "Discounts",
     icon: "💰",
     children: [
-      { name: "Stuff Discount", path: "/stuff-discount", icon: "🏷️" },
-      { name: "Order Discount", path: "/order-discount", icon: "🏷️" },
+      { name: "Stuff Discount", path: "/stuff-discount", icon: "🏷️", status: "fix" },
+      { name: "Order Discount", path: "/order-discount", icon: "🏷️", status: "fix" },
     ],
   },
-  { name: "Stock", path: "/stock", icon: "📈" },
-  { name: "Order", path: "/order", icon: "🛒" },
+
+  { name: "Stock", path: "/stock", icon: "📈", status: "ok" },
+  { name: "Order", path: "/order", icon: "🛒", status: "fix" },
 ];
+
+/* =======================
+   STATUS DOT
+======================= */
+const StatusDot = ({ status }: { status?: string }) => {
+  if (!status) return null;
+
+  return (
+    <span
+      className={`w-2.5 h-2.5 rounded-full ${
+        status === "ok" ? "bg-green-500" : "bg-red-500"
+      }`}
+      title={status === "ok" ? "Stable" : "Needs Fix"}
+    />
+  );
+};
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -48,6 +68,7 @@ export default function Sidebar() {
 
   return (
     <aside className="w-64 min-h-screen bg-sidebar-bg border-r border-border flex flex-col shadow-lg z-10">
+
       {/* Header */}
       <div className="h-16 flex items-center px-6 border-b border-border">
         <div className="flex items-center space-x-3">
@@ -72,7 +93,7 @@ export default function Sidebar() {
                 <li key={menu.name}>
                   <button
                     onClick={() => toggleMenu(menu.name)}
-                    className={`w-full flex items-center px-4 py-3 rounded-xl font-medium transition-all duration-200
+                    className={`w-full flex items-center px-4 py-3 rounded-xl font-medium transition-all
                       ${isActive
                         ? "bg-primary/10 text-primary border border-primary/20"
                         : "text-text-secondary hover:bg-surface-hover hover:text-text-primary"
@@ -80,8 +101,9 @@ export default function Sidebar() {
                   >
                     <span className="mr-3 text-lg">{menu.icon}</span>
                     <span className="flex-1">{menu.name}</span>
+                    <StatusDot status={menu.status} />
                     <span
-                      className={`transition-transform duration-200 ${isOpen ? "rotate-90" : ""}`}
+                      className={`ml-3 transition-transform duration-200 ${isOpen ? "rotate-90" : ""}`}
                     >
                       ▶
                     </span>
@@ -103,7 +125,8 @@ export default function Sidebar() {
                               }`}
                           >
                             <span className="mr-2 text-sm">{child.icon}</span>
-                            {child.name}
+                            <span className="flex-1">{child.name}</span>
+                            <StatusDot status={child.status} />
                           </Link>
                         );
                       })}
@@ -126,7 +149,8 @@ export default function Sidebar() {
                     }`}
                 >
                   <span className="mr-3 text-lg">{menu.icon}</span>
-                  {menu.name}
+                  <span className="flex-1">{menu.name}</span>
+                  <StatusDot status={menu.status} />
                 </Link>
               </li>
             );

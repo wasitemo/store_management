@@ -3271,38 +3271,33 @@ app.post("/logout", verifyToken, async (req, res) => {
 // STOCK
 app.get("/stocks", verifyToken, async (req, res) => {
   try {
-    let query = await db.query(`
-        SELECT DISTINCT
-        warehouse.warehouse_id,
-        stuff.stuff_id,
-        warehouse_name,
-        stuff_name,
-        total_stock
-        FROM stock
-        LEFT JOIN warehouse ON warehouse.warehouse_id = stock.warehouse_id
-        LEFT JOIN stuff ON stuff.stuff_id = stock.stuff_id
+    const query = await db.query(`
+      SELECT
+        w.warehouse_id,
+        s.stuff_id,
+        w.warehouse_name,
+        s.stuff_name,
+        COUNT(si.stuff_information_id) AS total_stock
+      FROM stock st
+      JOIN warehouse w ON w.warehouse_id = st.warehouse_id
+      JOIN stuff s ON s.stuff_id = st.stuff_id
+      JOIN stuff_information si ON si.stuff_information_id = st.stuff_information_id
+      WHERE si.stock_status = 'ready'
+      GROUP BY w.warehouse_id, s.stuff_id, w.warehouse_name, s.stuff_name
+      ORDER BY w.warehouse_name, s.stuff_name
     `);
-    let result = query.rows;
 
     if (query.rows.length === 0) {
-      return res.status(404).json({
-        status: 404,
-        message: "Data not found",
-      });
+      return res.status(404).json({ status: 404, message: "Data not found" });
     }
 
-    return res.status(200).json({
-      status: 200,
-      data: result,
-    });
+    return res.status(200).json({ status: 200, data: query.rows });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({
-      status: 500,
-      message: "Internal server error",
-    });
+    return res.status(500).json({ status: 500, message: "Internal server error" });
   }
 });
+
 
 app.get("/stock-history", verifyToken, async (req, res) => {
   try {
@@ -3381,88 +3376,69 @@ app.get("/stock", verifyToken, async (req, res) => {
     });
   }
 });
-
+// STOCK POST
 app.post("/stock", verifyToken, async (req, res) => {
+  if (!req.body || Object.keys(req.body).length === 0) {
+    return res.status(400).json({ status: 400, message: "Request body empty" });
+  }
+
   let { warehouse_id, stuff_id, imei_1, imei_2, sn } = req.body;
 
-  if (!warehouse_id) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: warehouse_id",
-    });
-  } else if (!stuff_id) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: stuff_id",
-    });
-  } else if (!imei_1) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: imei_1",
-    });
-  } else if (!imei_2) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: imei_2",
-    });
-  } else if (!sn) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: sn",
-    });
-  }
+  if (!warehouse_id) return res.status(400).json({ status: 400, message: "Missing warehouse_id" });
+  if (!stuff_id) return res.status(400).json({ status: 400, message: "Missing stuff_id" });
+  if (!imei_1) return res.status(400).json({ status: 400, message: "Missing imei_1" });
+  if (!imei_2) return res.status(400).json({ status: 400, message: "Missing imei_2" });
+  if (!sn) return res.status(400).json({ status: 400, message: "Missing sn" });
 
-  if (typeof stock_status === "string") {
-    stock_status = stock_status.toLowerCase().trim();
-  }
-
-  if (typeof imei_1 === "string") {
-    imei_1 = imei_1.trim();
-  }
-
-  if (typeof imei_2 === "string") {
-    imei_2 = imei_2.trim();
-  }
-
-  if (typeof sn === "string") {
-    sn = sn.trim();
-  }
+  // Trim
+  imei_1 = imei_1.toString().trim();
+  imei_2 = imei_2.toString().trim();
+  sn = sn.toString().trim();
 
   try {
     await db.query("BEGIN");
 
+    // Insert into stuff_information
     let stuffInfoQuery = await db.query(
-      "INSERT INTO stuff_information (stuff_id, imei_1, imei_2, sn, stock_status) VALUES ($1, $2, $3, $4, 'ready') RETURNING stuff_information_id",
+      `INSERT INTO stuff_information (stuff_id, imei_1, imei_2, sn, stock_status)
+       VALUES ($1, $2, $3, $4, 'ready')
+       RETURNING stuff_information_id`,
       [stuff_id, imei_1, imei_2, sn]
     );
 
     let stuffInfoId = stuffInfoQuery.rows[0].stuff_information_id;
 
+    // Insert into stock
     await db.query(
-      "INSERT INTO stock (warehouse_id, stuff_id, stuff_information_id, stock_type) VALUES ($1, $2, $3, 'in')",
+      `INSERT INTO stock (warehouse_id, stuff_id, stuff_information_id, stock_type)
+       VALUES ($1, $2, $3, 'in')`,
       [warehouse_id, stuff_id, stuffInfoId]
     );
 
+    // Update total_stock
     await db.query(
-      "UPDATE stuff SET total_stock = (SELECT COUNT(*) FROM stuff_information WHERE stuff_id = $1 AND stock_status = 'ready') WHERE stuff_id = $2",
+      `UPDATE stuff
+       SET total_stock = (SELECT COUNT(*) FROM stuff_information WHERE stuff_id = $1 AND stock_status = 'ready')
+       WHERE stuff_id = $2`,
       [stuff_id, stuff_id]
     );
 
     await db.query("COMMIT");
 
-    return res.status(201).json({
-      status: 201,
-      message: "Success updated stock",
-    });
+    return res.status(201).json({ status: 201, message: "Stock added successfully" });
   } catch (err) {
     await db.query("ROLLBACK");
     console.error(err);
-    return res.status(500).json({
-      status: 500,
-      message: "Internal server error",
-    });
+
+    // Handle duplicate IMEI
+    if (err.code === "23505") {
+      return res.status(409).json({ status: 409, message: "IMEI already exists" });
+    }
+
+    return res.status(500).json({ status: 500, message: "Internal server error" });
   }
 });
+
 
 app.post(
   "/upload-stock",
