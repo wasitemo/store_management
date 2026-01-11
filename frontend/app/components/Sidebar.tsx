@@ -20,7 +20,7 @@ const menus = [
     name: "Stuff",
     icon: "📦",
     children: [
-      { name: "Stuff", path: "/stuff", icon: "📦", status: "fix" },
+      { name: "Stuff", path: "/stuff", icon: "📦", status: "ok" },
       { name: "Stuff Brand", path: "/stuff-brand", icon: "🏷️", status: "ok" },
       { name: "Stuff Category", path: "/stuff-category", icon: "🗂️", status: "ok" },
       { name: "Stuff Purchase", path: "/stuff-purchase", icon: "📥", status: "fix" },

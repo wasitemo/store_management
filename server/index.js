@@ -1056,124 +1056,82 @@ app.get("/stuff", verifyToken, async (req, res) => {
   }
 });
 
+
 app.post("/stuff", verifyToken, async (req, res) => {
-  let {
-    stuff_category_id,
-    stuff_brand_id,
-    supplier_id,
-    stuff_code,
-    stuff_sku,
-    stuff_name,
-    stuff_variant,
-    current_sell_price,
-    has_sn,
-    barcode,
-  } = req.body;
-
-  if (!stuff_category_id) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: stuff_category_id",
-    });
-  } else if (!stuff_brand_id) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: stuff_brand_id",
-    });
-  } else if (!supplier_id) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: supplier_id",
-    });
-  } else if (!stuff_code) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: stuff_code",
-    });
-  } else if (!stuff_sku) {
-    return res.status(404).json({
-      status: 404,
-      message: "Missing required key: stuff_sku",
-    });
-  } else if (!stuff_name) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: stuff_name",
-    });
-  } else if (!stuff_variant) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: stuff_variant",
-    });
-  } else if (!current_sell_price) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: current_sell_price",
-    });
-  } else if (!has_sn) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: has_sn",
-    });
-  } else if (!barcode) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: barcode",
-    });
-  }
-
-  if (typeof current_sell_price === "string") {
-    current_sell_price = convertionToNumber(current_sell_price);
-  }
-
-  if (typeof stuff_code === "string") {
-    stuff_code = stuff_code.trim();
-  }
-
-  if (typeof stuff_sku === "string") {
-    stuff_sku = stuff_sku.trim();
-  }
-
-  if (typeof stuff_name === "string") {
-    stuff_name = stuff_name.trim();
-  }
-
-  if (typeof stuff_variant === "string") {
-    stuff_variant = stuff_variant.trim();
-  }
-
-  if (typeof barcode === "string") {
-    barcode = barcode.trim();
-  }
-
   try {
+    const body = req.body || {};
+
+    let {
+      stuff_category_id,
+      stuff_brand_id,
+      supplier_id,
+      stuff_code,
+      stuff_sku,
+      stuff_name,
+      stuff_variant,
+      current_sell_price,
+      has_sn,
+      barcode,
+    } = body;
+
+    // ================= NORMALIZE =================
+    if (typeof has_sn === "string") {
+      has_sn = has_sn === "true" || has_sn === "1";
+    }
+
+    if (typeof current_sell_price === "string") {
+      current_sell_price = convertionToNumber(current_sell_price);
+    }
+
+    if (typeof stuff_code === "string") stuff_code = stuff_code.trim();
+    if (typeof stuff_sku === "string") stuff_sku = stuff_sku.trim();
+    if (typeof stuff_name === "string") stuff_name = stuff_name.trim();
+    if (typeof stuff_variant === "string") stuff_variant = stuff_variant.trim();
+    if (typeof barcode === "string") barcode = barcode.trim();
+
+    // ================= VALIDATION =================
+    if (!stuff_category_id) return res.status(400).json({ status: 400, message: "Missing stuff_category_id" });
+    if (!stuff_brand_id) return res.status(400).json({ status: 400, message: "Missing stuff_brand_id" });
+    if (!supplier_id) return res.status(400).json({ status: 400, message: "Missing supplier_id" });
+    if (!stuff_code) return res.status(400).json({ status: 400, message: "Missing stuff_code" });
+    if (!stuff_sku) return res.status(400).json({ status: 400, message: "Missing stuff_sku" });
+    if (!stuff_name) return res.status(400).json({ status: 400, message: "Missing stuff_name" });
+    if (!stuff_variant) return res.status(400).json({ status: 400, message: "Missing stuff_variant" });
+    if (!current_sell_price) return res.status(400).json({ status: 400, message: "Missing current_sell_price" });
+    if (typeof has_sn !== "boolean") return res.status(400).json({ status: 400, message: "Invalid has_sn value" });
+    if (!barcode) return res.status(400).json({ status: 400, message: "Missing barcode" });
+
     await db.query("BEGIN");
 
-    let refreshToken = req.cookies.refreshToken;
-    let account = await new Promise((resolve, reject) => {
-      jwt.verify(
-        refreshToken,
-        process.env.JWT_REFRESH_SECRET,
-        (err, account) => {
-          if (err) return reject(err);
-          resolve(account);
-        }
-      );
-    });
-    let employeeQuery = await db.query(
-      `
-        SELECT employee.employee_id
-        FROM employee
-        JOIN employee_account
-        ON employee_account.employee_id = employee.employee_id
-        WHERE employee_account.employee_account_id = $1
-    `,
-      [account.id]
-    );
-    let employeeId = employeeQuery.rows[0].employee_id;
+    // ================= AUTH CONTEXT =================
+    const employeeAccountId = req.user.id;
 
-    let stuffQuery = await db.query(
-      "INSERT INTO stuff (stuff_category_id, stuff_brand_id, supplier_id, stuff_code, stuff_sku, stuff_name, stuff_variant, current_sell_price, has_sn, barcode) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *",
+    const employeeQuery = await db.query(
+      `
+      SELECT employee.employee_id
+      FROM employee
+      JOIN employee_account
+        ON employee_account.employee_id = employee.employee_id
+      WHERE employee_account.employee_account_id = $1
+      `,
+      [employeeAccountId]
+    );
+
+    if (!employeeQuery.rows.length) {
+      await db.query("ROLLBACK");
+      return res.status(404).json({ status: 404, message: "Employee not found" });
+    }
+
+    const employeeId = employeeQuery.rows[0].employee_id;
+
+    // ================= INSERT =================
+    const stuffQuery = await db.query(
+      `
+      INSERT INTO stuff 
+      (stuff_category_id, stuff_brand_id, supplier_id, stuff_code, stuff_sku, stuff_name, stuff_variant, current_sell_price, has_sn, barcode)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+      RETURNING *
+      `,
       [
         stuff_category_id,
         stuff_brand_id,
@@ -1187,19 +1145,23 @@ app.post("/stuff", verifyToken, async (req, res) => {
         barcode,
       ]
     );
-    let stuffData = stuffQuery.rows[0];
-    let stuffId = stuffQuery.rows[0].stuff_id;
+
+    const stuffData = stuffQuery.rows[0];
 
     await db.query(
-      "INSERT INTO stuff_history (stuff_id, employee_id, operation, new_data) VALUES ($1, $2, 'insert', $3)",
-      [stuffId, employeeId, stuffData]
+      `
+      INSERT INTO stuff_history (stuff_id, employee_id, operation, new_data)
+      VALUES ($1, $2, 'insert', $3)
+      `,
+      [stuffData.stuff_id, employeeId, stuffData]
     );
 
     await db.query("COMMIT");
 
-    return res.json({
+    return res.status(201).json({
       status: 201,
       message: "Success add stuff",
+      data: stuffData,
     });
   } catch (err) {
     await db.query("ROLLBACK");
@@ -1210,6 +1172,7 @@ app.post("/stuff", verifyToken, async (req, res) => {
     });
   }
 });
+
 
 app.get("/stuff-history", verifyToken, async (req, res) => {
   try {
@@ -1340,14 +1303,17 @@ app.get("/stuff/:stuff_id", verifyToken, async (req, res) => {
 });
 
 app.patch("/stuff/:stuff_id", verifyToken, async (req, res) => {
-  let reqId = parseInt(req.params.stuff_id);
-  let update = req.body;
-  let keys = Object.keys(update);
-  let fields = {
+  const stuffId = parseInt(req.params.stuff_id);
+
+  if (!Number.isInteger(stuffId)) {
+    return res.status(400).json({ status: 400, message: "Invalid stuff_id" });
+  }
+
+  const schema = {
     stuff_category_id: "number",
     stuff_brand_id: "number",
     supplier_id: "number",
-    stuff_code: "number",
+    stuff_code: "string",
     stuff_sku: "string",
     stuff_name: "string",
     stuff_variant: "string",
@@ -1355,84 +1321,104 @@ app.patch("/stuff/:stuff_id", verifyToken, async (req, res) => {
     has_sn: "boolean",
     barcode: "string",
   };
-  let invalidFields = keys.filter((k) => !fields[k]);
 
-  for (let key of keys) {
-    let expectedType = fields[key];
-    let value = update[key];
+  const clean = {};
 
-    if (expectedType === "number") {
-      update[key] = convertionToNumber(value);
+  // ================= NORMALIZE & VALIDATE =================
+  for (const key in schema) {
+    if (req.body[key] !== undefined) {
+      let value = req.body[key];
+
+      if (schema[key] === "number") {
+        value = convertionToNumber(value);
+        if (!Number.isFinite(value)) {
+          return res.status(400).json({ status: 400, message: `Invalid ${key}` });
+        }
+      }
+
+      if (schema[key] === "boolean") {
+        if (typeof value === "string") {
+          value = value === "true" || value === "1";
+        }
+        if (typeof value !== "boolean") {
+          return res.status(400).json({ status: 400, message: `Invalid ${key}` });
+        }
+      }
+
+      if (schema[key] === "string") {
+        value = String(value).trim();
+        if (!value) {
+          return res.status(400).json({ status: 400, message: `Invalid ${key}` });
+        }
+      }
+
+      clean[key] = value;
     }
-
-    if (expectedType === "string") {
-      update[key] = value.trim();
-    }
   }
 
-  if (invalidFields.length > 0) {
-    await db.query("ROLLBACK");
-    return res.status(400).json({
-      status: 400,
-      message: "Invalid field ",
-      invalidFields,
-    });
+  if (!Object.keys(clean).length) {
+    return res.status(400).json({ status: 400, message: "No valid field to update" });
   }
-
-  if (keys.length === 0) {
-    await db.query("ROLLBACK");
-    return res.status(400).json({
-      status: 400,
-      message: "No item updated",
-    });
-  }
-
-  let setQuery = keys.map((key, index) => `${key} = $${index + 1}`).join(", ");
-  let values = Object.values(update);
 
   try {
     await db.query("BEGIN");
 
-    let refreshToken = req.cookies.refreshToken;
-    let account = await new Promise((resolve, reject) => {
-      jwt.verify(
-        refreshToken,
-        process.env.JWT_REFRESH_SECRET,
-        (err, account) => {
-          if (err) return reject(err);
-          resolve(account);
-        }
-      );
-    });
-
-    let employeeQuery = await db.query(
-      `
-        SELECT employee.employee_id
-        FROM employee
-        JOIN employee_account
-        ON employee_account.employee_id = employee.employee_id
-        WHERE employee_account.employee_account_id = $1
-    `,
-      [account.id]
-    );
-    let employeeId = employeeQuery.rows[0].employee_id;
-
-    let oldDataQuery = await db.query(
+    // ================= CHECK STUFF EXISTENCE =================
+    const oldDataQuery = await db.query(
       "SELECT * FROM stuff WHERE stuff_id = $1",
-      [reqId]
+      [stuffId]
     );
-    let stuffQuery = await db.query(
-      `UPDATE stuff SET ${setQuery} WHERE stuff_id = $${
-        keys.length + 1
-      } RETURNING *`,
-      [...values, reqId]
-    );
-    let stuffId = stuffQuery.rows[0].stuff_id;
-    let oldData = oldDataQuery.rows[0];
-    let newData = stuffQuery.rows[0];
 
+    if (!oldDataQuery.rows.length) {
+      await db.query("ROLLBACK");
+      return res.status(404).json({ status: 404, message: "Stuff not found" });
+    }
+
+    const oldData = oldDataQuery.rows[0];
+
+    // ================= AUTH CONTEXT =================
+    const employeeAccountId = req.user.id;
+
+    const employeeQuery = await db.query(
+      `
+      SELECT employee.employee_id
+      FROM employee
+      JOIN employee_account
+        ON employee_account.employee_id = employee.employee_id
+      WHERE employee_account.employee_account_id = $1
+      `,
+      [employeeAccountId]
+    );
+
+    if (!employeeQuery.rows.length) {
+      await db.query("ROLLBACK");
+      return res.status(404).json({ status: 404, message: "Employee not found" });
+    }
+
+    const employeeId = employeeQuery.rows[0].employee_id;
+
+    // ================= BUILD UPDATE QUERY =================
+    const keys = Object.keys(clean);
+    const values = Object.values(clean);
+
+    const setQuery = keys.map((k, i) => `${k} = $${i + 1}`).join(", ");
+
+    const updateQuery = `
+      UPDATE stuff
+      SET ${setQuery}
+      WHERE stuff_id = $${keys.length + 1}
+      RETURNING *
+    `;
+
+    const newDataQuery = await db.query(updateQuery, [...values, stuffId]);
+    const newData = newDataQuery.rows[0];
+
+    // ================= HISTORY =================
     await db.query(
-      "INSERT INTO stuff_history (stuff_id, employee_id, operation, old_data, new_data) VALUES ($1, $2, 'update', $3, $4)",
+      `
+      INSERT INTO stuff_history (stuff_id, employee_id, operation, old_data, new_data)
+      VALUES ($1, $2, 'update', $3, $4)
+      `,
       [stuffId, employeeId, oldData, newData]
     );
 
@@ -1441,6 +1427,7 @@ app.patch("/stuff/:stuff_id", verifyToken, async (req, res) => {
     return res.status(200).json({
       status: 200,
       message: "Success updated data",
+      data: newData,
     });
   } catch (err) {
     await db.query("ROLLBACK");
@@ -1451,6 +1438,7 @@ app.patch("/stuff/:stuff_id", verifyToken, async (req, res) => {
     });
   }
 });
+
 
 app.get("/stuff-purchases", verifyToken, async (req, res) => {
   try {
