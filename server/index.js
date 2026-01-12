@@ -1442,20 +1442,18 @@ app.patch("/stuff/:stuff_id", verifyToken, async (req, res) => {
 
 app.get("/stuff-purchases", verifyToken, async (req, res) => {
   try {
-    let query = await db.query(`
+    const query = await db.query(`
       SELECT
-      stuff_purchase_id,
-      supplier.supplier_id,
-      employee.employee_id,
-      supplier.supplier_name,
-      employee.employee_name
-      buy_date,
-      total_price  
-      FROM stuff_purchase
-      LEFT JOIN supplier ON supplier.supplier_id = stuff_purchase.supplier_id
-      LEFT JOIN employee ON employee.employee_id = stuff_purchase.employee_id
+        sp.stuff_purchase_id,
+        s.supplier_name,
+        e.employee_name,
+        sp.buy_date,
+        sp.total_price
+      FROM stuff_purchase sp
+      LEFT JOIN supplier s ON s.supplier_id = sp.supplier_id
+      LEFT JOIN employee e ON e.employee_id = sp.employee_id
+      ORDER BY sp.stuff_purchase_id DESC
     `);
-    let result = query.rows;
 
     if (query.rows.length === 0) {
       return res.status(404).json({
@@ -1466,9 +1464,10 @@ app.get("/stuff-purchases", verifyToken, async (req, res) => {
 
     return res.status(200).json({
       status: 200,
-      data: result,
+      data: query.rows,
     });
   } catch (err) {
+    console.error(err);
     return res.status(500).json({
       status: 500,
       message: "Internal server error",
@@ -1476,41 +1475,38 @@ app.get("/stuff-purchases", verifyToken, async (req, res) => {
   }
 });
 
+
 app.get(
   "/stuff-purchase-detail/:stuff_purchase_id",
   verifyToken,
   async (req, res) => {
-    let reqId = parseInt(req.params.stuff_purchase_id);
+    const id = parseInt(req.params.stuff_purchase_id);
 
     try {
-      let query = await db.query(
+      const query = await db.query(
         `
-      SELECT
-      stuff_purchase.stuff_purchase_id,
-      supplier.supplier_id,
-      employee.employee_id,
-      warehouse.warehouse_id,
-      stuff.stuff_id,
-      supplier_name,
-      employee_name,
-      warehouse_name,
-      stuff_name,
-      buy_batch,
-      buy_date,
-      quantity,
-      buy_price,
-      total_price
-      FROM stuff_purchase
-      LEFT JOIN supplier ON supplier.supplier_id = stuff_purchase.supplier_id
-      LEFT JOIN employee ON employee.employee_id = stuff_purchase.employee_id
-      LEFT JOIN stuff_purchase_detail ON stuff_purchase_detail.stuff_purchase_id = stuff_purchase.stuff_purchase_id
-      LEFT JOIN warehouse ON stuff_purchase_detail.warehouse_id = warehouse.warehouse_id
-      LEFT JOIN stuff ON stuff_purchase_detail.stuff_id = stuff.stuff_id
-      WHERE stuff_purchase.stuff_purchase_id = $1
-    `,
-        [reqId]
+        SELECT
+          sp.stuff_purchase_id,
+          s.supplier_name,
+          e.employee_name,
+          w.warehouse_name,
+          st.stuff_name,
+          spd.buy_batch,
+          sp.buy_date,
+          spd.quantity,
+          spd.buy_price,
+          sp.total_price
+        FROM stuff_purchase sp
+        LEFT JOIN supplier s ON s.supplier_id = sp.supplier_id
+        LEFT JOIN employee e ON e.employee_id = sp.employee_id
+        LEFT JOIN stuff_purchase_detail spd 
+          ON spd.stuff_purchase_id = sp.stuff_purchase_id
+        LEFT JOIN warehouse w ON w.warehouse_id = spd.warehouse_id
+        LEFT JOIN stuff st ON st.stuff_id = spd.stuff_id
+        WHERE sp.stuff_purchase_id = $1
+      `,
+        [id]
       );
-      let result = query.rows[0];
 
       if (query.rows.length === 0) {
         return res.status(404).json({
@@ -1521,7 +1517,7 @@ app.get(
 
       return res.status(200).json({
         status: 200,
-        data: result,
+        data: query.rows[0],
       });
     } catch (err) {
       console.error(err);
@@ -1532,6 +1528,7 @@ app.get(
     }
   }
 );
+
 
 app.get("/stuff-purchase", verifyToken, async (req, res) => {
   try {
@@ -1593,104 +1590,53 @@ app.post("/stuff-purchase", verifyToken, async (req, res) => {
     buy_price,
   } = req.body;
 
-  if (!supplier_id) {
+  // ===== VALIDATION =====
+  if (!supplier_id || !buy_date || !total_price) {
     return res.status(400).json({
       status: 400,
-      message: "Missing required key: supplier_id",
+      message: "supplier_id, buy_date, total_price are required",
     });
-  } else if (!buy_date) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: buy_date",
-    });
-  } else if (!total_price) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: buy_date",
-    });
-  } else if (!warehouse_id) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: warehous_id",
-    });
-  } else if (!stuff_id) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: stuff_id",
-    });
-  } else if (!buy_batch) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: buy_batch",
-    });
-  } else if (!quantity) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: quantity",
-    });
-  } else if (!buy_price) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: buy_price",
-    });
-  }
-
-  if (typeof total_price === "string") {
-    total_price = convertionToNumber(total_price);
-  }
-
-  if (typeof buy_price === "string") {
-    buy_price = convertionToNumber(buy_price);
-  }
-
-  if (typeof quantity === "string") {
-    quantity = convertionToNumber(quantity);
-  }
-
-  if (typeof buy_date === "string") {
-    buy_date = buy_date.trim();
-  }
-
-  if (typeof buy_batch === "string") {
-    buy_batch = buy_batch.trim();
   }
 
   try {
     await db.query("BEGIN");
 
-    let refreshToken = req.cookies.refreshToken;
-    let account = await new Promise((resolve, reject) => {
-      jwt.verify(
-        refreshToken,
-        process.env.JWT_REFRESH_SECRET,
-        (err, account) => {
-          if (err) return reject(err);
-          resolve(account);
-        }
-      );
-    });
+    // 👉 ambil employee dari token
+    const accountId = req.user.id;
 
-    let employeeQuery = await db.query(
+    const employeeQuery = await db.query(
       `
-        SELECT employee.employee_id
-        FROM employee
-        JOIN employee_account
-        ON employee_account.employee_id = employee.employee_id
-        WHERE employee_account.employee_account_id = $1
-    `,
-      [account.id]
+        SELECT employee_id
+        FROM employee_account
+        WHERE employee_account_id = $1
+      `,
+      [accountId]
     );
-    let employeeId = employeeQuery.rows[0].employee_id;
 
-    const stuffPurchaseQuery = await db.query(
-      "INSERT INTO stuff_purchase (supplier_id, employee_id, buy_date, total_price) VALUES ($1, $2, $3, $4) RETURNING stuff_purchase_id",
+    if (employeeQuery.rows.length === 0) {
+      throw new Error("Employee not found");
+    }
+
+    const employeeId = employeeQuery.rows[0].employee_id;
+
+    const purchaseQuery = await db.query(
+      `
+      INSERT INTO stuff_purchase
+      (supplier_id, employee_id, buy_date, total_price)
+      VALUES ($1, $2, $3, $4)
+      RETURNING stuff_purchase_id
+    `,
       [supplier_id, employeeId, buy_date, total_price]
     );
 
-    const purchaseId = stuffPurchaseQuery.rows[0].stuff_purchase_id;
+    const purchaseId = purchaseQuery.rows[0].stuff_purchase_id;
 
     await db.query(
-      "INSERT INTO stuff_purchase_detail (warehouse_id, stuff_id, stuff_purchase_id, buy_batch, quantity, buy_price) VALUES ($1, $2, $3, $4, $5, $6)",
+      `
+      INSERT INTO stuff_purchase_detail
+      (warehouse_id, stuff_id, stuff_purchase_id, buy_batch, quantity, buy_price)
+      VALUES ($1, $2, $3, $4, $5, $6)
+    `,
       [warehouse_id, stuff_id, purchaseId, buy_batch, quantity, buy_price]
     );
 
@@ -1698,7 +1644,7 @@ app.post("/stuff-purchase", verifyToken, async (req, res) => {
 
     return res.status(201).json({
       status: 201,
-      message: "Purchase success",
+      message: "Purchase created successfully",
     });
   } catch (err) {
     await db.query("ROLLBACK");
@@ -1709,6 +1655,7 @@ app.post("/stuff-purchase", verifyToken, async (req, res) => {
     });
   }
 });
+
 
 app.post(
   "/upload-stuff-purchase",
