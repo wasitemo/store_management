@@ -33,7 +33,7 @@ const menus = [
     name: "Discounts",
     icon: "💰",
     children: [
-      { name: "Stuff Discount", path: "/stuff-discount", icon: "🏷️", status: "fix" },
+      { name: "Stuff Discount", path: "/stuff-discount", icon: "🏷️", status: "ok" },
       { name: "Order Discount", path: "/order-discount", icon: "🏷️", status: "fix" },
     ],
   },

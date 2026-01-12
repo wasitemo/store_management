@@ -2184,40 +2184,10 @@ app.post("/stuff-discount", verifyToken, async (req, res) => {
     discount_status,
   } = req.body;
 
-  if (!stuff_id) {
+  if (!stuff_id || !discount_name || !discount_type || !discount_value) {
     return res.status(400).json({
       status: 400,
-      message: "Missing required key: stuff_id",
-    });
-  } else if (!discount_name) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: discount_name",
-    });
-  } else if (!discount_type) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: discount_type",
-    });
-  } else if (!discount_value) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: discount_value",
-    });
-  } else if (!discount_start) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: discount_start",
-    });
-  } else if (!discount_end) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: discount_end",
-    });
-  } else if (!discount_status) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: discount_status",
+      message: "Missing required fields",
     });
   }
 
@@ -2226,54 +2196,40 @@ app.post("/stuff-discount", verifyToken, async (req, res) => {
   }
 
   if (typeof discount_value === "string") {
-    if (discount_type === "percentage") {
-      discount_value = convertionToDecimal(discount_value);
-    } else if (discount_type === "fixed") {
-      discount_value = convertionToNumber(discount_value);
-    }
-  }
-
-  if (typeof discount_name === "string") {
-    discount_name = discount_name.trim();
-  }
-
-  if (typeof discount_start === "string") {
-    discount_start = discount_start.trim();
-  }
-
-  if (typeof discount_end === "string") {
-    discount_end = discount_end.trim();
+    discount_value =
+      discount_type === "percentage"
+        ? convertionToDecimal(discount_value)
+        : convertionToNumber(discount_value);
   }
 
   try {
     await db.query("BEGIN");
 
-    let refreshToken = req.cookies.refreshToken;
-    let account = await new Promise((resolve, reject) => {
-      jwt.verify(
-        refreshToken,
-        process.env.JWT_REFRESH_SECRET,
-        (err, account) => {
-          if (err) return reject(err);
-          resolve(account);
-        }
-      );
-    });
+    // 🔑 AMBIL USER DARI ACCESS TOKEN
+    const account = req.user;
 
-    let employeeQuery = await db.query(
+    const employeeQuery = await db.query(
       `
-        SELECT employee.employee_id
-        FROM employee
-        JOIN employee_account
-        ON employee_account.employee_id = employee.employee_id
-        WHERE employee_account.employee_account_id = $1
-    `,
+        SELECT employee_id
+        FROM employee_account
+        WHERE employee_account_id = $1
+      `,
       [account.id]
     );
-    let employeeId = employeeQuery.rows[0].employee_id;
 
-    let discountQuery = await db.query(
-      "INSERT INTO discount (employee_id, discount_name, discount_type, discount_value, started_time, ended_time, discount_status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING discount_id",
+    if (employeeQuery.rows.length === 0) {
+      throw new Error("Employee not found");
+    }
+
+    const employeeId = employeeQuery.rows[0].employee_id;
+
+    const discountQuery = await db.query(
+      `
+      INSERT INTO discount
+      (employee_id, discount_name, discount_type, discount_value, started_time, ended_time, discount_status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING discount_id
+    `,
       [
         employeeId,
         discount_name,
@@ -2285,7 +2241,7 @@ app.post("/stuff-discount", verifyToken, async (req, res) => {
       ]
     );
 
-    let discountId = discountQuery.rows[0].discount_id;
+    const discountId = discountQuery.rows[0].discount_id;
 
     await db.query(
       "INSERT INTO stuff_discount (stuff_id, discount_id) VALUES ($1, $2)",
@@ -2299,7 +2255,7 @@ app.post("/stuff-discount", verifyToken, async (req, res) => {
       message: "Success add stuff discount",
     });
   } catch (err) {
-    db.query("ROLLBACK");
+    await db.query("ROLLBACK");
     console.error(err);
     return res.status(500).json({
       status: 500,
@@ -2307,6 +2263,7 @@ app.post("/stuff-discount", verifyToken, async (req, res) => {
     });
   }
 });
+
 
 app.get("/stuff-discount/:stuff_id", verifyToken, async (req, res) => {
   let reqId = parseInt(req.params.stuff_id);
@@ -2372,9 +2329,10 @@ app.get("/stuff-discount/:stuff_id", verifyToken, async (req, res) => {
 });
 
 app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
-  let reqId = parseInt(req.params.discount_id);
-  let body = req.body;
-  let discountFields = [
+  const discountId = parseInt(req.params.discount_id);
+  const body = req.body;
+
+  const discountFields = [
     "discount_name",
     "discount_type",
     "discount_value",
@@ -2382,101 +2340,111 @@ app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
     "discount_end",
     "discount_status",
   ];
-  let stuffDiscountFields = ["stuff_id"];
-  let discountFieldsUpdate = {};
 
-  for (let key of discountFields) {
+  const stuffDiscountFields = ["stuff_id"];
+
+  const discountUpdate = {};
+  const stuffDiscountUpdate = {};
+
+  // ================= FILTER FIELD =================
+  for (const key of discountFields) {
     if (body[key] !== undefined) {
-      discountFieldsUpdate[key] = body[key];
+      discountUpdate[key] = body[key];
     }
   }
 
-  let stuffDiscountFieldsUpdate = {};
-
-  for (let key of stuffDiscountFields) {
+  for (const key of stuffDiscountFields) {
     if (body[key] !== undefined) {
-      stuffDiscountFieldsUpdate[key] = body[key];
+      stuffDiscountUpdate[key] = body[key];
     }
   }
 
-  if (typeof body.discount_type === "string") {
-    body.discount_type = body.discount_type.toLowerCase().trim();
+  // ================= NORMALIZATION =================
+  if (typeof discountUpdate.discount_type === "string") {
+    discountUpdate.discount_type =
+      discountUpdate.discount_type.toLowerCase().trim();
   }
 
-  if (typeof body.discount_name === "string") {
-    body.discount_name = body.discount_name.trim();
+  if (typeof discountUpdate.discount_name === "string") {
+    discountUpdate.discount_name = discountUpdate.discount_name.trim();
   }
 
-  if (typeof body.discount_start === "string") {
-    body.discount_start = body.discount_start.trim();
+  if (typeof discountUpdate.discount_start === "string") {
+    discountUpdate.discount_start = discountUpdate.discount_start.trim();
   }
 
-  if (typeof body.discount_end === "string") {
-    body.discount_end = body.discount_end.trim();
+  if (typeof discountUpdate.discount_end === "string") {
+    discountUpdate.discount_end = discountUpdate.discount_end.trim();
   }
 
-  if (typeof body.discount_value === "string") {
-    if (body.discount_type === "percentage") {
-      body.discount_value = convertionToDecimal(body.discount_value);
-    } else if (body.discount_type === "fixed") {
-      body.discount_value = convertionToNumber(body.discount_value);
+  if (typeof discountUpdate.discount_value === "string") {
+    if (discountUpdate.discount_type === "percentage") {
+      discountUpdate.discount_value = convertionToDecimal(
+        discountUpdate.discount_value
+      );
+    } else if (discountUpdate.discount_type === "fixed") {
+      discountUpdate.discount_value = convertionToNumber(
+        discountUpdate.discount_value
+      );
     }
   }
 
   try {
     await db.query("BEGIN");
 
-    let refreshToken = req.cookies.refreshToken;
-    let account = await new Promise((resolve, reject) => {
-      jwt.verify(
-        refreshToken,
-        process.env.JWT_REFRESH_SECRET,
-        (err, account) => {
-          if (err) return reject(err);
-          resolve(account);
-        }
-      );
-    });
+    // 🔐 AMBIL USER DARI ACCESS TOKEN
+    const account = req.user;
 
-    let employeeQuery = await db.query(
+    const employeeQuery = await db.query(
       `
-        SELECT employee.employee_id
-        FROM employee
-        JOIN employee_account
-        ON employee_account.employee_id = employee.employee_id
-        WHERE employee_account.employee_account_id = $1
-    `,
+        SELECT employee_id
+        FROM employee_account
+        WHERE employee_account_id = $1
+      `,
       [account.id]
     );
-    let employeeId = employeeQuery.rows[0].employee_id;
 
-    if (Object.keys(discountFieldsUpdate.length > 0)) {
-      let setQuery = Object.keys(discountFieldsUpdate)
-        .map((key, index) => `${key} = $${index + 1}`)
+    if (employeeQuery.rows.length === 0) {
+      throw new Error("Employee not found");
+    }
+
+    const employeeId = employeeQuery.rows[0].employee_id;
+
+    // ================= UPDATE DISCOUNT =================
+    if (Object.keys(discountUpdate).length > 0) {
+      const fields = Object.keys(discountUpdate);
+      const values = Object.values(discountUpdate);
+
+      const setQuery = fields
+        .map((key, i) => `${key} = $${i + 1}`)
         .join(", ");
-      let values = Object.values(discountFieldsUpdate);
-
-      setQuery += `, employee_id = $${values.length + 1}`;
 
       await db.query(
-        `UPDATE discount SET ${setQuery} WHERE discount_id = $${
-          values.length + 2
-        }`,
-        [...values, employeeId, reqId]
+        `
+        UPDATE discount
+        SET ${setQuery}, employee_id = $${values.length + 1}
+        WHERE discount_id = $${values.length + 2}
+      `,
+        [...values, employeeId, discountId]
       );
     }
 
-    if (Object.keys(stuffDiscountFieldsUpdate).length > 0) {
-      let setQuery = Object.keys(stuffDiscountFieldsUpdate)
-        .map((key, index) => `${key} = $${index + 1}`)
+    // ================= UPDATE STUFF_DISCOUNT =================
+    if (Object.keys(stuffDiscountUpdate).length > 0) {
+      const fields = Object.keys(stuffDiscountUpdate);
+      const values = Object.values(stuffDiscountUpdate);
+
+      const setQuery = fields
+        .map((key, i) => `${key} = $${i + 1}`)
         .join(", ");
-      let values = Object.values(stuffDiscountFieldsUpdate);
 
       await db.query(
-        `UPDATE stuff_discount SET ${setQuery} WHERE discount_id = $${
-          values.length + 1
-        }`,
-        [...values, reqId]
+        `
+        UPDATE stuff_discount
+        SET ${setQuery}
+        WHERE discount_id = $${values.length + 1}
+      `,
+        [...values, discountId]
       );
     }
 
@@ -2484,7 +2452,7 @@ app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
 
     return res.status(200).json({
       status: 200,
-      message: "Success updated data",
+      message: "Success updated stuff discount",
     });
   } catch (err) {
     await db.query("ROLLBACK");
@@ -2495,6 +2463,7 @@ app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
     });
   }
 });
+
 
 app.get("/order-discounts", verifyToken, async (req, res) => {
   try {
@@ -2695,99 +2664,127 @@ app.get("/order-discount/:discount_id", verifyToken, async (req, res) => {
   }
 });
 
-app.patch("/order-discount/:discount_id", verifyToken, async (req, res) => {
-  let reqId = parseInt(req.params.discount_id);
-  let body = req.body;
-  let fields = [
+app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
+  const discountId = parseInt(req.params.discount_id);
+  const body = req.body;
+
+  const discountFields = [
     "discount_name",
     "discount_type",
     "discount_value",
-    "discount_start",
-    "discount_end",
+    "started_time",   // ✅ FIX
+    "ended_time",     // ✅ FIX
     "discount_status",
   ];
-  let keys = Object.keys(body);
-  let invalidField = keys.filter((k) => !fields.includes(k));
 
-  if (invalidField.length > 0) {
-    return res.status(400).json({
-      status: 400,
-      message: "Invalid field",
-      invalidField,
-    });
-  }
+  const stuffDiscountFields = ["stuff_id"];
 
-  if (keys.length === 0) {
-    return res.status(400).json({
-      status: 400,
-      message: "No items updated",
-    });
-  }
+  const discountUpdate = {};
+  const stuffDiscountUpdate = {};
 
-  if (typeof body.discount_type === "string") {
-    body.discount_type = body.discount_type.toLowerCase().trim();
-  }
-
-  if (typeof body.discount_name === "string") {
-    body.discount_name = body.discount_name.trim();
-  }
-
-  if (typeof body.discount_start === "string") {
-    body.discount_start = body.discount_start.trim();
-  }
-
-  if (typeof body.discount_end === "string") {
-    body.discount_end = body.discount_end.trim();
-  }
-
-  if (typeof body.discount_value === "string") {
-    if (body.discount_type === "percentage") {
-      body.discount_value = convertionToDecimal(body.discount_value);
-    } else if (body.discount_type === "fixed") {
-      body.discount_value = convertionToNumber(body.discount_value);
+  for (const key of discountFields) {
+    if (body[key] !== undefined) {
+      discountUpdate[key] = body[key];
     }
   }
 
-  let setQuery = keys.map((key, index) => `${key} = $${index + 1}`).join(", ");
-  let values = Object.values(body);
+  for (const key of stuffDiscountFields) {
+    if (body[key] !== undefined) {
+      stuffDiscountUpdate[key] = body[key];
+    }
+  }
+
+  if (typeof discountUpdate.discount_type === "string") {
+    discountUpdate.discount_type =
+      discountUpdate.discount_type.toLowerCase().trim();
+  }
+
+  if (typeof discountUpdate.discount_name === "string") {
+    discountUpdate.discount_name = discountUpdate.discount_name.trim();
+  }
+
+  if (typeof discountUpdate.started_time === "string") {
+    discountUpdate.started_time = discountUpdate.started_time.trim();
+  }
+
+  if (typeof discountUpdate.ended_time === "string") {
+    discountUpdate.ended_time = discountUpdate.ended_time.trim();
+  }
+
+  if (typeof discountUpdate.discount_value === "string") {
+    if (discountUpdate.discount_type === "percentage") {
+      discountUpdate.discount_value = convertionToDecimal(
+        discountUpdate.discount_value
+      );
+    } else if (discountUpdate.discount_type === "fixed") {
+      discountUpdate.discount_value = convertionToNumber(
+        discountUpdate.discount_value
+      );
+    }
+  }
 
   try {
-    let refreshToken = req.cookies.refreshToken;
-    let account = await new Promise((resolve, reject) => {
-      jwt.verify(
-        refreshToken,
-        process.env.JWT_REFRESH_SECRET,
-        (err, account) => {
-          if (err) return reject(err);
-          resolve(account);
-        }
-      );
-    });
+    await db.query("BEGIN");
 
-    let employeeQuery = await db.query(
+    const account = req.user;
+
+    const employeeQuery = await db.query(
       `
-        SELECT employee.employee_id
-        FROM employee
-        JOIN employee_account
-        ON employee_account.employee_id = employee.employee_id
-        WHERE employee_account.employee_account_id = $1
-    `,
+      SELECT employee_id
+      FROM employee_account
+      WHERE employee_account_id = $1
+      `,
       [account.id]
     );
-    let employeeId = employeeQuery.rows[0].employee_id;
 
-    setQuery += `, employee_id = $${keys.length + 1}`;
+    const employeeId = employeeQuery.rows[0].employee_id;
 
-    await db.query(
-      `UPDATE discount SET ${setQuery} WHERE discount_id = $${keys.length + 2}`,
-      [...values, employeeId, reqId]
-    );
+    // ===== UPDATE DISCOUNT =====
+    if (Object.keys(discountUpdate).length > 0) {
+      const fields = Object.keys(discountUpdate);
+      const values = Object.values(discountUpdate);
+
+      const setQuery = fields
+        .map((key, i) => `${key} = $${i + 1}`)
+        .join(", ");
+
+      await db.query(
+        `
+        UPDATE discount
+        SET ${setQuery}, employee_id = $${values.length + 1}
+        WHERE discount_id = $${values.length + 2}
+        `,
+        [...values, employeeId, discountId]
+      );
+    }
+
+    // ===== UPDATE STUFF_DISCOUNT =====
+    if (Object.keys(stuffDiscountUpdate).length > 0) {
+      const fields = Object.keys(stuffDiscountUpdate);
+      const values = Object.values(stuffDiscountUpdate);
+
+      const setQuery = fields
+        .map((key, i) => `${key} = $${i + 1}`)
+        .join(", ");
+
+      await db.query(
+        `
+        UPDATE stuff_discount
+        SET ${setQuery}
+        WHERE discount_id = $${values.length + 1}
+        `,
+        [...values, discountId]
+      );
+    }
+
+    await db.query("COMMIT");
 
     return res.status(200).json({
       status: 200,
-      message: "Success updated data",
+      message: "Success updated stuff discount",
     });
   } catch (err) {
+    await db.query("ROLLBACK");
     console.error(err);
     return res.status(500).json({
       status: 500,
@@ -2795,6 +2792,7 @@ app.patch("/order-discount/:discount_id", verifyToken, async (req, res) => {
     });
   }
 });
+
 
 // ACCOUNT
 app.get("/employee-accounts", verifyToken, async (req, res) => {
