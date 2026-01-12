@@ -2513,53 +2513,41 @@ app.post("/order-discount", verifyToken, async (req, res) => {
     discount_status,
   } = req.body;
 
-  if (!discount_name) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: discount_name",
-    });
-  } else if (!discount_type) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: discount_type",
-    });
-  } else if (!discount_value) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: discount_value",
-    });
-  } else if (!discount_start) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key discount_start",
-    });
-  } else if (!discount_end) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key discount_end",
-    });
-  } else if (!discount_status) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key discount_status",
-    });
-  }
+  // =========================
+  // VALIDATION
+  // =========================
+  if (!discount_name)
+    return res.status(400).json({ status: 400, message: "Missing required key: discount_name" });
 
-  if (typeof discount_type === "string") {
-    discount_type = discount_type.toLowerCase();
-  }
+  if (!discount_type)
+    return res.status(400).json({ status: 400, message: "Missing required key: discount_type" });
 
-  if (typeof discount_name === "string") {
+  if (discount_value === undefined)
+    return res.status(400).json({ status: 400, message: "Missing required key: discount_value" });
+
+  if (!discount_start)
+    return res.status(400).json({ status: 400, message: "Missing required key: discount_start" });
+
+  if (!discount_end)
+    return res.status(400).json({ status: 400, message: "Missing required key: discount_end" });
+
+  if (!discount_status)
+    return res.status(400).json({ status: 400, message: "Missing required key: discount_status" });
+
+  // =========================
+  // NORMALIZATION
+  // =========================
+  if (typeof discount_type === "string")
+    discount_type = discount_type.toLowerCase().trim();
+
+  if (typeof discount_name === "string")
     discount_name = discount_name.trim();
-  }
 
-  if (typeof discount_start === "string") {
+  if (typeof discount_start === "string")
     discount_start = discount_start.trim();
-  }
 
-  if (typeof discount_end === "string") {
+  if (typeof discount_end === "string")
     discount_end = discount_end.trim();
-  }
 
   if (typeof discount_value === "string") {
     if (discount_type === "percentage") {
@@ -2570,39 +2558,46 @@ app.post("/order-discount", verifyToken, async (req, res) => {
   }
 
   try {
-    let refreshToken = req.cookies.refreshToken;
-    let account = await new Promise((resolve, reject) => {
-      jwt.verify(
-        refreshToken,
-        process.env.JWT_REFRESH_SECRET,
-        (err, account) => {
-          if (err) return reject(err);
-          resolve(account);
-        }
-      );
-    });
-
-    let employeeQuery = await db.query(
+    // =========================
+    // GET EMPLOYEE FROM ACCESS TOKEN
+    // =========================
+    const employeeQuery = await db.query(
       `
-        SELECT employee.employee_id
-        FROM employee
-        JOIN employee_account
-        ON employee_account.employee_id = employee.employee_id
-        WHERE employee_account.employee_account_id = $1
-    `,
-      [account.id]
+        SELECT e.employee_id
+        FROM employee e
+        JOIN employee_account ea
+          ON ea.employee_id = e.employee_id
+        WHERE ea.employee_account_id = $1
+      `,
+      [req.user.id]
     );
-    let employeeId = employeeQuery.rows[0].employee_id;
 
+    if (employeeQuery.rows.length === 0) {
+      return res.status(403).json({
+        status: 403,
+        message: "Employee not found",
+      });
+    }
+
+    const employeeId = employeeQuery.rows[0].employee_id;
+
+    // =========================
+    // INSERT DISCOUNT
+    // =========================
     await db.query(
-      "INSERT INTO discount (employee_id, discount_name, discount_type, discount_value, started_time, ended_time, discount_status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING discount_id",
+      `
+        INSERT INTO discount
+          (employee_id, discount_name, discount_type, discount_value, started_time, ended_time, discount_status)
+        VALUES
+          ($1, $2, $3, $4, $5, $6, $7)
+      `,
       [
         employeeId,
         discount_name,
         discount_type,
         discount_value,
-        discount_start,
-        discount_end,
+        discount_start, // → started_time
+        discount_end,   // → ended_time
         discount_status,
       ]
     );
@@ -2619,6 +2614,7 @@ app.post("/order-discount", verifyToken, async (req, res) => {
     });
   }
 });
+
 
 app.get("/order-discount/:discount_id", verifyToken, async (req, res) => {
   let reqId = parseInt(req.params.discount_id);
