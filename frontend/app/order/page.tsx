@@ -11,6 +11,7 @@ export default function OrderPage() {
 
   const [orders, setOrders] = useState<any[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const [master, setMaster] = useState<any>({
     customer: [],
@@ -54,17 +55,62 @@ export default function OrderPage() {
     setForm({ ...form, items: [...form.items, { stuff_id: '', imei_1: '', imei_2: '', sn: '', barcode: '' }] });
   };
 
-  const submitOrder = async () => {
-    await fetch(`${BASE_URL}/customer-order`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(form)
-    });
+const submitOrder = async () => {
+  setErrorMsg(null);
+if (!form.customer_id || !form.warehouse_id || !form.payment_method_id) {
+  setErrorMsg('Customer, Warehouse, dan Payment Method wajib dipilih');
+  return;
+}
 
-    setShowModal(false);
-    setForm({ customer_id: '', warehouse_id: '', payment_method_id: '', order_date: '', payment: '', items: [], discounts: [] });
-    loadOrders();
-  };
+if (!form.items.length) {
+  setErrorMsg('Minimal harus ada 1 item');
+  return;
+}
+
+for (let i = 0; i < form.items.length; i++) {
+  const item = form.items[i];
+
+  if (!item.stuff_id) {
+    setErrorMsg(`Item ke-${i + 1}: Product wajib dipilih`);
+    return;
+  }
+
+  if (!item.imei_1 && !item.imei_2 && !item.sn) {
+    setErrorMsg(`Item ke-${i + 1}: IMEI / SN wajib diisi`);
+    return;
+  }
+}
+
+  const res = await fetch(`${BASE_URL}/customer-order`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(form)
+  });
+
+  const json = await res.json();
+
+  if (!res.ok) {
+    setErrorMsg(json.message || 'Unknown error occurred');
+    return;
+  }
+
+  setShowModal(false);
+  setForm({
+    customer_id: '',
+    warehouse_id: '',
+    payment_method_id: '',
+    order_date: '',
+    payment: '',
+    items: [],
+    discounts: []
+  });
+
+  loadOrders();
+};
+
 
   return (
     <div className="p-container-padding">
@@ -125,6 +171,12 @@ export default function OrderPage() {
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-text-primary">Create Order</h2>
+                {errorMsg && (
+                  <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+                    ⚠️ {errorMsg}
+                  </div>
+                )}
+
                 <button
                   onClick={() => setShowModal(false)}
                   className="text-text-secondary hover:text-text-primary"

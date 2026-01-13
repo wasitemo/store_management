@@ -39,7 +39,7 @@ const menus = [
   },
 
   { name: "Stock", path: "/stock", icon: "📈", status: "ok" },
-  { name: "Order", path: "/order", icon: "🛒", status: "fix" },
+  { name: "Order", path: "/order", icon: "🛒", status: "ok" },
 ];
 
 /* =======================
