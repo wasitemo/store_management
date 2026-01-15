@@ -28,18 +28,29 @@ app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "http://localhost:3000");
-  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,PATCH,DELETE,OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.header("Access-Control-Allow-Credentials", "true");
+app.use(
+  cors({
+    origin: "http://localhost:3001",
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+// app.use((req, res, next) => {
+//   res.header("Access-Control-Allow-Origin", "http://localhost:3000");
+//   res.header(
+//     "Access-Control-Allow-Methods",
+//     "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+//   );
+//   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+//   res.header("Access-Control-Allow-Credentials", "true");
 
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(200);
-  }
+//   if (req.method === "OPTIONS") {
+//     return res.sendStatus(200);
+//   }
 
-  next();
-});
+//   next();
+// });
 
 function parseCSV(filePath) {
   return new Promise((resolve, reject) => {
@@ -1056,7 +1067,6 @@ app.get("/stuff", verifyToken, async (req, res) => {
   }
 });
 
-
 app.post("/stuff", verifyToken, async (req, res) => {
   try {
     const body = req.body || {};
@@ -1090,16 +1100,44 @@ app.post("/stuff", verifyToken, async (req, res) => {
     if (typeof barcode === "string") barcode = barcode.trim();
 
     // ================= VALIDATION =================
-    if (!stuff_category_id) return res.status(400).json({ status: 400, message: "Missing stuff_category_id" });
-    if (!stuff_brand_id) return res.status(400).json({ status: 400, message: "Missing stuff_brand_id" });
-    if (!supplier_id) return res.status(400).json({ status: 400, message: "Missing supplier_id" });
-    if (!stuff_code) return res.status(400).json({ status: 400, message: "Missing stuff_code" });
-    if (!stuff_sku) return res.status(400).json({ status: 400, message: "Missing stuff_sku" });
-    if (!stuff_name) return res.status(400).json({ status: 400, message: "Missing stuff_name" });
-    if (!stuff_variant) return res.status(400).json({ status: 400, message: "Missing stuff_variant" });
-    if (!current_sell_price) return res.status(400).json({ status: 400, message: "Missing current_sell_price" });
-    if (typeof has_sn !== "boolean") return res.status(400).json({ status: 400, message: "Invalid has_sn value" });
-    if (!barcode) return res.status(400).json({ status: 400, message: "Missing barcode" });
+    if (!stuff_category_id)
+      return res
+        .status(400)
+        .json({ status: 400, message: "Missing stuff_category_id" });
+    if (!stuff_brand_id)
+      return res
+        .status(400)
+        .json({ status: 400, message: "Missing stuff_brand_id" });
+    if (!supplier_id)
+      return res
+        .status(400)
+        .json({ status: 400, message: "Missing supplier_id" });
+    if (!stuff_code)
+      return res
+        .status(400)
+        .json({ status: 400, message: "Missing stuff_code" });
+    if (!stuff_sku)
+      return res
+        .status(400)
+        .json({ status: 400, message: "Missing stuff_sku" });
+    if (!stuff_name)
+      return res
+        .status(400)
+        .json({ status: 400, message: "Missing stuff_name" });
+    if (!stuff_variant)
+      return res
+        .status(400)
+        .json({ status: 400, message: "Missing stuff_variant" });
+    if (!current_sell_price)
+      return res
+        .status(400)
+        .json({ status: 400, message: "Missing current_sell_price" });
+    if (typeof has_sn !== "boolean")
+      return res
+        .status(400)
+        .json({ status: 400, message: "Invalid has_sn value" });
+    if (!barcode)
+      return res.status(400).json({ status: 400, message: "Missing barcode" });
 
     await db.query("BEGIN");
 
@@ -1119,7 +1157,9 @@ app.post("/stuff", verifyToken, async (req, res) => {
 
     if (!employeeQuery.rows.length) {
       await db.query("ROLLBACK");
-      return res.status(404).json({ status: 404, message: "Employee not found" });
+      return res
+        .status(404)
+        .json({ status: 404, message: "Employee not found" });
     }
 
     const employeeId = employeeQuery.rows[0].employee_id;
@@ -1172,7 +1212,6 @@ app.post("/stuff", verifyToken, async (req, res) => {
     });
   }
 });
-
 
 app.get("/stuff-history", verifyToken, async (req, res) => {
   try {
@@ -1332,7 +1371,9 @@ app.patch("/stuff/:stuff_id", verifyToken, async (req, res) => {
       if (schema[key] === "number") {
         value = convertionToNumber(value);
         if (!Number.isFinite(value)) {
-          return res.status(400).json({ status: 400, message: `Invalid ${key}` });
+          return res
+            .status(400)
+            .json({ status: 400, message: `Invalid ${key}` });
         }
       }
 
@@ -1341,14 +1382,18 @@ app.patch("/stuff/:stuff_id", verifyToken, async (req, res) => {
           value = value === "true" || value === "1";
         }
         if (typeof value !== "boolean") {
-          return res.status(400).json({ status: 400, message: `Invalid ${key}` });
+          return res
+            .status(400)
+            .json({ status: 400, message: `Invalid ${key}` });
         }
       }
 
       if (schema[key] === "string") {
         value = String(value).trim();
         if (!value) {
-          return res.status(400).json({ status: 400, message: `Invalid ${key}` });
+          return res
+            .status(400)
+            .json({ status: 400, message: `Invalid ${key}` });
         }
       }
 
@@ -1357,7 +1402,9 @@ app.patch("/stuff/:stuff_id", verifyToken, async (req, res) => {
   }
 
   if (!Object.keys(clean).length) {
-    return res.status(400).json({ status: 400, message: "No valid field to update" });
+    return res
+      .status(400)
+      .json({ status: 400, message: "No valid field to update" });
   }
 
   try {
@@ -1392,7 +1439,9 @@ app.patch("/stuff/:stuff_id", verifyToken, async (req, res) => {
 
     if (!employeeQuery.rows.length) {
       await db.query("ROLLBACK");
-      return res.status(404).json({ status: 404, message: "Employee not found" });
+      return res
+        .status(404)
+        .json({ status: 404, message: "Employee not found" });
     }
 
     const employeeId = employeeQuery.rows[0].employee_id;
@@ -1439,7 +1488,6 @@ app.patch("/stuff/:stuff_id", verifyToken, async (req, res) => {
   }
 });
 
-
 app.get("/stuff-purchases", verifyToken, async (req, res) => {
   try {
     const query = await db.query(`
@@ -1474,7 +1522,6 @@ app.get("/stuff-purchases", verifyToken, async (req, res) => {
     });
   }
 });
-
 
 app.get(
   "/stuff-purchase-detail/:stuff_purchase_id",
@@ -1528,7 +1575,6 @@ app.get(
     }
   }
 );
-
 
 app.get("/stuff-purchase", verifyToken, async (req, res) => {
   try {
@@ -1655,7 +1701,6 @@ app.post("/stuff-purchase", verifyToken, async (req, res) => {
     });
   }
 });
-
 
 app.post(
   "/upload-stuff-purchase",
@@ -2264,7 +2309,6 @@ app.post("/stuff-discount", verifyToken, async (req, res) => {
   }
 });
 
-
 app.get("/stuff-discount/:stuff_id", verifyToken, async (req, res) => {
   let reqId = parseInt(req.params.stuff_id);
 
@@ -2361,8 +2405,9 @@ app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
 
   // ================= NORMALIZATION =================
   if (typeof discountUpdate.discount_type === "string") {
-    discountUpdate.discount_type =
-      discountUpdate.discount_type.toLowerCase().trim();
+    discountUpdate.discount_type = discountUpdate.discount_type
+      .toLowerCase()
+      .trim();
   }
 
   if (typeof discountUpdate.discount_name === "string") {
@@ -2415,9 +2460,7 @@ app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
       const fields = Object.keys(discountUpdate);
       const values = Object.values(discountUpdate);
 
-      const setQuery = fields
-        .map((key, i) => `${key} = $${i + 1}`)
-        .join(", ");
+      const setQuery = fields.map((key, i) => `${key} = $${i + 1}`).join(", ");
 
       await db.query(
         `
@@ -2434,9 +2477,7 @@ app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
       const fields = Object.keys(stuffDiscountUpdate);
       const values = Object.values(stuffDiscountUpdate);
 
-      const setQuery = fields
-        .map((key, i) => `${key} = $${i + 1}`)
-        .join(", ");
+      const setQuery = fields.map((key, i) => `${key} = $${i + 1}`).join(", ");
 
       await db.query(
         `
@@ -2463,7 +2504,6 @@ app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
     });
   }
 });
-
 
 app.get("/order-discounts", verifyToken, async (req, res) => {
   try {
@@ -2517,22 +2557,34 @@ app.post("/order-discount", verifyToken, async (req, res) => {
   // VALIDATION
   // =========================
   if (!discount_name)
-    return res.status(400).json({ status: 400, message: "Missing required key: discount_name" });
+    return res
+      .status(400)
+      .json({ status: 400, message: "Missing required key: discount_name" });
 
   if (!discount_type)
-    return res.status(400).json({ status: 400, message: "Missing required key: discount_type" });
+    return res
+      .status(400)
+      .json({ status: 400, message: "Missing required key: discount_type" });
 
   if (discount_value === undefined)
-    return res.status(400).json({ status: 400, message: "Missing required key: discount_value" });
+    return res
+      .status(400)
+      .json({ status: 400, message: "Missing required key: discount_value" });
 
   if (!discount_start)
-    return res.status(400).json({ status: 400, message: "Missing required key: discount_start" });
+    return res
+      .status(400)
+      .json({ status: 400, message: "Missing required key: discount_start" });
 
   if (!discount_end)
-    return res.status(400).json({ status: 400, message: "Missing required key: discount_end" });
+    return res
+      .status(400)
+      .json({ status: 400, message: "Missing required key: discount_end" });
 
   if (!discount_status)
-    return res.status(400).json({ status: 400, message: "Missing required key: discount_status" });
+    return res
+      .status(400)
+      .json({ status: 400, message: "Missing required key: discount_status" });
 
   // =========================
   // NORMALIZATION
@@ -2540,14 +2592,12 @@ app.post("/order-discount", verifyToken, async (req, res) => {
   if (typeof discount_type === "string")
     discount_type = discount_type.toLowerCase().trim();
 
-  if (typeof discount_name === "string")
-    discount_name = discount_name.trim();
+  if (typeof discount_name === "string") discount_name = discount_name.trim();
 
   if (typeof discount_start === "string")
     discount_start = discount_start.trim();
 
-  if (typeof discount_end === "string")
-    discount_end = discount_end.trim();
+  if (typeof discount_end === "string") discount_end = discount_end.trim();
 
   if (typeof discount_value === "string") {
     if (discount_type === "percentage") {
@@ -2597,7 +2647,7 @@ app.post("/order-discount", verifyToken, async (req, res) => {
         discount_type,
         discount_value,
         discount_start, // → started_time
-        discount_end,   // → ended_time
+        discount_end, // → ended_time
         discount_status,
       ]
     );
@@ -2614,7 +2664,6 @@ app.post("/order-discount", verifyToken, async (req, res) => {
     });
   }
 });
-
 
 app.get("/order-discount/:discount_id", verifyToken, async (req, res) => {
   let reqId = parseInt(req.params.discount_id);
@@ -2668,8 +2717,8 @@ app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
     "discount_name",
     "discount_type",
     "discount_value",
-    "started_time",   // ✅ FIX
-    "ended_time",     // ✅ FIX
+    "started_time", // ✅ FIX
+    "ended_time", // ✅ FIX
     "discount_status",
   ];
 
@@ -2691,8 +2740,9 @@ app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
   }
 
   if (typeof discountUpdate.discount_type === "string") {
-    discountUpdate.discount_type =
-      discountUpdate.discount_type.toLowerCase().trim();
+    discountUpdate.discount_type = discountUpdate.discount_type
+      .toLowerCase()
+      .trim();
   }
 
   if (typeof discountUpdate.discount_name === "string") {
@@ -2740,9 +2790,7 @@ app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
       const fields = Object.keys(discountUpdate);
       const values = Object.values(discountUpdate);
 
-      const setQuery = fields
-        .map((key, i) => `${key} = $${i + 1}`)
-        .join(", ");
+      const setQuery = fields.map((key, i) => `${key} = $${i + 1}`).join(", ");
 
       await db.query(
         `
@@ -2759,9 +2807,7 @@ app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
       const fields = Object.keys(stuffDiscountUpdate);
       const values = Object.values(stuffDiscountUpdate);
 
-      const setQuery = fields
-        .map((key, i) => `${key} = $${i + 1}`)
-        .join(", ");
+      const setQuery = fields.map((key, i) => `${key} = $${i + 1}`).join(", ");
 
       await db.query(
         `
@@ -2788,7 +2834,6 @@ app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
     });
   }
 });
-
 
 // ACCOUNT
 app.get("/employee-accounts", verifyToken, async (req, res) => {
@@ -2980,7 +3025,7 @@ app.post("/login", async (req, res) => {
           res.cookie("refreshToken", refreshToken, {
             httpOnly: true,
             secure: false,
-            sameSite: "strict",
+            sameSite: "lax",
             maxAge: 7 * 24 * 60 * 60 * 1000,
           });
 
@@ -3223,10 +3268,11 @@ app.get("/stocks", verifyToken, async (req, res) => {
     return res.status(200).json({ status: 200, data: query.rows });
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ status: 500, message: "Internal server error" });
+    return res
+      .status(500)
+      .json({ status: 500, message: "Internal server error" });
   }
 });
-
 
 app.get("/stock-history", verifyToken, async (req, res) => {
   try {
@@ -3313,10 +3359,16 @@ app.post("/stock", verifyToken, async (req, res) => {
 
   let { warehouse_id, stuff_id, imei_1, imei_2, sn } = req.body;
 
-  if (!warehouse_id) return res.status(400).json({ status: 400, message: "Missing warehouse_id" });
-  if (!stuff_id) return res.status(400).json({ status: 400, message: "Missing stuff_id" });
-  if (!imei_1) return res.status(400).json({ status: 400, message: "Missing imei_1" });
-  if (!imei_2) return res.status(400).json({ status: 400, message: "Missing imei_2" });
+  if (!warehouse_id)
+    return res
+      .status(400)
+      .json({ status: 400, message: "Missing warehouse_id" });
+  if (!stuff_id)
+    return res.status(400).json({ status: 400, message: "Missing stuff_id" });
+  if (!imei_1)
+    return res.status(400).json({ status: 400, message: "Missing imei_1" });
+  if (!imei_2)
+    return res.status(400).json({ status: 400, message: "Missing imei_2" });
   if (!sn) return res.status(400).json({ status: 400, message: "Missing sn" });
 
   // Trim
@@ -3354,20 +3406,25 @@ app.post("/stock", verifyToken, async (req, res) => {
 
     await db.query("COMMIT");
 
-    return res.status(201).json({ status: 201, message: "Stock added successfully" });
+    return res
+      .status(201)
+      .json({ status: 201, message: "Stock added successfully" });
   } catch (err) {
     await db.query("ROLLBACK");
     console.error(err);
 
     // Handle duplicate IMEI
     if (err.code === "23505") {
-      return res.status(409).json({ status: 409, message: "IMEI already exists" });
+      return res
+        .status(409)
+        .json({ status: 409, message: "IMEI already exists" });
     }
 
-    return res.status(500).json({ status: 500, message: "Internal server error" });
+    return res
+      .status(500)
+      .json({ status: 500, message: "Internal server error" });
   }
 });
-
 
 app.post(
   "/upload-stock",
@@ -3986,8 +4043,6 @@ app.post("/customer-order", verifyToken, async (req, res) => {
     });
   }
 });
-
-
 
 app.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`);
