@@ -5,7 +5,7 @@ function errorHandler(err, req, res, next) {
   const isOperational = err instanceof ErrorMessage;
 
   res.status(statusCode).json({
-    success: false,
+    status: statusCode,
     message: isOperational ? err.message : "Internal server error",
   });
 }
