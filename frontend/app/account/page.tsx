@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface Employee {
   employee_id: number;
@@ -17,28 +17,29 @@ interface EmployeeAccount {
   account_status: string;
 }
 
-const BASE_URL = 'http://localhost:3001';
+const BASE_URL = "http://localhost:3000";
 
 export default function EmployeeAccountsPage() {
   const router = useRouter();
-  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
   const [accounts, setAccounts] = useState<EmployeeAccount[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
 
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [formError, setFormError] = useState('');
+  const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
 
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const [form, setForm] = useState({
-    employee_id: '',
-    username: '',
-    password: '',
-    role: '',
-    account_status: 'active',
+    employee_id: "",
+    username: "",
+    password: "",
+    role: "",
+    account_status: "active",
   });
 
   // ================= LOAD =================
@@ -60,31 +61,31 @@ export default function EmployeeAccountsPage() {
 
   useEffect(() => {
     if (!token) {
-      router.push('/login');
+      router.push("/login");
       return;
     }
 
     Promise.all([loadAccounts(), loadEmployees()])
-      .catch(() => setError('Gagal memuat data'))
+      .catch(() => setError("Gagal memuat data"))
       .finally(() => setLoading(false));
   }, []);
 
   // ================= FORM =================
   const handleChange = (e: any) => {
     setForm({ ...form, [e.target.name]: e.target.value });
-    setFormError('');
+    setFormError("");
   };
 
   const openAdd = () => {
     setEditingId(null);
     setForm({
-      employee_id: '',
-      username: '',
-      password: '',
-      role: '',
-      account_status: 'active',
+      employee_id: "",
+      username: "",
+      password: "",
+      role: "",
+      account_status: "active",
     });
-    setFormError('');
+    setFormError("");
     setShowModal(true);
   };
 
@@ -93,46 +94,46 @@ export default function EmployeeAccountsPage() {
     setForm({
       employee_id: acc.employee_id.toString(),
       username: acc.username,
-      password: '',
+      password: "",
       role: acc.role,
       account_status: acc.account_status,
     });
-    setFormError('');
+    setFormError("");
     setShowModal(true);
   };
 
   const submitForm = async () => {
-    setFormError('');
+    setFormError("");
 
     if (!editingId) {
-      if (!form.employee_id) return setFormError('Employee harus dipilih');
-      if (!form.username) return setFormError('Username wajib diisi');
-      if (!form.password) return setFormError('Password wajib diisi');
-      if (!form.role) return setFormError('Role wajib diisi');
+      if (!form.employee_id) return setFormError("Employee harus dipilih");
+      if (!form.username) return setFormError("Username wajib diisi");
+      if (!form.password) return setFormError("Password wajib diisi");
+      if (!form.role) return setFormError("Role wajib diisi");
 
       if (accounts.some((a) => a.employee_id.toString() === form.employee_id)) {
-        return setFormError('Employee ini sudah memiliki account');
+        return setFormError("Employee ini sudah memiliki account");
       }
     }
 
     const body = new URLSearchParams();
     if (!editingId) {
-      body.append('employee_id', form.employee_id);
-      body.append('username', form.username);
-      body.append('password', form.password);
-      body.append('role', form.role);
+      body.append("employee_id", form.employee_id);
+      body.append("username", form.username);
+      body.append("password", form.password);
+      body.append("role", form.role);
     }
-    body.append('account_status', form.account_status);
+    body.append("account_status", form.account_status);
 
     const endpoint = editingId
       ? `${BASE_URL}/employee-account/${editingId}`
       : `${BASE_URL}/register`;
 
     const res = await fetch(endpoint, {
-      method: editingId ? 'PATCH' : 'POST',
+      method: editingId ? "PATCH" : "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
+        "Content-Type": "application/x-www-form-urlencoded",
       },
       body,
     });
@@ -140,7 +141,7 @@ export default function EmployeeAccountsPage() {
     const result = await res.json();
 
     if (!res.ok) {
-      setFormError(result.message || 'Gagal menyimpan data');
+      setFormError(result.message || "Gagal menyimpan data");
       return;
     }
 
@@ -149,28 +150,34 @@ export default function EmployeeAccountsPage() {
   };
 
   // ================= UI =================
-  if (loading) return (
-    <div className="p-container-padding flex justify-center items-center h-64">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-    </div>
-  );
+  if (loading)
+    return (
+      <div className="p-container-padding flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
 
-  if (error) return (
-    <div className="p-container-padding">
-      <div className="bg-danger/10 border border-danger text-danger px-4 py-3 rounded-lg">
-        <div className="flex items-center">
-          <span className="mr-2 text-lg">⚠️</span>
-          <span>{error}</span>
+  if (error)
+    return (
+      <div className="p-container-padding">
+        <div className="bg-danger/10 border border-danger text-danger px-4 py-3 rounded-lg">
+          <div className="flex items-center">
+            <span className="mr-2 text-lg">⚠️</span>
+            <span>{error}</span>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
 
   return (
     <div className="p-container-padding">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-text-primary">Employee Accounts</h1>
-        <p className="text-text-secondary mt-2">Manage employee account access and permissions</p>
+        <h1 className="text-3xl font-bold text-text-primary">
+          Employee Accounts
+        </h1>
+        <p className="text-text-secondary mt-2">
+          Manage employee account access and permissions
+        </p>
       </div>
 
       <div className="flex justify-between items-center mb-6">
@@ -180,7 +187,9 @@ export default function EmployeeAccountsPage() {
             placeholder="Search accounts..."
             className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text-primary"
           />
-          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary">🔍</span>
+          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary">
+            🔍
+          </span>
         </div>
         <button
           onClick={openAdd}
@@ -196,28 +205,71 @@ export default function EmployeeAccountsPage() {
           <table className="min-w-full divide-y divide-border">
             <thead className="bg-surface-hover">
               <tr>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Account ID</th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Employee</th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Username</th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Role</th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Status</th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Actions</th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                >
+                  Account ID
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                >
+                  Employee
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                >
+                  Username
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                >
+                  Role
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                >
+                  Status
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                >
+                  Actions
+                </th>
               </tr>
             </thead>
 
             <tbody className="bg-surface divide-y divide-border">
               {accounts.map((acc) => (
-                <tr key={acc.employee_account_id} className="hover:bg-surface-hover transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary font-medium">{acc.employee_account_id}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">{acc.employee_name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">{acc.username}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">{acc.role}</td>
+                <tr
+                  key={acc.employee_account_id}
+                  className="hover:bg-surface-hover transition-colors"
+                >
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary font-medium">
+                    {acc.employee_account_id}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
+                    {acc.employee_name}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
+                    {acc.username}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
+                    {acc.role}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                      acc.account_status === 'active'
-                        ? 'bg-success/10 text-success'
-                        : 'bg-danger/10 text-danger'
-                    }`}>
+                    <span
+                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                        acc.account_status === "active"
+                          ? "bg-success/10 text-success"
+                          : "bg-danger/10 text-danger"
+                      }`}
+                    >
                       {acc.account_status}
                     </span>
                   </td>
@@ -243,7 +295,7 @@ export default function EmployeeAccountsPage() {
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-text-primary">
-                  {editingId ? 'Edit Account Status' : 'Create Account'}
+                  {editingId ? "Edit Account Status" : "Create Account"}
                 </h2>
                 <button
                   onClick={() => setShowModal(false)}
@@ -353,7 +405,7 @@ export default function EmployeeAccountsPage() {
                   onClick={submitForm}
                   className="bg-primary text-white px-5 py-2.5 rounded-lg hover:bg-primary-dark transition shadow-sm"
                 >
-                  {editingId ? 'Update' : 'Create'}
+                  {editingId ? "Update" : "Create"}
                 </button>
               </div>
             </div>

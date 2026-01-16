@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface Warehouse {
   warehouse_id: number;
@@ -9,28 +9,26 @@ interface Warehouse {
   warehouse_address: string;
 }
 
-const BASE_URL = 'http://localhost:3001';
+const BASE_URL = "http://localhost:3000";
 
 export default function WarehousePage() {
   const router = useRouter();
 
   const [data, setData] = useState<Warehouse[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [formError, setFormError] = useState('');
+  const [formError, setFormError] = useState("");
 
   const [form, setForm] = useState({
-    warehouse_name: '',
-    warehouse_address: '',
+    warehouse_name: "",
+    warehouse_address: "",
   });
 
   const token =
-    typeof window !== 'undefined'
-      ? localStorage.getItem('access_token')
-      : null;
+    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
   // ================= LOAD DATA =================
   const loadWarehouses = async () => {
@@ -40,8 +38,8 @@ export default function WarehousePage() {
       });
 
       if (res.status === 401) {
-        localStorage.removeItem('access_token');
-        router.push('/login');
+        localStorage.removeItem("access_token");
+        router.push("/login");
         return;
       }
 
@@ -55,7 +53,7 @@ export default function WarehousePage() {
   };
 
   useEffect(() => {
-    if (!token) router.push('/login');
+    if (!token) router.push("/login");
     else loadWarehouses();
   }, []);
 
@@ -66,8 +64,8 @@ export default function WarehousePage() {
 
   const openAdd = () => {
     setEditingId(null);
-    setForm({ warehouse_name: '', warehouse_address: '' });
-    setFormError('');
+    setForm({ warehouse_name: "", warehouse_address: "" });
+    setFormError("");
     setShowModal(true);
   };
 
@@ -84,19 +82,19 @@ export default function WarehousePage() {
         warehouse_name: json.data.warehouse_name,
         warehouse_address: json.data.warehouse_address,
       });
-      setFormError('');
+      setFormError("");
 
       setShowModal(true);
     } catch {
-      alert('Gagal mengambil data warehouse');
+      alert("Gagal mengambil data warehouse");
     }
   };
 
   const submitForm = async () => {
     try {
       const body = new URLSearchParams();
-      body.append('warehouse_name', form.warehouse_name);
-      body.append('warehouse_address', form.warehouse_address);
+      body.append("warehouse_name", form.warehouse_name);
+      body.append("warehouse_address", form.warehouse_address);
 
       const endpoint =
         editingId === null
@@ -104,10 +102,10 @@ export default function WarehousePage() {
           : `${BASE_URL}/warehouse/${editingId}`;
 
       const res = await fetch(endpoint, {
-        method: editingId === null ? 'POST' : 'PATCH',
+        method: editingId === null ? "POST" : "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
+          "Content-Type": "application/x-www-form-urlencoded",
         },
         body: body.toString(),
       });
@@ -115,7 +113,7 @@ export default function WarehousePage() {
       if (!res.ok) {
         const text = await res.text();
         console.error(text);
-        alert('Server menolak permintaan');
+        alert("Server menolak permintaan");
         return;
       }
 
@@ -123,33 +121,37 @@ export default function WarehousePage() {
       await loadWarehouses();
     } catch (err) {
       console.error(err);
-      alert('Gagal koneksi ke server');
+      alert("Gagal koneksi ke server");
     }
   };
 
   // ================= UI =================
-  if (loading) return (
-    <div className="p-container-padding flex justify-center items-center h-64">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-    </div>
-  );
+  if (loading)
+    return (
+      <div className="p-container-padding flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
 
-  if (error) return (
-    <div className="p-container-padding">
-      <div className="bg-danger/10 border border-danger text-danger px-4 py-3 rounded-lg">
-        <div className="flex items-center">
-          <span className="mr-2 text-lg">⚠️</span>
-          <span>{error}</span>
+  if (error)
+    return (
+      <div className="p-container-padding">
+        <div className="bg-danger/10 border border-danger text-danger px-4 py-3 rounded-lg">
+          <div className="flex items-center">
+            <span className="mr-2 text-lg">⚠️</span>
+            <span>{error}</span>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
 
   return (
     <div className="p-container-padding">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-text-primary">Warehouses</h1>
-        <p className="text-text-secondary mt-2">Manage your warehouse locations and details</p>
+        <p className="text-text-secondary mt-2">
+          Manage your warehouse locations and details
+        </p>
       </div>
 
       <div className="flex justify-between items-center mb-6">
@@ -159,7 +161,9 @@ export default function WarehousePage() {
             placeholder="Search warehouses..."
             className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text-primary"
           />
-          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary">🔍</span>
+          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary">
+            🔍
+          </span>
         </div>
         <button
           onClick={openAdd}
@@ -175,19 +179,48 @@ export default function WarehousePage() {
           <table className="min-w-full divide-y divide-border">
             <thead className="bg-surface-hover">
               <tr>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">ID</th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Name</th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Address</th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Actions</th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                >
+                  ID
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                >
+                  Name
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                >
+                  Address
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                >
+                  Actions
+                </th>
               </tr>
             </thead>
 
             <tbody className="bg-surface divide-y divide-border">
               {data.map((wh) => (
-                <tr key={wh.warehouse_id} className="hover:bg-surface-hover transition-colors">
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary font-medium">{wh.warehouse_id}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">{wh.warehouse_name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary max-w-xs truncate">{wh.warehouse_address}</td>
+                <tr
+                  key={wh.warehouse_id}
+                  className="hover:bg-surface-hover transition-colors"
+                >
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary font-medium">
+                    {wh.warehouse_id}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
+                    {wh.warehouse_name}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary max-w-xs truncate">
+                    {wh.warehouse_address}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <button
                       onClick={() => openEdit(wh.warehouse_id)}
@@ -210,7 +243,7 @@ export default function WarehousePage() {
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-text-primary">
-                  {editingId ? 'Edit Warehouse' : 'Add Warehouse'}
+                  {editingId ? "Edit Warehouse" : "Add Warehouse"}
                 </h2>
                 <button
                   onClick={() => setShowModal(false)}
@@ -268,7 +301,7 @@ export default function WarehousePage() {
                   onClick={submitForm}
                   className="bg-primary text-white px-5 py-2.5 rounded-lg hover:bg-primary-dark transition shadow-sm"
                 >
-                  {editingId ? 'Update' : 'Create'}
+                  {editingId ? "Update" : "Create"}
                 </button>
               </div>
             </div>

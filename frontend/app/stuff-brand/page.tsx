@@ -1,33 +1,31 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface Brand {
   stuff_brand_id: number;
   stuff_brand_name: string;
 }
 
-const BASE_URL = 'http://localhost:3001';
+const BASE_URL = "http://localhost:3000";
 
 export default function StuffBrandPage() {
   const router = useRouter();
 
   const [data, setData] = useState<Brand[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const [form, setForm] = useState({
-    stuff_brand_name: '',
+    stuff_brand_name: "",
   });
 
   const token =
-    typeof window !== 'undefined'
-      ? localStorage.getItem('access_token')
-      : null;
+    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
   // ================= LOAD DATA =================
   const loadBrands = async () => {
@@ -37,8 +35,8 @@ export default function StuffBrandPage() {
       });
 
       if (res.status === 401) {
-        localStorage.removeItem('access_token');
-        router.push('/login');
+        localStorage.removeItem("access_token");
+        router.push("/login");
         return;
       }
 
@@ -52,7 +50,7 @@ export default function StuffBrandPage() {
   };
 
   useEffect(() => {
-    if (!token) router.push('/login');
+    if (!token) router.push("/login");
     else loadBrands();
   }, []);
 
@@ -63,7 +61,7 @@ export default function StuffBrandPage() {
 
   const openAdd = () => {
     setEditingId(null);
-    setForm({ stuff_brand_name: '' });
+    setForm({ stuff_brand_name: "" });
     setShowModal(true);
   };
 
@@ -82,14 +80,14 @@ export default function StuffBrandPage() {
 
       setShowModal(true);
     } catch {
-      alert('Gagal mengambil data brand');
+      alert("Gagal mengambil data brand");
     }
   };
 
   const submitForm = async () => {
     try {
       const body = new URLSearchParams();
-      body.append('stuff_brand_name', form.stuff_brand_name);
+      body.append("stuff_brand_name", form.stuff_brand_name);
 
       const endpoint =
         editingId === null
@@ -97,10 +95,10 @@ export default function StuffBrandPage() {
           : `${BASE_URL}/stuff-brand/${editingId}`;
 
       const res = await fetch(endpoint, {
-        method: editingId === null ? 'POST' : 'PATCH',
+        method: editingId === null ? "POST" : "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
+          "Content-Type": "application/x-www-form-urlencoded",
         },
         body: body.toString(),
       });
@@ -108,7 +106,7 @@ export default function StuffBrandPage() {
       if (!res.ok) {
         const text = await res.text();
         console.error(text);
-        alert('Server menolak permintaan');
+        alert("Server menolak permintaan");
         return;
       }
 
@@ -116,12 +114,13 @@ export default function StuffBrandPage() {
       await loadBrands();
     } catch (err) {
       console.error(err);
-      alert('Gagal koneksi ke server');
+      alert("Gagal koneksi ke server");
     }
   };
 
   // ================= UI =================
-  if (loading) return <p className="p-card-padding text-text-secondary">Loading...</p>;
+  if (loading)
+    return <p className="p-card-padding text-text-secondary">Loading...</p>;
   if (error) return <p className="p-card-padding text-danger">{error}</p>;
 
   return (
@@ -181,7 +180,7 @@ export default function StuffBrandPage() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-surface p-6 rounded-lg shadow-lg w-96 space-y-3 border border-border">
             <h2 className="text-xl font-bold text-text-primary">
-              {editingId ? 'Edit Brand' : 'Add Brand'}
+              {editingId ? "Edit Brand" : "Add Brand"}
             </h2>
 
             <input

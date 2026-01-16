@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
-const BASE_URL = 'http://localhost:3001';
+const BASE_URL = "http://localhost:3000";
 
 interface Discount {
   discount_id: number;
@@ -24,18 +24,16 @@ export default function OrderDiscountPage() {
   const [showModal, setShowModal] = useState(false);
 
   const [form, setForm] = useState({
-    discount_name: '',
-    discount_type: 'fixed',
-    discount_value: '',
-    discount_start: '',
-    discount_end: '',
+    discount_name: "",
+    discount_type: "fixed",
+    discount_value: "",
+    discount_start: "",
+    discount_end: "",
     discount_status: true,
   });
 
   const token =
-    typeof window !== 'undefined'
-      ? localStorage.getItem('access_token')
-      : null;
+    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
   // ================= LOAD DATA =================
   const loadData = async () => {
@@ -44,8 +42,8 @@ export default function OrderDiscountPage() {
     });
 
     if (res.status === 401) {
-      localStorage.removeItem('access_token');
-      router.push('/login');
+      localStorage.removeItem("access_token");
+      router.push("/login");
       return;
     }
 
@@ -55,18 +53,18 @@ export default function OrderDiscountPage() {
   };
 
   useEffect(() => {
-    if (!token) router.push('/login');
+    if (!token) router.push("/login");
     else loadData();
   }, []);
 
   // ================= ADD =================
   const openAdd = () => {
     setForm({
-      discount_name: '',
-      discount_type: 'fixed',
-      discount_value: '',
-      discount_start: '',
-      discount_end: '',
+      discount_name: "",
+      discount_type: "fixed",
+      discount_value: "",
+      discount_start: "",
+      discount_end: "",
       discount_status: true,
     });
     setShowModal(true);
@@ -74,18 +72,18 @@ export default function OrderDiscountPage() {
 
   const submitForm = async () => {
     const body = new URLSearchParams();
-    body.append('discount_name', form.discount_name);
-    body.append('discount_type', form.discount_type);
-    body.append('discount_value', form.discount_value);
-    body.append('discount_start', form.discount_start);
-    body.append('discount_end', form.discount_end);
-    body.append('discount_status', String(form.discount_status));
+    body.append("discount_name", form.discount_name);
+    body.append("discount_type", form.discount_type);
+    body.append("discount_value", form.discount_value);
+    body.append("discount_start", form.discount_start);
+    body.append("discount_end", form.discount_end);
+    body.append("discount_status", String(form.discount_status));
 
     await fetch(`${BASE_URL}/order-discount`, {
-      method: 'POST',
+      method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
+        "Content-Type": "application/x-www-form-urlencoded",
       },
       body: body.toString(),
     });
@@ -105,7 +103,9 @@ export default function OrderDiscountPage() {
   return (
     <div className="p-container-padding">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-text-primary">Order Discounts</h1>
+        <h1 className="text-3xl font-bold text-text-primary">
+          Order Discounts
+        </h1>
         <p className="text-text-secondary mt-2">
           Manage order-wide discount promotions
         </p>
@@ -126,12 +126,24 @@ export default function OrderDiscountPage() {
           <table className="min-w-full divide-y divide-border">
             <thead className="bg-surface-hover">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase">Name</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase">Type</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase">Value</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase">Period</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase">Status</th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase">Employee</th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase">
+                  Name
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase">
+                  Type
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase">
+                  Value
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase">
+                  Period
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase">
+                  Status
+                </th>
+                <th className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase">
+                  Employee
+                </th>
               </tr>
             </thead>
 
@@ -148,11 +160,11 @@ export default function OrderDiscountPage() {
                     <span
                       className={`px-3 py-1 rounded-full text-xs font-medium ${
                         d.discount_status
-                          ? 'bg-success/10 text-success'
-                          : 'bg-danger/10 text-danger'
+                          ? "bg-success/10 text-success"
+                          : "bg-danger/10 text-danger"
                       }`}
                     >
-                      {d.discount_status ? 'Active' : 'Inactive'}
+                      {d.discount_status ? "Active" : "Inactive"}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm">{d.employee_name}</td>

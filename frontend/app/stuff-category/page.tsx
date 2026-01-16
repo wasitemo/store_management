@@ -1,33 +1,31 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface Category {
   stuff_category_id: number;
   stuff_category_name: string;
 }
 
-const BASE_URL = 'http://localhost:3001';
+const BASE_URL = "http://localhost:3000";
 
 export default function StuffCategoryPage() {
   const router = useRouter();
 
   const [data, setData] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const [form, setForm] = useState({
-    stuff_category_name: '',
+    stuff_category_name: "",
   });
 
   const token =
-    typeof window !== 'undefined'
-      ? localStorage.getItem('access_token')
-      : null;
+    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
   // ================= LOAD DATA =================
   const loadCategories = async () => {
@@ -37,8 +35,8 @@ export default function StuffCategoryPage() {
       });
 
       if (res.status === 401) {
-        localStorage.removeItem('access_token');
-        router.push('/login');
+        localStorage.removeItem("access_token");
+        router.push("/login");
         return;
       }
 
@@ -52,7 +50,7 @@ export default function StuffCategoryPage() {
   };
 
   useEffect(() => {
-    if (!token) router.push('/login');
+    if (!token) router.push("/login");
     else loadCategories();
   }, []);
 
@@ -63,7 +61,7 @@ export default function StuffCategoryPage() {
 
   const openAdd = () => {
     setEditingId(null);
-    setForm({ stuff_category_name: '' });
+    setForm({ stuff_category_name: "" });
     setShowModal(true);
   };
 
@@ -82,14 +80,14 @@ export default function StuffCategoryPage() {
 
       setShowModal(true);
     } catch {
-      alert('Gagal mengambil data category');
+      alert("Gagal mengambil data category");
     }
   };
 
   const submitForm = async () => {
     try {
       const body = new URLSearchParams();
-      body.append('stuff_category_name', form.stuff_category_name);
+      body.append("stuff_category_name", form.stuff_category_name);
 
       const endpoint =
         editingId === null
@@ -97,10 +95,10 @@ export default function StuffCategoryPage() {
           : `${BASE_URL}/stuff-category/${editingId}`;
 
       const res = await fetch(endpoint, {
-        method: editingId === null ? 'POST' : 'PATCH',
+        method: editingId === null ? "POST" : "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
+          "Content-Type": "application/x-www-form-urlencoded",
         },
         body: body.toString(),
       });
@@ -108,7 +106,7 @@ export default function StuffCategoryPage() {
       if (!res.ok) {
         const text = await res.text();
         console.error(text);
-        alert('Server menolak permintaan');
+        alert("Server menolak permintaan");
         return;
       }
 
@@ -116,18 +114,21 @@ export default function StuffCategoryPage() {
       await loadCategories();
     } catch (err) {
       console.error(err);
-      alert('Gagal koneksi ke server');
+      alert("Gagal koneksi ke server");
     }
   };
 
   // ================= UI =================
-  if (loading) return <p className="p-card-padding text-text-secondary">Loading...</p>;
+  if (loading)
+    return <p className="p-card-padding text-text-secondary">Loading...</p>;
   if (error) return <p className="p-card-padding text-danger">{error}</p>;
 
   return (
     <div className="p-6">
       <div className="flex justify-between mb-4">
-        <h1 className="text-2xl font-bold text-text-primary">Stuff Categories</h1>
+        <h1 className="text-2xl font-bold text-text-primary">
+          Stuff Categories
+        </h1>
         <button
           onClick={openAdd}
           className="bg-primary text-white px-4 py-2 rounded hover:bg-primary-dark transition"
@@ -181,7 +182,7 @@ export default function StuffCategoryPage() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-surface p-6 rounded-lg shadow-lg w-96 space-y-3 border border-border">
             <h2 className="text-xl font-bold text-text-primary">
-              {editingId ? 'Edit Category' : 'Add Category'}
+              {editingId ? "Edit Category" : "Add Category"}
             </h2>
 
             <input

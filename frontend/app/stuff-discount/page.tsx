@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
-const BASE_URL = 'http://localhost:3001';
+const BASE_URL = "http://localhost:3000";
 
 interface Stuff {
   stuff_id: number;
@@ -33,24 +33,22 @@ export default function StuffDiscountPage() {
   const [stuffList, setStuffList] = useState<Stuff[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Discount | null>(null);
-  const [selectedStuff, setSelectedStuff] = useState<number | ''>('');
+  const [selectedStuff, setSelectedStuff] = useState<number | "">("");
 
   const [form, setForm] = useState({
-    discount_name: '',
-    discount_type: 'fixed',
-    discount_value: '',
-    discount_start: '',
-    discount_end: '',
+    discount_name: "",
+    discount_type: "fixed",
+    discount_value: "",
+    discount_start: "",
+    discount_end: "",
     discount_status: true,
   });
 
   const token =
-    typeof window !== 'undefined'
-      ? localStorage.getItem('access_token')
-      : null;
+    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
   useEffect(() => {
-    if (!token) router.push('/login');
+    if (!token) router.push("/login");
     else {
       loadData();
       loadStuffList();
@@ -75,13 +73,13 @@ export default function StuffDiscountPage() {
 
   const openAdd = () => {
     setEditing(null);
-    setSelectedStuff('');
+    setSelectedStuff("");
     setForm({
-      discount_name: '',
-      discount_type: 'fixed',
-      discount_value: '',
-      discount_start: '',
-      discount_end: '',
+      discount_name: "",
+      discount_type: "fixed",
+      discount_value: "",
+      discount_start: "",
+      discount_end: "",
       discount_status: true,
     });
     setShowModal(true);
@@ -94,8 +92,8 @@ export default function StuffDiscountPage() {
       discount_name: d.discount_name,
       discount_type: d.discount_type,
       discount_value: String(d.discount_value),
-      discount_start: '',
-      discount_end: '',
+      discount_start: "",
+      discount_end: "",
       discount_status: true,
     });
     setShowModal(true);
@@ -106,33 +104,33 @@ export default function StuffDiscountPage() {
 
     if (editing) {
       // ===== PATCH (EDIT) =====
-      body.append('discount_name', form.discount_name);
-      body.append('discount_type', form.discount_type);
-      body.append('discount_value', form.discount_value);
+      body.append("discount_name", form.discount_name);
+      body.append("discount_type", form.discount_type);
+      body.append("discount_value", form.discount_value);
 
       await fetch(`${BASE_URL}/stuff-discount/${editing.discount_id}`, {
-        method: 'PATCH',
+        method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
+          "Content-Type": "application/x-www-form-urlencoded",
         },
         body: body.toString(),
       });
     } else {
       // ===== POST (ADD) =====
-      body.append('stuff_id', String(selectedStuff));
-      body.append('discount_name', form.discount_name);
-      body.append('discount_type', form.discount_type);
-      body.append('discount_value', form.discount_value);
-      body.append('discount_start', form.discount_start);
-      body.append('discount_end', form.discount_end);
-      body.append('discount_status', String(form.discount_status));
+      body.append("stuff_id", String(selectedStuff));
+      body.append("discount_name", form.discount_name);
+      body.append("discount_type", form.discount_type);
+      body.append("discount_value", form.discount_value);
+      body.append("discount_start", form.discount_start);
+      body.append("discount_end", form.discount_end);
+      body.append("discount_status", String(form.discount_status));
 
       await fetch(`${BASE_URL}/stuff-discount`, {
-        method: 'POST',
+        method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
+          "Content-Type": "application/x-www-form-urlencoded",
         },
         body: body.toString(),
       });
@@ -146,7 +144,10 @@ export default function StuffDiscountPage() {
     <div className="p-6">
       <div className="flex justify-between mb-6">
         <h1 className="text-2xl font-bold">Stuff Discounts</h1>
-        <button onClick={openAdd} className="bg-blue-600 text-white px-4 py-2 rounded">
+        <button
+          onClick={openAdd}
+          className="bg-blue-600 text-white px-4 py-2 rounded"
+        >
           + Add Discount
         </button>
       </div>
@@ -192,7 +193,7 @@ export default function StuffDiscountPage() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
           <div className="bg-white w-full max-w-md rounded p-6 space-y-4">
             <h2 className="text-xl font-bold">
-              {editing ? 'Edit Discount' : 'Add Discount'}
+              {editing ? "Edit Discount" : "Add Discount"}
             </h2>
 
             {editing ? (
@@ -310,7 +311,7 @@ export default function StuffDiscountPage() {
                 onClick={submitForm}
                 className="bg-blue-600 text-white px-4 py-2 rounded"
               >
-                {editing ? 'Update' : 'Create'}
+                {editing ? "Update" : "Create"}
               </button>
             </div>
           </div>

@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface StockSummary {
   warehouse_id: number;
@@ -21,7 +21,7 @@ interface Warehouse {
   warehouse_name: string;
 }
 
-const BASE_URL = 'http://localhost:3001';
+const BASE_URL = "http://localhost:3000";
 
 export default function StockPage() {
   const router = useRouter();
@@ -32,23 +32,26 @@ export default function StockPage() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({
-    warehouse_id: '',
-    stuff_id: '',
-    imei_1: '',
-    imei_2: '',
-    sn: '',
+    warehouse_id: "",
+    stuff_id: "",
+    imei_1: "",
+    imei_2: "",
+    sn: "",
   });
   const [debugPayload, setDebugPayload] = useState<any>(null);
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
   // ================= LOAD =================
   const loadStocks = async () => {
     try {
-      const res = await fetch(`${BASE_URL}/stocks`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${BASE_URL}/stocks`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (res.status === 401) {
-        localStorage.removeItem('access_token');
-        router.push('/login');
+        localStorage.removeItem("access_token");
+        router.push("/login");
         return;
       }
       const json = await res.json();
@@ -59,14 +62,16 @@ export default function StockPage() {
   };
 
   const loadFormData = async () => {
-    const res = await fetch(`${BASE_URL}/stock`, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(`${BASE_URL}/stock`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
     const json = await res.json();
     setStuffList(json.data.stuff || []);
     setWarehouseList(json.data.warehouse || []);
   };
 
   useEffect(() => {
-    if (!token) router.push('/login');
+    if (!token) router.push("/login");
     else {
       loadStocks();
       loadFormData();
@@ -75,41 +80,53 @@ export default function StockPage() {
 
   // ================= SUBMIT STOCK =================
   const submitStock = async () => {
-    if (!form.warehouse_id || !form.stuff_id || !form.imei_1 || !form.imei_2 || !form.sn) {
-      alert('Semua field wajib diisi');
+    if (
+      !form.warehouse_id ||
+      !form.stuff_id ||
+      !form.imei_1 ||
+      !form.imei_2 ||
+      !form.sn
+    ) {
+      alert("Semua field wajib diisi");
       return;
     }
 
     const payload = new URLSearchParams();
-    payload.append('warehouse_id', form.warehouse_id);
-    payload.append('stuff_id', form.stuff_id);
-    payload.append('imei_1', form.imei_1.trim());
-    payload.append('imei_2', form.imei_2.trim());
-    payload.append('sn', form.sn.trim());
+    payload.append("warehouse_id", form.warehouse_id);
+    payload.append("stuff_id", form.stuff_id);
+    payload.append("imei_1", form.imei_1.trim());
+    payload.append("imei_2", form.imei_2.trim());
+    payload.append("sn", form.sn.trim());
 
     setDebugPayload(payload.toString()); // tampilkan string yang dikirim, bisa copy ke Postman
 
     try {
       const res = await fetch(`${BASE_URL}/stock`, {
-        method: 'POST',
+        method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
+          "Content-Type": "application/x-www-form-urlencoded",
         },
         body: payload.toString(),
       });
 
       const json = await res.json();
       if (res.ok) {
-        alert('Stock added successfully!');
+        alert("Stock added successfully!");
         setShowModal(false);
-        setForm({ warehouse_id: '', stuff_id: '', imei_1: '', imei_2: '', sn: '' });
+        setForm({
+          warehouse_id: "",
+          stuff_id: "",
+          imei_1: "",
+          imei_2: "",
+          sn: "",
+        });
         loadStocks();
       } else {
-        alert(json.message || 'Error');
+        alert(json.message || "Error");
       }
     } catch (err) {
-      alert('Network error');
+      alert("Network error");
       console.error(err);
     }
   };
@@ -120,7 +137,10 @@ export default function StockPage() {
     <div className="p-8">
       <div className="flex justify-between mb-4">
         <h1 className="text-2xl font-bold">Stock Management</h1>
-        <button onClick={() => setShowModal(true)} className="bg-blue-600 text-white px-4 py-2 rounded">
+        <button
+          onClick={() => setShowModal(true)}
+          className="bg-blue-600 text-white px-4 py-2 rounded"
+        >
           + Add Stock
         </button>
       </div>
@@ -134,7 +154,7 @@ export default function StockPage() {
           </tr>
         </thead>
         <tbody>
-          {data.map(s => (
+          {data.map((s) => (
             <tr key={`${s.warehouse_id}-${s.stuff_id}`}>
               <td className="p-2 border">{s.warehouse_name}</td>
               <td className="p-2 border">{s.stuff_name}</td>
@@ -147,7 +167,10 @@ export default function StockPage() {
       {/* DEBUG PAYLOAD */}
       {debugPayload && (
         <div className="mt-6 bg-black text-green-400 p-4 rounded text-sm relative">
-          <button onClick={() => setDebugPayload(null)} className="absolute top-2 right-2 text-white text-xs">
+          <button
+            onClick={() => setDebugPayload(null)}
+            className="absolute top-2 right-2 text-white text-xs"
+          >
             ✕
           </button>
           <pre>{debugPayload}</pre>
@@ -160,27 +183,66 @@ export default function StockPage() {
           <div className="bg-white p-6 rounded w-96 space-y-3">
             <h2 className="text-lg font-semibold">Add Stock</h2>
 
-            <select className="w-full border p-2" value={form.warehouse_id} onChange={e => setForm({ ...form, warehouse_id: e.target.value })}>
+            <select
+              className="w-full border p-2"
+              value={form.warehouse_id}
+              onChange={(e) =>
+                setForm({ ...form, warehouse_id: e.target.value })
+              }
+            >
               <option value="">Select Warehouse</option>
-              {warehouseList.map(w => (
-                <option key={w.warehouse_id} value={w.warehouse_id}>{w.warehouse_name}</option>
+              {warehouseList.map((w) => (
+                <option key={w.warehouse_id} value={w.warehouse_id}>
+                  {w.warehouse_name}
+                </option>
               ))}
             </select>
 
-            <select className="w-full border p-2" value={form.stuff_id} onChange={e => setForm({ ...form, stuff_id: e.target.value })}>
+            <select
+              className="w-full border p-2"
+              value={form.stuff_id}
+              onChange={(e) => setForm({ ...form, stuff_id: e.target.value })}
+            >
               <option value="">Select Product</option>
-              {stuffList.map(s => (
-                <option key={s.stuff_id} value={s.stuff_id}>{s.stuff_name}</option>
+              {stuffList.map((s) => (
+                <option key={s.stuff_id} value={s.stuff_id}>
+                  {s.stuff_name}
+                </option>
               ))}
             </select>
 
-            <input placeholder="IMEI 1" className="w-full border p-2" value={form.imei_1} onChange={e => setForm({ ...form, imei_1: e.target.value })} />
-            <input placeholder="IMEI 2" className="w-full border p-2" value={form.imei_2} onChange={e => setForm({ ...form, imei_2: e.target.value })} />
-            <input placeholder="Serial Number" className="w-full border p-2" value={form.sn} onChange={e => setForm({ ...form, sn: e.target.value })} />
+            <input
+              placeholder="IMEI 1"
+              className="w-full border p-2"
+              value={form.imei_1}
+              onChange={(e) => setForm({ ...form, imei_1: e.target.value })}
+            />
+            <input
+              placeholder="IMEI 2"
+              className="w-full border p-2"
+              value={form.imei_2}
+              onChange={(e) => setForm({ ...form, imei_2: e.target.value })}
+            />
+            <input
+              placeholder="Serial Number"
+              className="w-full border p-2"
+              value={form.sn}
+              onChange={(e) => setForm({ ...form, sn: e.target.value })}
+            />
 
             <div className="flex justify-end gap-2 pt-3">
-              <button onClick={() => setShowModal(false)} className="border px-3 py-1">Cancel</button>
-              <button onClick={submitStock} className="bg-blue-600 text-white px-3 py-1 rounded">Save</button>
+              <button
+                onClick={() => setShowModal(false)}
+                className="border px-3 py-1"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitStock}
+                className="bg-blue-600 text-white px-3 py-1 rounded"
+              >
+                Save
+              </button>
             </div>
           </div>
         </div>
