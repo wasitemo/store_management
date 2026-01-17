@@ -8,7 +8,7 @@ interface Category {
   stuff_category_name: string;
 }
 
-const BASE_URL = "http://localhost:3000";
+const BASE_URL = "http://localhost:3001";
 
 export default function StuffCategoryPage() {
   const router = useRouter();
