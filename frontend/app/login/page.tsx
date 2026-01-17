@@ -18,7 +18,7 @@ export default function LoginPage() {
 
     try {
       const body = { username: username, password: password };
-      const res = await fetch("http://localhost:3000/login", {
+      const res = await fetch("http://localhost:3001/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
