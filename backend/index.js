@@ -15,6 +15,7 @@ import employeeRoute from "./src/route/employeeRoute.js";
 import warehouseRoute from "./src/route/warehouseRoute.js";
 import supplierRoute from "./src/route/supplierRoute.js";
 import stuffCategoryRoute from "./src/route/stuffCategoryRoute.js";
+import stuffBrandRoute from "./src/route/stuffBrandRoute.js";
 
 const app = express();
 const saltRounds = 12;
@@ -152,148 +153,9 @@ app.use("/", employeeRoute);
 app.use("/", warehouseRoute);
 app.use("/", supplierRoute);
 app.use("/", stuffCategoryRoute);
+app.use("/", stuffBrandRoute);
 
 // STUFF
-app.get("/stuff-brands", verifyToken, async (req, res) => {
-  try {
-    let query = await store.query("SELECT * FROM stuff_brand");
-    let result = query.rows;
-
-    if (query.rows.length === 0) {
-      return res.status(404).json({
-        status: 404,
-        message: "Data not found",
-      });
-    }
-
-    return res.status(200).json({
-      status: 200,
-      data: result,
-    });
-  } catch (err) {
-    console.log(err);
-    return res.status(500).json({
-      status: 500,
-      message: "Internal server error",
-    });
-  }
-});
-
-app.post("/stuff-brand", verifyToken, async (req, res) => {
-  let { stuff_brand_name } = req.body;
-
-  if (!stuff_brand_name) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: stuff_brand_name",
-    });
-  }
-
-  if (typeof stuff_brand_name === "string") {
-    stuff_brand_name = stuff_brand_name.trim();
-  }
-
-  try {
-    await store.query(
-      "INSERT INTO stuff_brand (stuff_brand_name) VALUES ($1)",
-      [stuff_brand_name]
-    );
-
-    return res.status(201).json({
-      status: 201,
-      message: "Success add stuff brand",
-    });
-  } catch (err) {
-    console.log(err);
-    return res.status(500).json({
-      status: 500,
-      message: "Internal server error",
-    });
-  }
-});
-
-app.get("/stuff-brand/:stuff_brand_id", verifyToken, async (req, res) => {
-  let reqId = parseInt(req.params.stuff_brand_id);
-
-  try {
-    let query = await store.query(
-      "SELECT * FROM stuff_brand WHERE stuff_brand_id = $1",
-      [reqId]
-    );
-    let result = query.rows[0];
-
-    if (query.rows.length === 0) {
-      return res.status(404).json({
-        status: 404,
-        message: "Data not found",
-      });
-    }
-
-    return res.status(200).json({
-      status: 200,
-      data: result,
-    });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({
-      status: 500,
-      message: "Internal server error",
-    });
-  }
-});
-
-app.patch("/stuff-brand/:stuff_brand_id", verifyToken, async (req, res) => {
-  let reqId = parseInt(req.params.stuff_brand_id);
-  let update = req.body;
-  let keys = Object.keys(update);
-  let fields = ["stuff_brand_name"];
-  let invalidField = keys.filter((k) => !fields.includes(k));
-
-  if (invalidField.length > 0) {
-    return res.status(400).json({
-      status: 400,
-      message: "Invalid field ",
-      invalidField,
-    });
-  }
-
-  if (keys.length === 0) {
-    return res.status(400).json({
-      status: 400,
-      message: "No item updated",
-    });
-  }
-
-  for (let k of keys) {
-    if (typeof k === "string") {
-      update[k] = update[k].trim();
-    }
-  }
-
-  let setQuery = keys.map((key, index) => `${key} = $${index + 1}`).join(",");
-  let values = Object.values(update);
-
-  try {
-    await store.query(
-      `UPDATE stuff_brand SET ${setQuery} WHERE stuff_brand_id = $${
-        keys.length + 1
-      }`,
-      [...values, reqId]
-    );
-
-    return res.status(200).json({
-      status: 200,
-      message: "Success updated data",
-    });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({
-      status: 500,
-      message: "Internal server error",
-    });
-  }
-});
-
 app.get("/stuffs", async (req, res) => {
   try {
     let query = await store.query(`
