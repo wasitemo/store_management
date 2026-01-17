@@ -1,5 +1,5 @@
+import "dotenv/config";
 import express from "express";
-import env from "dotenv";
 import bcrypt from "bcrypt";
 import bodyParser from "body-parser";
 import pg from "pg";
@@ -17,8 +17,6 @@ import supplierRoute from "./src/route/supplierRoute.js";
 import stuffCategoryRoute from "./src/route/stuffCategoryRoute.js";
 import stuffBrandRoute from "./src/route/stuffBrandRoute.js";
 
-env.config();
-pg.types.setTypeParser(1082, (val) => val);
 const app = express();
 const saltRounds = 12;
 // ================= MULTER CONFIG =================
@@ -35,14 +33,7 @@ const safeUnlink = (path) => {
     console.warn("Failed to delete file:", err.message);
   }
 };
-const db = new pg.Client({
-  user: process.env.PG_USER,
-  host: process.env.PG_HOST,
-  database: process.env.PG_DATABASE,
-  password: process.env.PG_PASSWORD,
-  port: process.env.PG_PORT,
-});
-db.connect();
+
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());

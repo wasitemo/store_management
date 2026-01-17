@@ -1,14 +1,19 @@
 import store from "../config/store.js";
 
 // MAIN QUERY
-async function getWarehouse() {
-  const query = await store.query(`
+async function getWarehouse(limit, offset) {
+  const query = await store.query(
+    `
         SELECT
         warehouse_id,
         warehouse_name,
         warehouse_address
-        FROM warehouse    
-    `);
+        FROM warehouse
+        GROUP BY warehouse_id
+        LIMIT $1 OFFSET $2 
+    `,
+    [limit, offset]
+  );
   const result = query.rows;
 
   return result;
@@ -57,4 +62,17 @@ async function updateWarehouse(data, warehouseId) {
   );
 }
 
-export { getWarehouse, getWarehouseById, addWarehouse, updateWarehouse };
+// UTIL QUERY
+async function getTotalWarehouse() {
+  const query = await store.query("SELECT COUNT(warehouse_id) FROM warehouse");
+  const result = query.rows[0];
+
+  return result;
+}
+export {
+  getWarehouse,
+  getWarehouseById,
+  getTotalWarehouse,
+  addWarehouse,
+  updateWarehouse,
+};

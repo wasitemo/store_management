@@ -2,12 +2,13 @@ import ErrorMessage from "../error/ErrorMessage.js";
 import {
   getWarehouse,
   getWarehouseById,
+  getTotalWarehouse,
   addWarehouse,
   updateWarehouse,
 } from "../model/warehouseModel.js";
 
-async function showWarehouse() {
-  const result = await getWarehouse();
+async function showWarehouse(limit, offset) {
+  const result = await getWarehouse(limit, offset);
   if (result.length === 0) {
     throw new ErrorMessage("Warehouse data not found", 404);
   }
@@ -17,6 +18,15 @@ async function showWarehouse() {
 
 async function showWarehouseById(warehouseId) {
   const result = await getWarehouseById(warehouseId);
+  if (!result) {
+    throw new ErrorMessage("Warehouse data not found", 404);
+  }
+
+  return result;
+}
+
+async function showtTotalWarehouse() {
+  const result = await getTotalWarehouse();
   if (!result) {
     throw new ErrorMessage("Warehouse data not found", 404);
   }
@@ -43,4 +53,10 @@ async function editWarehouse(updateData, warehouseId) {
   await updateWarehouse(data, warehouseId);
 }
 
-export { showWarehouse, showWarehouseById, newWarehouse, editWarehouse };
+export {
+  showWarehouse,
+  showWarehouseById,
+  showtTotalWarehouse,
+  newWarehouse,
+  editWarehouse,
+};
