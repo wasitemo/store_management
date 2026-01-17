@@ -11,7 +11,7 @@ interface Employee {
   employee_address: string;
 }
 
-const BASE_URL = "http://localhost:3000";
+const BASE_URL = "http://localhost:3001";
 
 export default function EmployeePage() {
   const router = useRouter();

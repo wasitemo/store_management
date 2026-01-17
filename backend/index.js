@@ -22,6 +22,15 @@ const upload = multer({
   dest: "uploads",
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
 });
+const safeUnlink = (path) => {
+  try {
+    if (path && fs.existsSync(path)) {
+      fs.unlinkSync(path);
+    }
+  } catch (err) {
+    console.warn("Failed to delete file:", err.message);
+  }
+};
 const db = new pg.Client({
   user: process.env.PG_USER,
   host: process.env.PG_HOST,
@@ -1662,7 +1671,7 @@ app.post("/stuff-purchase", verifyToken, async (req, res) => {
   }
 });
 
-
+// ================= ROUTE =================
 app.post(
   "/upload-stuff-purchase",
   verifyToken,
@@ -1670,16 +1679,17 @@ app.post(
   async (req, res) => {
     if (!req.file) {
       return res.status(400).json({
-        status: "404",
+        status: 400,
         message: "File not found",
       });
     }
 
     const filePath = req.file.path;
-    const ext = req.file.originalname.split(".").pop().toLocaleLowerCase();
+    const ext = req.file.originalname.split(".").pop().toLowerCase();
     let rows = [];
 
     try {
+      // ================= PARSE FILE =================
       if (ext === "csv") {
         rows = await parseCSV(filePath);
       } else if (ext === "xlsx" || ext === "xls") {
@@ -1688,42 +1698,54 @@ app.post(
         throw new Error("File format must be csv or excel");
       }
 
-      if (rows.length === 0) {
-        throw new Error("Empty file or format is wrong");
+      if (!rows || rows.length === 0) {
+        throw new Error("Empty file or invalid format");
       }
 
       await db.query("BEGIN");
 
-      let refreshToken = req.cookies.refreshToken;
-      let account = await new Promise((resolve, reject) => {
+      // ================= GET EMPLOYEE FROM JWT =================
+      const refreshToken = req.cookies.refreshToken;
+      if (!refreshToken) {
+        throw new Error("Refresh token not found");
+      }
+
+      const account = await new Promise((resolve, reject) => {
         jwt.verify(
           refreshToken,
           process.env.JWT_REFRESH_SECRET,
-          (err, account) => {
+          (err, decoded) => {
             if (err) return reject(err);
-            resolve(account);
+            resolve(decoded);
           }
         );
       });
 
-      let employeeQuery = await db.query(
+      const employeeQuery = await db.query(
         `
-        SELECT employee.employee_id
-        FROM employee
-        JOIN employee_account
-        ON employee_account.employee_id = employee.employee_id
-        WHERE employee_account.employee_account_id = $1
-    `,
+        SELECT e.employee_id
+        FROM employee e
+        JOIN employee_account ea
+          ON ea.employee_id = e.employee_id
+        WHERE ea.employee_account_id = $1
+        `,
         [account.id]
       );
-      let employeeId = employeeQuery.rows[0].employee_id;
 
-      for (let i = 0; i < rows.length; i++) {
-        let item = rows[i];
+      if (employeeQuery.rows.length === 0) {
+        throw new Error("Employee not found");
+      }
 
-        for (let key in item) {
-          if (typeof item[key] === "string") {
-            item[key] = item[key].toLowerCase().trim();
+      const employeeId = employeeQuery.rows[0].employee_id;
+
+      // ================= PROCESS ROWS =================
+      for (let index = 0; index < rows.length; index++) {
+        const row = rows[index];
+
+        // ===== NORMALIZE STRING =====
+        for (const key in row) {
+          if (typeof row[key] === "string") {
+            row[key] = row[key].trim().toLowerCase();
           }
         }
 
@@ -1736,69 +1758,154 @@ app.post(
           buy_batch,
           quantity,
           buy_price,
-        } = item;
+        } = row;
 
-        let supplierQuery = await db.query(
-          "SELECT supplier_id FROM supplier WHERE LOWER (supplier_name) = $1",
+        // ================= NORMALIZE DATE =================
+        if (buy_date instanceof Date) {
+          buy_date = buy_date.toISOString().split("T")[0];
+        } else if (typeof buy_date === "number") {
+          const excelEpoch = new Date(Date.UTC(1899, 11, 30));
+          const date = new Date(excelEpoch.getTime() + buy_date * 86400000);
+          buy_date = date.toISOString().split("T")[0];
+        } else if (typeof buy_date === "string") {
+          buy_date = buy_date.trim();
+        } else {
+          throw new Error(`Invalid buy_date at row ${index + 2}`);
+        }
+
+        // ================= CAST NUMBERS =================
+        total_price = Number(total_price);
+        quantity = Number(quantity);
+        buy_price = Number(buy_price);
+
+        if (
+          !supplier_name ||
+          !buy_date ||
+          isNaN(total_price) ||
+          !warehouse_name ||
+          !stuff_name ||
+          !buy_batch ||
+          isNaN(quantity) ||
+          isNaN(buy_price)
+        ) {
+          throw new Error(`Invalid or missing data at row ${index + 2}`);
+        }
+
+        // ================= LOOKUPS =================
+        const supplierQ = await db.query(
+          "SELECT supplier_id FROM supplier WHERE LOWER(supplier_name) = $1",
           [supplier_name]
         );
-        if (supplierQuery.rows.length === 0) {
-          return res.status(404).json({
-            status: 404,
-            message: `${supplier_name} not registered`,
-          });
+        if (supplierQ.rows.length === 0) {
+          throw new Error(
+            `Supplier "${supplier_name}" not registered (row ${index + 2})`
+          );
         }
-        let supplierId = supplierQuery.rows[0].supplier_id;
+        const supplierId = supplierQ.rows[0].supplier_id;
 
-        let warehouseQuery = await db.query(
-          "SELECT warehouse_id FROM warehouse WHERE LOWER (warehouse_name) = $1",
+        const warehouseQ = await db.query(
+          "SELECT warehouse_id FROM warehouse WHERE LOWER(warehouse_name) = $1",
           [warehouse_name]
         );
-        if (warehouseQuery.rows.length === 0) {
-          return res.status(404).json({
-            status: 404,
-            message: `${warehouse_name} not registered`,
-          });
+        if (warehouseQ.rows.length === 0) {
+          throw new Error(
+            `Warehouse "${warehouse_name}" not registered (row ${index + 2})`
+          );
         }
-        let warehouseId = warehouseQuery.rows[0].warehouse_id;
+        const warehouseId = warehouseQ.rows[0].warehouse_id;
 
-        let stuffQuery = await db.query(
-          "SELECT stuff_id FROM stuff WHERE LOWER (stuff_name) = $1",
+        const stuffQ = await db.query(
+          "SELECT stuff_id FROM stuff WHERE LOWER(stuff_name) = $1",
           [stuff_name]
         );
-        if (stuffQuery.rows.length === 0) {
-          return res.status(404).json({
-            status: 404,
-            message: `${stuff_name} not registered`,
-          });
+        if (stuffQ.rows.length === 0) {
+          throw new Error(
+            `Stuff "${stuff_name}" not registered (row ${index + 2})`
+          );
         }
-        let stuffId = stuffQuery.rows[0].stuff_id;
+        const stuffId = stuffQ.rows[0].stuff_id;
 
-        let purchaseQuery = await db.query(
-          "INSERT INTO stuff_purchase (supplier_id, employee_id, buy_date, total_price) VALUES ($1, $2, $3, $4) RETURNING stuff_purchase_id",
+        // ================= INSERT PURCHASE =================
+        const purchaseQ = await db.query(
+          `
+          INSERT INTO stuff_purchase
+            (supplier_id, employee_id, buy_date, total_price)
+          VALUES
+            ($1, $2, $3::date, $4::numeric)
+          RETURNING stuff_purchase_id
+          `,
           [supplierId, employeeId, buy_date, total_price]
         );
-        let purchaseId = purchaseQuery.rows[0].stuff_purchase_id;
 
+        const purchaseId = purchaseQ.rows[0].stuff_purchase_id;
+
+        // ================= INSERT PURCHASE DETAIL =================
         await db.query(
-          "INSERT INTO stuff_purchase_detail (warehouse_id, stuff_id, stuff_purchase_id, buy_batch, quantity, buy_price) VALUES ($1, $2, $3, $4, $5, $6)",
+          `
+          INSERT INTO stuff_purchase_detail
+            (warehouse_id, stuff_id, stuff_purchase_id, buy_batch, quantity, buy_price)
+          VALUES
+            ($1, $2, $3, $4, $5::int, $6::numeric)
+          `,
           [warehouseId, stuffId, purchaseId, buy_batch, quantity, buy_price]
         );
-        fs.unlinkSync(filePath);
+
+        // ================= UPDATE STOCK =================
+        for (let i = 0; i < quantity; i++) {
+          const infoQ = await db.query(
+            `
+            INSERT INTO stuff_information
+              (stuff_id, stock_status)
+            VALUES
+              ($1, 'ready')
+            RETURNING stuff_information_id
+            `,
+            [stuffId]
+          );
+
+          await db.query(
+            `
+            INSERT INTO stock
+              (warehouse_id, stuff_id, stuff_information_id, stock_type)
+            VALUES
+              ($1, $2, $3, 'in')
+            `,
+            [warehouseId, stuffId, infoQ.rows[0].stuff_information_id]
+          );
+        }
+
+        await db.query(
+          `
+          UPDATE stuff
+          SET total_stock = (
+            SELECT COUNT(*)
+            FROM stuff_information
+            WHERE stuff_id = $1 AND stock_status = 'ready'
+          )
+          WHERE stuff_id = $1
+          `,
+          [stuffId]
+        );
       }
 
       await db.query("COMMIT");
 
+      safeUnlink(filePath);
+
       return res.status(201).json({
         status: 201,
-        message: "Purchase success",
+        message: "Upload stuff purchase success",
       });
     } catch (err) {
       await db.query("ROLLBACK");
+
+      safeUnlink(filePath);
+
       console.error(err);
+
       return res.status(500).json({
         status: 500,
-        message: "Internal server",
+        message: err.message || "Internal server error",
       });
     }
   }

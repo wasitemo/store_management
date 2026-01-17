@@ -8,7 +8,7 @@ interface Brand {
   stuff_brand_name: string;
 }
 
-const BASE_URL = "http://localhost:3000";
+const BASE_URL = "http://localhost:3001";
 
 export default function StuffBrandPage() {
   const router = useRouter();
