@@ -2,7 +2,6 @@ import "dotenv/config";
 import express from "express";
 import bcrypt from "bcrypt";
 import bodyParser from "body-parser";
-import pg from "pg";
 import multer from "multer";
 import csv from "csv-parser";
 import fs from "fs";
@@ -19,6 +18,7 @@ import stuffBrandRoute from "./src/route/stuffBrandRoute.js";
 
 const app = express();
 const saltRounds = 12;
+const BACKEND_PORT = process.env.BACKEND_PORT;
 // ================= MULTER CONFIG =================
 const upload = multer({
   dest: "uploads",
@@ -3434,6 +3434,6 @@ app.post("/customer-order", verifyToken, async (req, res) => {
 });
 
 app.use(errorHandler);
-app.listen(process.env.PORT, () => {
-  console.log(`Server running on port ${process.env.PORT}`);
+app.listen(BACKEND_PORT, () => {
+  console.log(`Server running on port ${BACKEND_PORT}`);
 });
