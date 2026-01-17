@@ -10,18 +10,17 @@ import {
 async function presentSupplier(req, res, next) {
   try {
     let page = parseInt(req.query.page) || 1;
-    let limit = parseInt(req.query.limit) || 1;
+    let limit = parseInt(req.query.limit) || 15;
     let offset = (page - 1) * limit;
     let total = await showTotalSupplier();
     const result = await showSupplier(limit, offset);
 
-    console.log(total);
     return res.status(200).json({
       status: 200,
       page,
       limit,
-      totalData: parseInt(total.count),
-      totalPage: Math.round(total.count / limit),
+      total_data: parseInt(total.count),
+      total_page: Math.round(total.count / limit),
       data: result,
     });
   } catch (err) {
