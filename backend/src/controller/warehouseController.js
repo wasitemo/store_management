@@ -74,7 +74,7 @@ async function changeWarehouse(req, res, next) {
     }
 
     for (let k in update) {
-      if (update[k] === "string") {
+      if (typeof update[k] === "string") {
         update[k] = update[k].trim();
       }
     }
