@@ -1,8 +1,9 @@
 import store from "../config/store.js";
 
 // MAIN QUERY
-async function getEmployee() {
-  const query = await store.query(`
+async function getEmployee(limit, offset) {
+  const query = await store.query(
+    `
         SELECT
         employee.employee_id,
         employee_nik,
@@ -10,7 +11,11 @@ async function getEmployee() {
         employee_contact,
         employee_address    
         FROM employee
-    `);
+        ORDER BY employee_id ASC
+        LIMIT $1 OFFSET $2
+    `,
+    [limit, offset]
+  );
   const result = query.rows;
 
   return result;
@@ -86,9 +91,17 @@ async function findEmployeeByNik(employeeNik) {
   return result;
 }
 
+async function getTotalEmployee() {
+  const query = await store.query("SELECT COUNT(employee_id) FROM employee");
+  const result = query.rows[0];
+
+  return result;
+}
+
 export {
   getEmployee,
   getEmployeeById,
+  getTotalEmployee,
   findEmployeeByNik,
   addEmployee,
   updateEmployee,

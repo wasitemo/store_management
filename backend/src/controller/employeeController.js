@@ -2,15 +2,24 @@ import ErrorMessage from "../error/ErrorMessage.js";
 import {
   showEmployee,
   showEmployeeById,
+  showTotalEmployee,
   newEmployee,
   editEmployee,
 } from "../service/employeeService.js";
 
 async function presentEmployee(req, res, next) {
   try {
-    const result = await showEmployee();
+    let page = parseInt(req.query.page) || 1;
+    let limit = parseInt(req.query.limit) || 15;
+    let offset = (page - 1) * limit;
+    let total = await showTotalEmployee();
+    const result = await showEmployee(limit, offset);
     return res.status(200).json({
       status: 200,
+      page,
+      limit,
+      total_data: parseInt(total.count),
+      total_page: Math.round(total.count / limit),
       data: result,
     });
   } catch (err) {

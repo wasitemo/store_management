@@ -2,15 +2,16 @@ import ErrorMessage from "../error/ErrorMessage.js";
 import {
   getEmployee,
   getEmployeeById,
+  getTotalEmployee,
   findEmployeeByNik,
   addEmployee,
   updateEmployee,
 } from "../model/employeeModel.js";
 
-async function showEmployee() {
-  const result = await getEmployee();
+async function showEmployee(limit, offset) {
+  const result = await getEmployee(limit, offset);
   if (result.length === 0) {
-    throw new ErrorMessage("Data employee tidak ditemukan", 404);
+    throw new ErrorMessage("Employee data not found", 404);
   }
 
   return result;
@@ -19,7 +20,16 @@ async function showEmployee() {
 async function showEmployeeById(employeeId) {
   const result = await getEmployeeById(employeeId);
   if (!result) {
-    throw new ErrorMessage("Data employee tidak ditemukan", 404);
+    throw new ErrorMessage("Employee data not found", 404);
+  }
+
+  return result;
+}
+
+async function showTotalEmployee() {
+  const result = await getTotalEmployee();
+  if (!result) {
+    throw new ErrorMessage("Employee data not found", 404);
   }
 
   return result;
@@ -33,7 +43,7 @@ async function newEmployee(
 ) {
   const nik = await findEmployeeByNik(employeeNik);
   if (nik) {
-    throw new ErrorMessage("NIK employee sudah terdaftar", 500);
+    throw new ErrorMessage("Employee NIK has been registered", 500);
   }
 
   await addEmployee(
@@ -47,7 +57,7 @@ async function newEmployee(
 async function editEmployee(updateData, employeeId) {
   const existingEmployee = await getEmployeeById(employeeId);
   if (!existingEmployee) {
-    throw new ErrorMessage("Data employee tidak ditemukan", 404);
+    throw new ErrorMessage("Employee data not found", 404);
   }
 
   let data = {
@@ -62,4 +72,10 @@ async function editEmployee(updateData, employeeId) {
   await updateEmployee(data, employeeId);
 }
 
-export { showEmployee, showEmployeeById, newEmployee, editEmployee };
+export {
+  showEmployee,
+  showEmployeeById,
+  showTotalEmployee,
+  newEmployee,
+  editEmployee,
+};
