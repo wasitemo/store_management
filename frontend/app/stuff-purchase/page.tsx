@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-const BASE_URL = "http://localhost:3000";
+const BASE_URL = "http://localhost:3001";
 
 interface Purchase {
   stuff_purchase_id: number;
@@ -33,6 +33,7 @@ export default function StuffPurchasePage() {
 
   const [showDetail, setShowDetail] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
+  const [showUpload, setShowUpload] = useState(false);
 
   const [form, setForm] = useState({
     supplier_id: "",
@@ -48,14 +49,19 @@ export default function StuffPurchasePage() {
   const [file, setFile] = useState<File | null>(null);
 
   const token =
-    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+    typeof window !== "undefined"
+      ? localStorage.getItem("access_token")
+      : null;
 
   // ================= LOAD =================
   const loadData = async () => {
     const res = await fetch(`${BASE_URL}/stuff-purchases`, {
       headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     });
+
     if (res.status === 401) return router.push("/login");
+
     const json = await res.json();
     setData(json.data);
   };
@@ -69,49 +75,69 @@ export default function StuffPurchasePage() {
   const openDetail = async (id: number) => {
     const res = await fetch(`${BASE_URL}/stuff-purchase-detail/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     });
+
     const json = await res.json();
     setDetail(json.data);
     setShowDetail(true);
   };
 
-  // ================= ADD =================
+  // ================= MANUAL ADD =================
   const submitForm = async () => {
     const body = new URLSearchParams();
     Object.entries(form).forEach(([k, v]) => body.append(k, v));
 
-    await fetch(`${BASE_URL}/stuff-purchase`, {
+    const res = await fetch(`${BASE_URL}/stuff-purchase`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: body.toString(),
+      credentials: "include",
     });
+
+    if (!res.ok) {
+      alert("Failed to save purchase");
+      return;
+    }
 
     setShowAdd(false);
     loadData();
   };
 
   // ================= UPLOAD =================
-  const uploadExcel = async () => {
-    if (!file) return;
+  const submitUpload = async () => {
+    if (!file) return alert("Please select a file");
 
-    const fd = new FormData();
-    fd.append("file", file);
+    const formData = new FormData();
+    formData.append("file", file);
 
-    await fetch(`${BASE_URL}/upload-stuff-purchase`, {
+    const res = await fetch(`${BASE_URL}/upload-stuff-purchase`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
-      body: fd,
+      body: formData,
+      credentials: "include",
     });
 
+    const json = await res.json();
+
+    if (!res.ok) {
+      alert(json.message || "Upload failed");
+      return;
+    }
+
+    alert("Upload success");
+    setShowUpload(false);
+    setFile(null);
     loadData();
   };
 
   return (
     <div className="p-6 space-y-4">
-      <div className="flex justify-between">
+      {/* HEADER */}
+      <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold">Stuff Purchases</h1>
         <div className="space-x-2">
           <button
@@ -120,27 +146,20 @@ export default function StuffPurchasePage() {
           >
             + Add Purchase
           </button>
-          <label className="bg-green-600 text-white px-4 py-2 rounded cursor-pointer">
-            Upload Excel
-            <input
-              type="file"
-              hidden
-              onChange={(e) => setFile(e.target.files![0])}
-            />
-          </label>
           <button
-            onClick={uploadExcel}
-            className="bg-green-800 text-white px-3 py-2 rounded"
+            onClick={() => setShowUpload(true)}
+            className="bg-success text-white px-4 py-2 rounded"
           >
-            Upload
+            Upload CSV / Excel
           </button>
         </div>
       </div>
 
+      {/* TABLE */}
       <table className="w-full border">
         <thead>
-          <tr>
-            <th>ID</th>
+          <tr className="border-b">
+            <th className="p-2">ID</th>
             <th>Supplier</th>
             <th>Date</th>
             <th>Total</th>
@@ -149,8 +168,8 @@ export default function StuffPurchasePage() {
         </thead>
         <tbody>
           {data.map((p) => (
-            <tr key={p.stuff_purchase_id}>
-              <td>{p.stuff_purchase_id}</td>
+            <tr key={p.stuff_purchase_id} className="border-b">
+              <td className="p-2">{p.stuff_purchase_id}</td>
               <td>{p.supplier_name}</td>
               <td>{p.buy_date}</td>
               <td>{p.total_price}</td>
@@ -183,7 +202,7 @@ export default function StuffPurchasePage() {
 
             <button
               onClick={() => setShowDetail(false)}
-              className="mt-3 w-full border py-2"
+              className="w-full border py-2 mt-2"
             >
               Close
             </button>
@@ -191,11 +210,11 @@ export default function StuffPurchasePage() {
         </div>
       )}
 
-      {/* ADD MODAL */}
+      {/* MANUAL MODAL */}
       {showAdd && (
         <div className="fixed inset-0 bg-black/40 flex justify-center items-center">
           <div className="bg-white p-6 rounded w-96 space-y-2">
-            <h2 className="font-bold">Add Purchase</h2>
+            <h2 className="font-bold text-lg">Add Purchase</h2>
 
             {Object.keys(form).map((key) => (
               <input
@@ -203,11 +222,13 @@ export default function StuffPurchasePage() {
                 placeholder={key}
                 className="w-full border p-2"
                 value={(form as any)[key]}
-                onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, [key]: e.target.value })
+                }
               />
             ))}
 
-            <div className="flex gap-2 pt-2">
+            <div className="flex gap-2 pt-3">
               <button
                 onClick={() => setShowAdd(false)}
                 className="border w-1/2 py-2"
@@ -219,6 +240,39 @@ export default function StuffPurchasePage() {
                 className="bg-primary text-white w-1/2 py-2"
               >
                 Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* UPLOAD MODAL */}
+      {showUpload && (
+        <div className="fixed inset-0 bg-black/40 flex justify-center items-center">
+          <div className="bg-white p-6 rounded w-96 space-y-4">
+            <h2 className="font-bold text-lg">Upload Purchase File</h2>
+
+            <input
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              className="w-full border p-2"
+              onChange={(e) =>
+                setFile(e.target.files ? e.target.files[0] : null)
+              }
+            />
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowUpload(false)}
+                className="border w-1/2 py-2"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitUpload}
+                className="bg-success text-white w-1/2 py-2"
+              >
+                Upload
               </button>
             </div>
           </div>

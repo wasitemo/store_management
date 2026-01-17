@@ -10,7 +10,7 @@ interface Customer {
   customer_address: string;
 }
 
-const BASE_URL = "http://localhost:3000";
+const BASE_URL = "http://localhost:3001";
 
 export default function CustomerPage() {
   const router = useRouter();
