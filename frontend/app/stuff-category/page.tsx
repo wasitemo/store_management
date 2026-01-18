@@ -95,7 +95,7 @@ export default function StuffCategoryPage() {
           : `${BASE_URL}/stuff-category/${editingId}`;
 
       const res = await fetch(endpoint, {
-        method: editingId === null ? "POST" : "PATCH",
+        method: editingId === null ? "POST" : "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/x-www-form-urlencoded",
