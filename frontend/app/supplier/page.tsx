@@ -10,7 +10,7 @@ interface Supplier {
   supplier_address: string;
 }
 
-const BASE_URL = "http://localhost:3001";
+const BASE_URL = "http://localhost:3000";
 
 export default function SupplierPage() {
   const router = useRouter();
@@ -34,7 +34,7 @@ export default function SupplierPage() {
   // ================= LOAD DATA =================
   const loadSuppliers = async () => {
     try {
-      const res = await fetch(`${BASE_URL}/suppliers`, {
+      const res = await fetch(`${BASE_URL}/supplier`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

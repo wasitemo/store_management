@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import store from "./src/config/store.js";
 import bcrypt from "bcrypt";
 import bodyParser from "body-parser";
 import multer from "multer";
@@ -8,7 +9,6 @@ import fs from "fs";
 import XLSX from "xlsx";
 import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
-import cors from "cors";
 import errorHandler from "./src/middleware/errorHandler.js";
 import employeeRoute from "./src/route/employeeRoute.js";
 import warehouseRoute from "./src/route/warehouseRoute.js";
@@ -19,7 +19,6 @@ import stuffBrandRoute from "./src/route/stuffBrandRoute.js";
 const app = express();
 const saltRounds = 12;
 const BACKEND_PORT = process.env.BACKEND_PORT;
-// ================= MULTER CONFIG =================
 const upload = multer({
   dest: "uploads",
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
@@ -30,7 +29,7 @@ const safeUnlink = (path) => {
       fs.unlinkSync(path);
     }
   } catch (err) {
-    console.warn("Failed to delete file:", err.message);
+    console.log("Failed to delete file:", err.message);
   }
 };
 
@@ -39,10 +38,10 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "http://localhost:3000");
+  res.header("Access-Control-Allow-Origin", "http://localhost:3001");
   res.header(
     "Access-Control-Allow-Methods",
-    "GET,POST,PUT,PATCH,DELETE,OPTIONS"
+    "GET,POST,PUT,PATCH,DELETE,OPTIONS",
   );
   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.header("Access-Control-Allow-Credentials", "true");
@@ -73,7 +72,7 @@ function excelDateToJsDate(serial) {
   let date = new Date(
     date_info.getFullYear(),
     date_info.getMonth(),
-    date_info.getDate()
+    date_info.getDate(),
   );
 
   return new Date(date);
@@ -108,7 +107,7 @@ function generateAccessToken(account) {
   return jwt.sign(
     { id: account.employee_account_id, username: account.username },
     process.env.JWT_ACCESS_SECRET,
-    { expiresIn: process.env.ACCESS_TOKEN_EXPIRE }
+    { expiresIn: process.env.ACCESS_TOKEN_EXPIRE },
   );
 }
 
@@ -116,7 +115,7 @@ function generateRefreshToken(account) {
   return jwt.sign(
     { id: account.employee_account_id },
     process.env.JWT_REFRESH_SECRET,
-    { expiresIn: process.env.REFRESH_TOKEN_EXPIRE }
+    { expiresIn: process.env.REFRESH_TOKEN_EXPIRE },
   );
 }
 
@@ -179,7 +178,7 @@ app.use("/", stuffBrandRoute);
 // STUFF
 app.get("/stuffs", async (req, res) => {
   try {
-    let query = await db.query(`
+    let query = await store.query(`
       SELECT DISTINCT 
       stuff.stuff_id,
       stuff.stuff_name,
@@ -221,7 +220,7 @@ app.get("/stuffs", async (req, res) => {
 
 app.get("/imei-sn", verifyToken, async (req, res) => {
   try {
-    let query = await db.query(`
+    let query = await store.query(`
       SELECT DISTINCT
       stuff_information.stuff_information_id,
       stuff_name,
@@ -259,9 +258,9 @@ app.get("/imei-sn", verifyToken, async (req, res) => {
 
 app.get("/stuff", verifyToken, async (req, res) => {
   try {
-    let categoryQuery = await db.query("SELECT * FROM stuff_category");
-    let brandQuery = await db.query("SELECT * FROM stuff_brand");
-    let supplierQuery = await db.query("SELECT * FROM supplier");
+    let categoryQuery = await store.query("SELECT * FROM stuff_category");
+    let brandQuery = await store.query("SELECT * FROM stuff_brand");
+    let supplierQuery = await store.query("SELECT * FROM supplier");
 
     if (categoryQuery.rows.length === 0) {
       return res.status(404).json({
@@ -377,12 +376,12 @@ app.post("/stuff", verifyToken, async (req, res) => {
     if (!barcode)
       return res.status(400).json({ status: 400, message: "Missing barcode" });
 
-    await db.query("BEGIN");
+    await store.query("BEGIN");
 
     // ================= AUTH CONTEXT =================
     const employeeAccountId = req.user.id;
 
-    const employeeQuery = await db.query(
+    const employeeQuery = await store.query(
       `
       SELECT employee.employee_id
       FROM employee
@@ -390,11 +389,11 @@ app.post("/stuff", verifyToken, async (req, res) => {
         ON employee_account.employee_id = employee.employee_id
       WHERE employee_account.employee_account_id = $1
       `,
-      [employeeAccountId]
+      [employeeAccountId],
     );
 
     if (!employeeQuery.rows.length) {
-      await db.query("ROLLBACK");
+      await store.query("ROLLBACK");
       return res
         .status(404)
         .json({ status: 404, message: "Employee not found" });
@@ -403,7 +402,7 @@ app.post("/stuff", verifyToken, async (req, res) => {
     const employeeId = employeeQuery.rows[0].employee_id;
 
     // ================= INSERT =================
-    const stuffQuery = await db.query(
+    const stuffQuery = await store.query(
       `
       INSERT INTO stuff 
       (stuff_category_id, stuff_brand_id, supplier_id, stuff_code, stuff_sku, stuff_name, stuff_variant, current_sell_price, has_sn, barcode)
@@ -421,20 +420,20 @@ app.post("/stuff", verifyToken, async (req, res) => {
         current_sell_price,
         has_sn,
         barcode,
-      ]
+      ],
     );
 
     const stuffData = stuffQuery.rows[0];
 
-    await db.query(
+    await store.query(
       `
       INSERT INTO stuff_history (stuff_id, employee_id, operation, new_data)
       VALUES ($1, $2, 'insert', $3)
       `,
-      [stuffData.stuff_id, employeeId, stuffData]
+      [stuffData.stuff_id, employeeId, stuffData],
     );
 
-    await db.query("COMMIT");
+    await store.query("COMMIT");
 
     return res.status(201).json({
       status: 201,
@@ -442,7 +441,7 @@ app.post("/stuff", verifyToken, async (req, res) => {
       data: stuffData,
     });
   } catch (err) {
-    await db.query("ROLLBACK");
+    await store.query("ROLLBACK");
     console.error(err);
     return res.status(500).json({
       status: 500,
@@ -453,7 +452,7 @@ app.post("/stuff", verifyToken, async (req, res) => {
 
 app.get("/stuff-history", verifyToken, async (req, res) => {
   try {
-    let query = await db.query(`
+    let query = await store.query(`
       SELECT
       employee.employee_id,
       stuff.stuff_id,
@@ -493,7 +492,7 @@ app.get("/stuff/:stuff_id", verifyToken, async (req, res) => {
   let reqId = parseInt(req.params.stuff_id);
 
   try {
-    let stuffQuery = await db.query(
+    let stuffQuery = await store.query(
       `
       SELECT 
       stuff.stuff_id,
@@ -516,22 +515,22 @@ app.get("/stuff/:stuff_id", verifyToken, async (req, res) => {
       LEFT JOIN supplier ON supplier.supplier_id = stuff.supplier_id
       WHERE stuff_id = $1   
     `,
-      [reqId]
+      [reqId],
     );
     let stuffResult = stuffQuery.rows[0];
 
-    let stuffCategoryQuery = await db.query(
-      "SELECT stuff_category_id, stuff_category_name FROM stuff_category"
+    let stuffCategoryQuery = await store.query(
+      "SELECT stuff_category_id, stuff_category_name FROM stuff_category",
     );
     let resultStuffCategory = stuffCategoryQuery.rows;
 
-    let stuffBrandQuery = await db.query(
-      "SELECT stuff_brand_id, stuff_brand_name FROM stuff_brand"
+    let stuffBrandQuery = await store.query(
+      "SELECT stuff_brand_id, stuff_brand_name FROM stuff_brand",
     );
     let resultStuffBrand = stuffBrandQuery.rows;
 
-    let supplierQuery = await db.query(
-      "SELECT supplier_id, supplier_name FROM supplier"
+    let supplierQuery = await store.query(
+      "SELECT supplier_id, supplier_name FROM supplier",
     );
     let resultSupplier = supplierQuery.rows;
 
@@ -646,16 +645,16 @@ app.patch("/stuff/:stuff_id", verifyToken, async (req, res) => {
   }
 
   try {
-    await db.query("BEGIN");
+    await store.query("BEGIN");
 
     // ================= CHECK STUFF EXISTENCE =================
-    const oldDataQuery = await db.query(
+    const oldDataQuery = await store.query(
       "SELECT * FROM stuff WHERE stuff_id = $1",
-      [stuffId]
+      [stuffId],
     );
 
     if (!oldDataQuery.rows.length) {
-      await db.query("ROLLBACK");
+      await store.query("ROLLBACK");
       return res.status(404).json({ status: 404, message: "Stuff not found" });
     }
 
@@ -664,7 +663,7 @@ app.patch("/stuff/:stuff_id", verifyToken, async (req, res) => {
     // ================= AUTH CONTEXT =================
     const employeeAccountId = req.user.id;
 
-    const employeeQuery = await db.query(
+    const employeeQuery = await store.query(
       `
       SELECT employee.employee_id
       FROM employee
@@ -672,11 +671,11 @@ app.patch("/stuff/:stuff_id", verifyToken, async (req, res) => {
         ON employee_account.employee_id = employee.employee_id
       WHERE employee_account.employee_account_id = $1
       `,
-      [employeeAccountId]
+      [employeeAccountId],
     );
 
     if (!employeeQuery.rows.length) {
-      await db.query("ROLLBACK");
+      await store.query("ROLLBACK");
       return res
         .status(404)
         .json({ status: 404, message: "Employee not found" });
@@ -697,19 +696,19 @@ app.patch("/stuff/:stuff_id", verifyToken, async (req, res) => {
       RETURNING *
     `;
 
-    const newDataQuery = await db.query(updateQuery, [...values, stuffId]);
+    const newDataQuery = await store.query(updateQuery, [...values, stuffId]);
     const newData = newDataQuery.rows[0];
 
     // ================= HISTORY =================
-    await db.query(
+    await store.query(
       `
       INSERT INTO stuff_history (stuff_id, employee_id, operation, old_data, new_data)
       VALUES ($1, $2, 'update', $3, $4)
       `,
-      [stuffId, employeeId, oldData, newData]
+      [stuffId, employeeId, oldData, newData],
     );
 
-    await db.query("COMMIT");
+    await store.query("COMMIT");
 
     return res.status(200).json({
       status: 200,
@@ -717,7 +716,7 @@ app.patch("/stuff/:stuff_id", verifyToken, async (req, res) => {
       data: newData,
     });
   } catch (err) {
-    await db.query("ROLLBACK");
+    await store.query("ROLLBACK");
     console.error(err);
     return res.status(500).json({
       status: 500,
@@ -728,7 +727,7 @@ app.patch("/stuff/:stuff_id", verifyToken, async (req, res) => {
 
 app.get("/stuff-purchases", verifyToken, async (req, res) => {
   try {
-    const query = await db.query(`
+    const query = await store.query(`
       SELECT
         sp.stuff_purchase_id,
         s.supplier_name,
@@ -768,7 +767,7 @@ app.get(
     const id = parseInt(req.params.stuff_purchase_id);
 
     try {
-      const query = await db.query(
+      const query = await store.query(
         `
         SELECT
           sp.stuff_purchase_id,
@@ -790,7 +789,7 @@ app.get(
         LEFT JOIN stuff st ON st.stuff_id = spd.stuff_id
         WHERE sp.stuff_purchase_id = $1
       `,
-        [id]
+        [id],
       );
 
       if (query.rows.length === 0) {
@@ -811,14 +810,14 @@ app.get(
         message: "Internal server error",
       });
     }
-  }
+  },
 );
 
 app.get("/stuff-purchase", verifyToken, async (req, res) => {
   try {
-    let supplierQuery = await db.query("SELECT * FROM supplier");
-    let warehouseQuery = await db.query("SELECT * FROM warehouse");
-    let stuffQuery = await db.query("SELECT * FROM stuff");
+    let supplierQuery = await store.query("SELECT * FROM supplier");
+    let warehouseQuery = await store.query("SELECT * FROM warehouse");
+    let stuffQuery = await store.query("SELECT * FROM stuff");
 
     let supplierResult = supplierQuery.rows;
     let warehouseResult = warehouseQuery.rows;
@@ -883,18 +882,18 @@ app.post("/stuff-purchase", verifyToken, async (req, res) => {
   }
 
   try {
-    await db.query("BEGIN");
+    await store.query("BEGIN");
 
     // 👉 ambil employee dari token
     const accountId = req.user.id;
 
-    const employeeQuery = await db.query(
+    const employeeQuery = await store.query(
       `
         SELECT employee_id
         FROM employee_account
         WHERE employee_account_id = $1
       `,
-      [accountId]
+      [accountId],
     );
 
     if (employeeQuery.rows.length === 0) {
@@ -903,35 +902,35 @@ app.post("/stuff-purchase", verifyToken, async (req, res) => {
 
     const employeeId = employeeQuery.rows[0].employee_id;
 
-    const purchaseQuery = await db.query(
+    const purchaseQuery = await store.query(
       `
       INSERT INTO stuff_purchase
       (supplier_id, employee_id, buy_date, total_price)
       VALUES ($1, $2, $3, $4)
       RETURNING stuff_purchase_id
     `,
-      [supplier_id, employeeId, buy_date, total_price]
+      [supplier_id, employeeId, buy_date, total_price],
     );
 
     const purchaseId = purchaseQuery.rows[0].stuff_purchase_id;
 
-    await db.query(
+    await store.query(
       `
       INSERT INTO stuff_purchase_detail
       (warehouse_id, stuff_id, stuff_purchase_id, buy_batch, quantity, buy_price)
       VALUES ($1, $2, $3, $4, $5, $6)
     `,
-      [warehouse_id, stuff_id, purchaseId, buy_batch, quantity, buy_price]
+      [warehouse_id, stuff_id, purchaseId, buy_batch, quantity, buy_price],
     );
 
-    await db.query("COMMIT");
+    await store.query("COMMIT");
 
     return res.status(201).json({
       status: 201,
       message: "Purchase created successfully",
     });
   } catch (err) {
-    await db.query("ROLLBACK");
+    await store.query("ROLLBACK");
     console.error(err);
     return res.status(500).json({
       status: 500,
@@ -971,7 +970,7 @@ app.post(
         throw new Error("Empty file or invalid format");
       }
 
-      await db.query("BEGIN");
+      await store.query("BEGIN");
 
       // ================= GET EMPLOYEE FROM JWT =================
       const refreshToken = req.cookies.refreshToken;
@@ -986,11 +985,11 @@ app.post(
           (err, decoded) => {
             if (err) return reject(err);
             resolve(decoded);
-          }
+          },
         );
       });
 
-      const employeeQuery = await db.query(
+      const employeeQuery = await store.query(
         `
         SELECT e.employee_id
         FROM employee e
@@ -998,7 +997,7 @@ app.post(
           ON ea.employee_id = e.employee_id
         WHERE ea.employee_account_id = $1
         `,
-        [account.id]
+        [account.id],
       );
 
       if (employeeQuery.rows.length === 0) {
@@ -1061,41 +1060,41 @@ app.post(
         }
 
         // ================= LOOKUPS =================
-        const supplierQ = await db.query(
+        const supplierQ = await store.query(
           "SELECT supplier_id FROM supplier WHERE LOWER(supplier_name) = $1",
-          [supplier_name]
+          [supplier_name],
         );
         if (supplierQ.rows.length === 0) {
           throw new Error(
-            `Supplier "${supplier_name}" not registered (row ${index + 2})`
+            `Supplier "${supplier_name}" not registered (row ${index + 2})`,
           );
         }
         const supplierId = supplierQ.rows[0].supplier_id;
 
-        const warehouseQ = await db.query(
+        const warehouseQ = await store.query(
           "SELECT warehouse_id FROM warehouse WHERE LOWER(warehouse_name) = $1",
-          [warehouse_name]
+          [warehouse_name],
         );
         if (warehouseQ.rows.length === 0) {
           throw new Error(
-            `Warehouse "${warehouse_name}" not registered (row ${index + 2})`
+            `Warehouse "${warehouse_name}" not registered (row ${index + 2})`,
           );
         }
         const warehouseId = warehouseQ.rows[0].warehouse_id;
 
-        const stuffQ = await db.query(
+        const stuffQ = await store.query(
           "SELECT stuff_id FROM stuff WHERE LOWER(stuff_name) = $1",
-          [stuff_name]
+          [stuff_name],
         );
         if (stuffQ.rows.length === 0) {
           throw new Error(
-            `Stuff "${stuff_name}" not registered (row ${index + 2})`
+            `Stuff "${stuff_name}" not registered (row ${index + 2})`,
           );
         }
         const stuffId = stuffQ.rows[0].stuff_id;
 
         // ================= INSERT PURCHASE =================
-        const purchaseQ = await db.query(
+        const purchaseQ = await store.query(
           `
           INSERT INTO stuff_purchase
             (supplier_id, employee_id, buy_date, total_price)
@@ -1103,25 +1102,25 @@ app.post(
             ($1, $2, $3::date, $4::numeric)
           RETURNING stuff_purchase_id
           `,
-          [supplierId, employeeId, buy_date, total_price]
+          [supplierId, employeeId, buy_date, total_price],
         );
 
         const purchaseId = purchaseQ.rows[0].stuff_purchase_id;
 
         // ================= INSERT PURCHASE DETAIL =================
-        await db.query(
+        await store.query(
           `
           INSERT INTO stuff_purchase_detail
             (warehouse_id, stuff_id, stuff_purchase_id, buy_batch, quantity, buy_price)
           VALUES
             ($1, $2, $3, $4, $5::int, $6::numeric)
           `,
-          [warehouseId, stuffId, purchaseId, buy_batch, quantity, buy_price]
+          [warehouseId, stuffId, purchaseId, buy_batch, quantity, buy_price],
         );
 
         // ================= UPDATE STOCK =================
         for (let i = 0; i < quantity; i++) {
-          const infoQ = await db.query(
+          const infoQ = await store.query(
             `
             INSERT INTO stuff_information
               (stuff_id, stock_status)
@@ -1129,21 +1128,21 @@ app.post(
               ($1, 'ready')
             RETURNING stuff_information_id
             `,
-            [stuffId]
+            [stuffId],
           );
 
-          await db.query(
+          await store.query(
             `
             INSERT INTO stock
               (warehouse_id, stuff_id, stuff_information_id, stock_type)
             VALUES
               ($1, $2, $3, 'in')
             `,
-            [warehouseId, stuffId, infoQ.rows[0].stuff_information_id]
+            [warehouseId, stuffId, infoQ.rows[0].stuff_information_id],
           );
         }
 
-        await db.query(
+        await store.query(
           `
           UPDATE stuff
           SET total_stock = (
@@ -1153,11 +1152,11 @@ app.post(
           )
           WHERE stuff_id = $1
           `,
-          [stuffId]
+          [stuffId],
         );
       }
 
-      await db.query("COMMIT");
+      await store.query("COMMIT");
 
       safeUnlink(filePath);
 
@@ -1166,7 +1165,7 @@ app.post(
         message: "Upload stuff purchase success",
       });
     } catch (err) {
-      await db.query("ROLLBACK");
+      await store.query("ROLLBACK");
 
       safeUnlink(filePath);
 
@@ -1177,13 +1176,13 @@ app.post(
         message: err.message || "Internal server error",
       });
     }
-  }
+  },
 );
 
 // CUSTOMER
 app.get("/customers", verifyToken, async (req, res) => {
   try {
-    let query = await db.query("SELECT * FROM customer");
+    let query = await store.query("SELECT * FROM customer");
     let result = query.rows;
 
     if (query.rows.length === 0) {
@@ -1239,9 +1238,9 @@ app.post("/customer", verifyToken, async (req, res) => {
   }
 
   try {
-    await db.query(
+    await store.query(
       "INSERT INTO customer (customer_name, customer_contact, customer_address) VALUES ($1, $2, $3)",
-      [customer_name, customer_contact, customer_address]
+      [customer_name, customer_contact, customer_address],
     );
 
     return res.status(201).json({
@@ -1261,9 +1260,9 @@ app.get("/customer/:customer_id", verifyToken, async (req, res) => {
   let reqId = parseInt(req.params.customer_id);
 
   try {
-    let query = await db.query(
+    let query = await store.query(
       "SELECT * FROM customer WHERE customer_id = $1",
-      [reqId]
+      [reqId],
     );
     let result = query.rows[0];
 
@@ -1319,9 +1318,9 @@ app.patch("/customer/:customer_id", verifyToken, async (req, res) => {
   let values = Object.values(update);
 
   try {
-    await db.query(
+    await store.query(
       `UPDATE customer SET ${setQuery} WHERE customer_id = $${keys.length + 1}`,
-      [...values, reqId]
+      [...values, reqId],
     );
 
     return res.status(200).json({
@@ -1340,7 +1339,7 @@ app.patch("/customer/:customer_id", verifyToken, async (req, res) => {
 // PAYMENT METHODE
 app.get("/payment-methods", verifyToken, async (req, res) => {
   try {
-    let query = await db.query("SELECT * FROM payment_method");
+    let query = await store.query("SELECT * FROM payment_method");
     let result = query.rows;
 
     if (query.rows.length === 0) {
@@ -1378,9 +1377,9 @@ app.post("/payment-method", verifyToken, async (req, res) => {
   }
 
   try {
-    await db.query(
+    await store.query(
       "INSERT INTO payment_method (payment_method_name) VALUES ($1)",
-      [payment_method_name]
+      [payment_method_name],
     );
 
     return res.status(201).json({
@@ -1400,9 +1399,9 @@ app.get("/payment-method/:payment_method_id", verifyToken, async (req, res) => {
   let reqId = parseInt(req.params.payment_method_id);
 
   try {
-    let query = await db.query(
+    let query = await store.query(
       "SELECT * FROM payment_method WHERE payment_method_id = $1",
-      [reqId]
+      [reqId],
     );
     let result = query.rows[0];
 
@@ -1461,11 +1460,11 @@ app.patch(
     let values = Object.values(update);
 
     try {
-      await db.query(
+      await store.query(
         `UPDATE payment_method SET ${setQuery} WHERE payment_method_id = $${
           keys.length + 1
         }`,
-        [...values, reqId]
+        [...values, reqId],
       );
 
       return res.status(200).json({
@@ -1479,13 +1478,13 @@ app.patch(
         message: "Internal server error",
       });
     }
-  }
+  },
 );
 
 // DISCOUNT
 app.get("/stuff-discounts", verifyToken, async (req, res) => {
   try {
-    let query = await db.query(`
+    let query = await store.query(`
       SELECT
       stuff.stuff_id,
       stuff_name,
@@ -1532,7 +1531,7 @@ app.get("/stuff-discounts", verifyToken, async (req, res) => {
 
 app.get("/stuff-discount", verifyToken, async (req, res) => {
   try {
-    let query = await db.query("SELECT * FROM stuff");
+    let query = await store.query("SELECT * FROM stuff");
     let result = query.rows;
 
     if (query.rows.length === 0) {
@@ -1585,18 +1584,18 @@ app.post("/stuff-discount", verifyToken, async (req, res) => {
   }
 
   try {
-    await db.query("BEGIN");
+    await store.query("BEGIN");
 
     // 🔑 AMBIL USER DARI ACCESS TOKEN
     const account = req.user;
 
-    const employeeQuery = await db.query(
+    const employeeQuery = await store.query(
       `
         SELECT employee_id
         FROM employee_account
         WHERE employee_account_id = $1
       `,
-      [account.id]
+      [account.id],
     );
 
     if (employeeQuery.rows.length === 0) {
@@ -1605,7 +1604,7 @@ app.post("/stuff-discount", verifyToken, async (req, res) => {
 
     const employeeId = employeeQuery.rows[0].employee_id;
 
-    const discountQuery = await db.query(
+    const discountQuery = await store.query(
       `
       INSERT INTO discount
       (employee_id, discount_name, discount_type, discount_value, started_time, ended_time, discount_status)
@@ -1620,24 +1619,24 @@ app.post("/stuff-discount", verifyToken, async (req, res) => {
         discount_start,
         discount_end,
         discount_status,
-      ]
+      ],
     );
 
     const discountId = discountQuery.rows[0].discount_id;
 
-    await db.query(
+    await store.query(
       "INSERT INTO stuff_discount (stuff_id, discount_id) VALUES ($1, $2)",
-      [stuff_id, discountId]
+      [stuff_id, discountId],
     );
 
-    await db.query("COMMIT");
+    await store.query("COMMIT");
 
     return res.status(201).json({
       status: 201,
       message: "Success add stuff discount",
     });
   } catch (err) {
-    await db.query("ROLLBACK");
+    await store.query("ROLLBACK");
     console.error(err);
     return res.status(500).json({
       status: 500,
@@ -1650,7 +1649,7 @@ app.get("/stuff-discount/:stuff_id", verifyToken, async (req, res) => {
   let reqId = parseInt(req.params.stuff_id);
 
   try {
-    let query = await db.query(
+    let query = await store.query(
       `
       SELECT
       stuff.stuff_id,
@@ -1675,9 +1674,9 @@ app.get("/stuff-discount/:stuff_id", verifyToken, async (req, res) => {
       WHERE stuff.stuff_id = $1
       GROUP BY stuff.stuff_id, stuff.stuff_name
     `,
-      [reqId]
+      [reqId],
     );
-    let stuffQuery = await db.query("SELECT * FROM stuff");
+    let stuffQuery = await store.query("SELECT * FROM stuff");
 
     let result = query.rows[0];
     let stuffResult = stuffQuery.rows;
@@ -1762,28 +1761,28 @@ app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
   if (typeof discountUpdate.discount_value === "string") {
     if (discountUpdate.discount_type === "percentage") {
       discountUpdate.discount_value = convertionToDecimal(
-        discountUpdate.discount_value
+        discountUpdate.discount_value,
       );
     } else if (discountUpdate.discount_type === "fixed") {
       discountUpdate.discount_value = convertionToNumber(
-        discountUpdate.discount_value
+        discountUpdate.discount_value,
       );
     }
   }
 
   try {
-    await db.query("BEGIN");
+    await store.query("BEGIN");
 
     // 🔐 AMBIL USER DARI ACCESS TOKEN
     const account = req.user;
 
-    const employeeQuery = await db.query(
+    const employeeQuery = await store.query(
       `
         SELECT employee_id
         FROM employee_account
         WHERE employee_account_id = $1
       `,
-      [account.id]
+      [account.id],
     );
 
     if (employeeQuery.rows.length === 0) {
@@ -1799,13 +1798,13 @@ app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
 
       const setQuery = fields.map((key, i) => `${key} = $${i + 1}`).join(", ");
 
-      await db.query(
+      await store.query(
         `
         UPDATE discount
         SET ${setQuery}, employee_id = $${values.length + 1}
         WHERE discount_id = $${values.length + 2}
       `,
-        [...values, employeeId, discountId]
+        [...values, employeeId, discountId],
       );
     }
 
@@ -1816,24 +1815,24 @@ app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
 
       const setQuery = fields.map((key, i) => `${key} = $${i + 1}`).join(", ");
 
-      await db.query(
+      await store.query(
         `
         UPDATE stuff_discount
         SET ${setQuery}
         WHERE discount_id = $${values.length + 1}
       `,
-        [...values, discountId]
+        [...values, discountId],
       );
     }
 
-    await db.query("COMMIT");
+    await store.query("COMMIT");
 
     return res.status(200).json({
       status: 200,
       message: "Success updated stuff discount",
     });
   } catch (err) {
-    await db.query("ROLLBACK");
+    await store.query("ROLLBACK");
     console.error(err);
     return res.status(500).json({
       status: 500,
@@ -1844,7 +1843,7 @@ app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
 
 app.get("/order-discounts", verifyToken, async (req, res) => {
   try {
-    let query = await db.query(`
+    let query = await store.query(`
       SELECT
       discount.discount_id,
       employee.employee_id,
@@ -1948,7 +1947,7 @@ app.post("/order-discount", verifyToken, async (req, res) => {
     // =========================
     // GET EMPLOYEE FROM ACCESS TOKEN
     // =========================
-    const employeeQuery = await db.query(
+    const employeeQuery = await store.query(
       `
         SELECT e.employee_id
         FROM employee e
@@ -1956,7 +1955,7 @@ app.post("/order-discount", verifyToken, async (req, res) => {
           ON ea.employee_id = e.employee_id
         WHERE ea.employee_account_id = $1
       `,
-      [req.user.id]
+      [req.user.id],
     );
 
     if (employeeQuery.rows.length === 0) {
@@ -1971,7 +1970,7 @@ app.post("/order-discount", verifyToken, async (req, res) => {
     // =========================
     // INSERT DISCOUNT
     // =========================
-    await db.query(
+    await store.query(
       `
         INSERT INTO discount
           (employee_id, discount_name, discount_type, discount_value, started_time, ended_time, discount_status)
@@ -1986,7 +1985,7 @@ app.post("/order-discount", verifyToken, async (req, res) => {
         discount_start, // → started_time
         discount_end, // → ended_time
         discount_status,
-      ]
+      ],
     );
 
     return res.status(201).json({
@@ -2006,7 +2005,7 @@ app.get("/order-discount/:discount_id", verifyToken, async (req, res) => {
   let reqId = parseInt(req.params.discount_id);
 
   try {
-    let query = await db.query(
+    let query = await store.query(
       `
       SELECT
       discount.discount_id,
@@ -2022,7 +2021,7 @@ app.get("/order-discount/:discount_id", verifyToken, async (req, res) => {
       LEFT JOIN employee ON employee.employee_id = discount.employee_id
       WHERE discount_id = $1  
     `,
-      [reqId]
+      [reqId],
     );
     let result = query.rows[0];
 
@@ -2097,27 +2096,27 @@ app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
   if (typeof discountUpdate.discount_value === "string") {
     if (discountUpdate.discount_type === "percentage") {
       discountUpdate.discount_value = convertionToDecimal(
-        discountUpdate.discount_value
+        discountUpdate.discount_value,
       );
     } else if (discountUpdate.discount_type === "fixed") {
       discountUpdate.discount_value = convertionToNumber(
-        discountUpdate.discount_value
+        discountUpdate.discount_value,
       );
     }
   }
 
   try {
-    await db.query("BEGIN");
+    await store.query("BEGIN");
 
     const account = req.user;
 
-    const employeeQuery = await db.query(
+    const employeeQuery = await store.query(
       `
       SELECT employee_id
       FROM employee_account
       WHERE employee_account_id = $1
       `,
-      [account.id]
+      [account.id],
     );
 
     const employeeId = employeeQuery.rows[0].employee_id;
@@ -2129,13 +2128,13 @@ app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
 
       const setQuery = fields.map((key, i) => `${key} = $${i + 1}`).join(", ");
 
-      await db.query(
+      await store.query(
         `
         UPDATE discount
         SET ${setQuery}, employee_id = $${values.length + 1}
         WHERE discount_id = $${values.length + 2}
         `,
-        [...values, employeeId, discountId]
+        [...values, employeeId, discountId],
       );
     }
 
@@ -2146,24 +2145,24 @@ app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
 
       const setQuery = fields.map((key, i) => `${key} = $${i + 1}`).join(", ");
 
-      await db.query(
+      await store.query(
         `
         UPDATE stuff_discount
         SET ${setQuery}
         WHERE discount_id = $${values.length + 1}
         `,
-        [...values, discountId]
+        [...values, discountId],
       );
     }
 
-    await db.query("COMMIT");
+    await store.query("COMMIT");
 
     return res.status(200).json({
       status: 200,
       message: "Success updated stuff discount",
     });
   } catch (err) {
-    await db.query("ROLLBACK");
+    await store.query("ROLLBACK");
     console.error(err);
     return res.status(500).json({
       status: 500,
@@ -2173,9 +2172,9 @@ app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
 });
 
 // ACCOUNT
-app.get("/employee-accounts", verifyToken, async (req, res) => {
+app.get("/employee-account", verifyToken, async (req, res) => {
   try {
-    let query = await db.query(`
+    let query = await store.query(`
       SELECT
       employee_account.employee_account_id,
       employee.employee_id,
@@ -2211,7 +2210,7 @@ app.get("/employee-accounts", verifyToken, async (req, res) => {
 
 app.get("/employee-account", verifyToken, async (req, res) => {
   try {
-    let query = await db.query("SELECT * FROM employee");
+    let query = await store.query("SELECT * FROM employee");
     let result = query.rows;
 
     if (query.rows.length === 0) {
@@ -2281,9 +2280,9 @@ app.post("/register", verifyToken, async (req, res) => {
   }
 
   try {
-    const checkResult = await db.query(
+    const checkResult = await store.query(
       "SELECT * FROM employee_account WHERE username = $1",
-      [username]
+      [username],
     );
 
     if (checkResult.rows.length > 0) {
@@ -2296,9 +2295,9 @@ app.post("/register", verifyToken, async (req, res) => {
         if (err) {
           console.error("Error hashing password : ", err);
         } else {
-          await db.query(
+          await store.query(
             "INSERT INTO employee_account (employee_id, username, password, role, account_status) VALUES ($1, $2, $3, $4, $5)",
-            [employee_id, username, hash, role, account_status]
+            [employee_id, username, hash, role, account_status],
           );
 
           return res.status(201).json({
@@ -2318,13 +2317,13 @@ app.post("/register", verifyToken, async (req, res) => {
 });
 
 app.post("/login", async (req, res) => {
-  let { username, password } = req.body;
-  const accountQuery = await db.query(
-    "SELECT * FROM employee_account WHERE username = $1",
-    [username]
-  );
-
   try {
+    let { username, password } = req.body;
+    const accountQuery = await store.query(
+      "SELECT * FROM employee_account WHERE username = $1",
+      [username],
+    );
+
     if (accountQuery.rows.length > 0) {
       const account = accountQuery.rows[0];
       const hashPassword = account.password;
@@ -2345,7 +2344,7 @@ app.post("/login", async (req, res) => {
 
       bcrypt.compare(password, hashPassword, async (err, valid) => {
         if (err) {
-          return console.error("Error comparing password: ", err);
+          return console.log("Error comparing password: ", err);
         }
         if (valid) {
           let accessToken = generateAccessToken(account);
@@ -2354,15 +2353,15 @@ app.post("/login", async (req, res) => {
 
           expiresAt.setDate(expiresAt.getDate() + 7);
 
-          await db.query(
+          await store.query(
             "INSERT INTO refresh_token (employee_account_id, token, expires_at) VALUES ($1, $2, $3)",
-            [account.employee_account_id, refreshToken, expiresAt]
+            [account.employee_account_id, refreshToken, expiresAt],
           );
 
           res.cookie("refreshToken", refreshToken, {
             httpOnly: true,
             secure: false,
-            sameSite: "strict",
+            sameSite: "lax",
             maxAge: 7 * 24 * 60 * 60 * 1000,
           });
 
@@ -2385,7 +2384,7 @@ app.post("/login", async (req, res) => {
       });
     }
   } catch (err) {
-    console.error(err);
+    console.log(err);
     return res.status(500).json({
       status: 500,
       message: "Internal server error",
@@ -2397,7 +2396,7 @@ app.get("/employee-account/:account_id", verifyToken, async (req, res) => {
   let reqId = parseInt(req.params.account_id);
 
   try {
-    let query = await db.query(
+    let query = await store.query(
       `
       SELECT
       employee_account.employee_account_id,
@@ -2411,7 +2410,7 @@ app.get("/employee-account/:account_id", verifyToken, async (req, res) => {
       LEFT JOIN employee ON employee.employee_id = employee_account.employee_id
       WHERE employee_account.employee_account_id = $1
     `,
-      [reqId]
+      [reqId],
     );
     let result = query.rows[0];
 
@@ -2487,11 +2486,11 @@ app.patch(
     let values = Object.values(update);
 
     try {
-      await db.query(
+      await store.query(
         `UPDATE employee_account SET ${setQuery} WHERE employee_account_id = $${
           keys.length + 1
         }`,
-        [...values, reqId]
+        [...values, reqId],
       );
 
       return res.status(200).json({
@@ -2505,7 +2504,7 @@ app.patch(
         message: "Internal server error",
       });
     }
-  }
+  },
 );
 
 app.post("/refresh-token", async (req, res) => {
@@ -2519,9 +2518,10 @@ app.post("/refresh-token", async (req, res) => {
       });
     }
 
-    let query = await db.query("SELECT * FROM refresh_token WHERE token = $1", [
-      refreshToken,
-    ]);
+    let query = await store.query(
+      "SELECT * FROM refresh_token WHERE token = $1",
+      [refreshToken],
+    );
     let queryToken = query.rows[0];
 
     if (!queryToken) {
@@ -2560,7 +2560,7 @@ app.post("/logout", verifyToken, async (req, res) => {
     let refreshToken = req.cookies.refreshToken;
 
     if (refreshToken) {
-      await db.query("DELETE from refresh_token WHERE token = $1", [
+      await store.query("DELETE from refresh_token WHERE token = $1", [
         refreshToken,
       ]);
       res.clearCookie("refreshToken");
@@ -2582,7 +2582,7 @@ app.post("/logout", verifyToken, async (req, res) => {
 // STOCK
 app.get("/stocks", verifyToken, async (req, res) => {
   try {
-    const query = await db.query(`
+    const query = await store.query(`
       SELECT
         w.warehouse_id,
         s.stuff_id,
@@ -2613,7 +2613,7 @@ app.get("/stocks", verifyToken, async (req, res) => {
 
 app.get("/stock-history", verifyToken, async (req, res) => {
   try {
-    let query = await db.query(`
+    let query = await store.query(`
       SELECT
       stock.stock_id,
       warehouse.warehouse_id,
@@ -2656,8 +2656,8 @@ app.get("/stock-history", verifyToken, async (req, res) => {
 
 app.get("/stock", verifyToken, async (req, res) => {
   try {
-    let stuffQuery = await db.query("SELECT * FROM stuff");
-    let warehouseQuery = await db.query("SELECT * FROM warehouse");
+    let stuffQuery = await store.query("SELECT * FROM stuff");
+    let warehouseQuery = await store.query("SELECT * FROM warehouse");
 
     let stuffResult = stuffQuery.rows;
     let warehouseResult = warehouseQuery.rows;
@@ -2714,40 +2714,40 @@ app.post("/stock", verifyToken, async (req, res) => {
   sn = sn.toString().trim();
 
   try {
-    await db.query("BEGIN");
+    await store.query("BEGIN");
 
     // Insert into stuff_information
-    let stuffInfoQuery = await db.query(
+    let stuffInfoQuery = await store.query(
       `INSERT INTO stuff_information (stuff_id, imei_1, imei_2, sn, stock_status)
        VALUES ($1, $2, $3, $4, 'ready')
        RETURNING stuff_information_id`,
-      [stuff_id, imei_1, imei_2, sn]
+      [stuff_id, imei_1, imei_2, sn],
     );
 
     let stuffInfoId = stuffInfoQuery.rows[0].stuff_information_id;
 
     // Insert into stock
-    await db.query(
+    await store.query(
       `INSERT INTO stock (warehouse_id, stuff_id, stuff_information_id, stock_type)
        VALUES ($1, $2, $3, 'in')`,
-      [warehouse_id, stuff_id, stuffInfoId]
+      [warehouse_id, stuff_id, stuffInfoId],
     );
 
     // Update total_stock
-    await db.query(
+    await store.query(
       `UPDATE stuff
        SET total_stock = (SELECT COUNT(*) FROM stuff_information WHERE stuff_id = $1 AND stock_status = 'ready')
        WHERE stuff_id = $2`,
-      [stuff_id, stuff_id]
+      [stuff_id, stuff_id],
     );
 
-    await db.query("COMMIT");
+    await store.query("COMMIT");
 
     return res
       .status(201)
       .json({ status: 201, message: "Stock added successfully" });
   } catch (err) {
-    await db.query("ROLLBACK");
+    await store.query("ROLLBACK");
     console.error(err);
 
     // Handle duplicate IMEI
@@ -2763,122 +2763,106 @@ app.post("/stock", verifyToken, async (req, res) => {
   }
 });
 
-// ================= ROUTE =================
-app.post(
-  "/upload-stock",
-  verifyToken,
-  upload.single("file"),
-  async (req, res) => {
-    if (!req.file) {
-      return res.status(400).json({
-        status: 400,
-        message: "File not found",
-      });
+app.post("/upload-stock", upload.single("file"), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({
+      status: 400,
+      message: "File not found",
+    });
+  }
+
+  const filePath = req.file.path;
+  const ext = req.file.originalname.split(".").pop().toLowerCase();
+
+  let rows = [];
+
+  try {
+    if (ext === "csv") {
+      rows = await parseCSV(filePath);
+    } else if (ext === "xlsx" || ext === "xls") {
+      rows = parseExcel(filePath);
+    } else {
+      throw new Error("File format must be csv or excel");
     }
 
-    const filePath = req.file.path;
-    const ext = path
-      .extname(req.file.originalname)
-      .replace(".", "")
-      .toLowerCase();
+    if (!rows || rows.length === 0) {
+      throw new Error("Empty file or invalid format");
+    }
 
-    let rows = [];
+    await store.query("BEGIN");
 
-    try {
-      // ================= PARSE FILE =================
-      if (ext === "csv") {
-        rows = await parseCSV(filePath);
-      } else if (ext === "xlsx" || ext === "xls") {
-        rows = parseExcel(filePath);
-      } else {
-        throw new Error("File format must be csv or excel");
+    for (let i = 0; i < rows.length; i++) {
+      let item = rows[i];
+
+      for (let key in item) {
+        if (typeof item[key] === "string") {
+          item[key] = item[key].trim().toLowerCase();
+        }
       }
 
-      if (!rows || rows.length === 0) {
-        throw new Error("Empty file or invalid format");
+      let { warehouse_name, stuff_name, imei_1, imei_2, sn } = item;
+
+      if (!warehouse_name || !stuff_name) {
+        throw new Error(`Invalid row at line ${i + 1}`);
       }
 
-      await db.query("BEGIN");
-
-      // ================= LOOP ROWS =================
-      for (let i = 0; i < rows.length; i++) {
-        let item = rows[i];
-
-        // normalize string
-        for (let key in item) {
-          if (typeof item[key] === "string") {
-            item[key] = item[key].trim().toLowerCase();
-          }
-        }
-
-        let { warehouse_name, stuff_name, imei_1, imei_2, sn } = item;
-
-        if (!warehouse_name || !stuff_name) {
-          throw new Error(`Invalid row at line ${i + 1}`);
-        }
-
-        // ================= GET WAREHOUSE =================
-        const warehouseQuery = await db.query(
-          `
+      const warehouseQuery = await store.query(
+        `
           SELECT warehouse_id
           FROM warehouse
-          WHERE LOWER(warehouse_name) = $1
+          WHERE LOWER(TRIM(warehouse_name)) = LOWER(TRIM($1))
           `,
-          [warehouse_name]
-        );
+        [warehouse_name],
+      );
 
-        if (warehouseQuery.rows.length === 0) {
-          throw new Error(`Warehouse "${warehouse_name}" not registered`);
-        }
+      if (warehouseQuery.rows.length === 0) {
+        throw new Error(`Warehouse "${warehouse_name}" not registered`);
+      }
 
-        const warehouseId = Number(warehouseQuery.rows[0].warehouse_id);
+      const warehouseId = Number(warehouseQuery.rows[0].warehouse_id);
 
-        // ================= GET STUFF =================
-        const stuffQuery = await db.query(
-          `
+      const stuffQuery = await store.query(
+        `
           SELECT stuff_id
           FROM stuff
           WHERE LOWER(stuff_name) = $1
           `,
-          [stuff_name]
-        );
+        [stuff_name],
+      );
 
-        if (stuffQuery.rows.length === 0) {
-          throw new Error(`Stuff "${stuff_name}" not registered`);
-        }
+      if (stuffQuery.rows.length === 0) {
+        throw new Error(`Stuff "${stuff_name}" not registered`);
+      }
 
-        const stuffId = Number(stuffQuery.rows[0].stuff_id);
+      const stuffId = Number(stuffQuery.rows[0].stuff_id);
 
-        // ================= INSERT STUFF INFORMATION =================
-        const stuffInfoQuery = await db.query(
-          `
+      const stuffInfoQuery = await store.query(
+        `
           INSERT INTO stuff_information
           (stuff_id, imei_1, imei_2, sn, stock_status)
           VALUES
           ($1::int, $2, $3, $4, 'ready')
           RETURNING stuff_information_id
           `,
-          [stuffId, imei_1 || null, imei_2 || null, sn || null]
-        );
+        [stuffId, imei_1 || null, imei_2 || null, sn || null],
+      );
 
-        const stuffInformationId = Number(
-          stuffInfoQuery.rows[0].stuff_information_id
-        );
+      const stuffInformationId = Number(
+        stuffInfoQuery.rows[0].stuff_information_id,
+      );
 
-        // ================= INSERT STOCK =================
-        await db.query(
-          `
+      await store.query(
+        `
           INSERT INTO stock
           (warehouse_id, stuff_id, stuff_information_id, stock_type)
           VALUES
           ($1::int, $2::int, $3::int, 'in')
           `,
-          [warehouseId, stuffId, stuffInformationId]
-        );
+        [warehouseId, stuffId, stuffInformationId],
+      );
 
-        // ================= UPDATE TOTAL STOCK (FIXED) =================
-        await db.query(
-          `
+      await store.query(
+        `
           UPDATE stuff
           SET total_stock = (
             SELECT COUNT(*)::int
@@ -2888,37 +2872,34 @@ app.post(
           )
           WHERE stuff_id = $1::int
           `,
-          [stuffId]
-        );
-      }
+        [stuffId],
+      );
+    }
 
-      await db.query("COMMIT");
+    await store.query("COMMIT");
 
-      return res.status(201).json({
-        status: 201,
-        message: "Success upload stock",
-      });
-    } catch (err) {
-      await db.query("ROLLBACK");
-      console.error(err);
-
-      return res.status(500).json({
-        status: 500,
-        message: err.message || "Internal server error",
-      });
-    } finally {
-      // ================= CLEAN FILE =================
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
+    return res.status(201).json({
+      status: 201,
+      message: "Success upload stock",
+    });
+  } catch (err) {
+    await store.query("ROLLBACK");
+    console.log(err);
+    return res.status(500).json({
+      status: 500,
+      message: err.message || "Internal server error",
+    });
+  } finally {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
     }
   }
-);
+});
 
 // CUSTOMER ORDER
 app.get("/customer-orders", verifyToken, async (req, res) => {
   try {
-    let query = await db.query(`
+    let query = await store.query(`
       SELECT
       customer_order.order_id,
       customer.customer_id,
@@ -2962,7 +2943,7 @@ app.get("/customer-order-detail/:order_id", verifyToken, async (req, res) => {
   let reqId = parseInt(req.params.order_id);
 
   try {
-    let orderQuery = await db.query(
+    let orderQuery = await store.query(
       `
       SELECT
       customer_order.order_id,
@@ -3049,7 +3030,7 @@ app.get("/customer-order-detail/:order_id", verifyToken, async (req, res) => {
       customer_order.sub_total,
       customer_order.remaining_payment
     `,
-      [reqId]
+      [reqId],
     );
     let order = orderQuery.rows[0];
 
@@ -3075,11 +3056,11 @@ app.get("/customer-order-detail/:order_id", verifyToken, async (req, res) => {
 
 app.get("/customer-order", verifyToken, async (req, res) => {
   try {
-    let customerQuery = await db.query("SELECT * FROM customer");
-    let warehouseQuery = await db.query("SELECT * FROM warehouse");
-    let paymentMethodQuery = await db.query("SELECT * FROM payment_method");
-    let stuffQuery = await db.query("SELECT * FROM stuff");
-    let orderDiscountQuery = await db.query("SELECT * FROM discount");
+    let customerQuery = await store.query("SELECT * FROM customer");
+    let warehouseQuery = await store.query("SELECT * FROM warehouse");
+    let paymentMethodQuery = await store.query("SELECT * FROM payment_method");
+    let stuffQuery = await store.query("SELECT * FROM stuff");
+    let orderDiscountQuery = await store.query("SELECT * FROM discount");
 
     if (customerQuery.rows.length === 0) {
       return res.status(404).json({
@@ -3199,12 +3180,12 @@ app.post("/customer-order", verifyToken, async (req, res) => {
         }
         acc[item.stuff_id].quantity += 1;
         return acc;
-      }, {})
+      }, {}),
     );
   };
 
   let calculateItemDiscount = async (stuff_id) => {
-    let q = await db.query(
+    let q = await store.query(
       `
       SELECT
         stuff.stuff_id,
@@ -3221,7 +3202,7 @@ app.post("/customer-order", verifyToken, async (req, res) => {
       LEFT JOIN discount ON stuff_discount.discount_id = discount.discount_id
       WHERE stuff.stuff_id = $1
       GROUP BY stuff.stuff_id, stuff.current_sell_price`,
-      [stuff_id]
+      [stuff_id],
     );
 
     if (!q.rows.length) return { price: 0, totalDiscount: 0 };
@@ -3248,10 +3229,10 @@ app.post("/customer-order", verifyToken, async (req, res) => {
   let calculateOrderDiscount = async (discounts, grandTotal) => {
     let total = 0;
     for (let d of discounts || []) {
-      let q = await db.query(
+      let q = await store.query(
         `SELECT discount_type, discount_status, discount_value 
          FROM discount WHERE discount_id = $1`,
-        [d.discount_id]
+        [d.discount_id],
       );
 
       let data = q.rows[0];
@@ -3280,9 +3261,9 @@ app.post("/customer-order", verifyToken, async (req, res) => {
     let errors = [];
 
     for (let id of identifiers) {
-      let q = await db.query(
+      let q = await store.query(
         `SELECT * FROM stuff_information WHERE stuff_id = $1 AND ${id.key} = $2`,
-        [item.stuff_id, id.value]
+        [item.stuff_id, id.value],
       );
 
       if (!q.rows.length) {
@@ -3310,7 +3291,7 @@ app.post("/customer-order", verifyToken, async (req, res) => {
   }
 
   try {
-    await db.query("BEGIN");
+    await store.query("BEGIN");
 
     let totalItemDiscount = 0;
     let grandTotal = 0;
@@ -3326,7 +3307,7 @@ app.post("/customer-order", verifyToken, async (req, res) => {
     let totalPayment = grandTotal - orderDiscount;
     let remainingPayment = payment - totalPayment;
 
-    let employeeQuery = await db.query(
+    let employeeQuery = await store.query(
       `
       SELECT employee.employee_id
       FROM employee
@@ -3334,12 +3315,12 @@ app.post("/customer-order", verifyToken, async (req, res) => {
         ON employee_account.employee_id = employee.employee_id
       WHERE employee_account.employee_account_id = $1
     `,
-      [account.id]
+      [account.id],
     );
 
     let employeeId = employeeQuery.rows[0].employee_id;
 
-    let orderQuery = await db.query(
+    let orderQuery = await store.query(
       `
       INSERT INTO customer_order
       (customer_id, payment_method_id, employee_id, order_date, payment, sub_total, remaining_payment)
@@ -3354,28 +3335,28 @@ app.post("/customer-order", verifyToken, async (req, res) => {
         payment,
         totalPayment,
         remainingPayment,
-      ]
+      ],
     );
 
     let orderId = orderQuery.rows[0].order_id;
 
     for (let d of discounts || []) {
-      await db.query(
+      await store.query(
         "INSERT INTO order_discount (order_id, discount_id) VALUES ($1,$2)",
-        [orderId, d.discount_id]
+        [orderId, d.discount_id],
       );
     }
 
     for (let item of items) {
       let { stuff_information_id } = await verifyAndGetStuffInfo(item);
 
-      await db.query(
+      await store.query(
         `INSERT INTO stock (warehouse_id, stuff_id, stuff_information_id, stock_type)
          VALUES ($1,$2,$3,'out')`,
-        [warehouse_id, item.stuff_id, stuff_information_id]
+        [warehouse_id, item.stuff_id, stuff_information_id],
       );
 
-      await db.query(
+      await store.query(
         `
         INSERT INTO customer_order_detail
         (stuff_id, order_id, warehouse_id, imei_1, imei_2, sn, barcode, total_item_discount, total_order_discount)
@@ -3391,40 +3372,40 @@ app.post("/customer-order", verifyToken, async (req, res) => {
           item.barcode,
           totalItemDiscount,
           orderDiscount,
-        ]
+        ],
       );
 
-      await db.query(
+      await store.query(
         `UPDATE stuff_information
          SET stock_status = 'sold'
          WHERE stuff_information_id = $1`,
-        [stuff_information_id]
+        [stuff_information_id],
       );
     }
 
     for (let q of quantities) {
-      let stockQuery = await db.query(
+      let stockQuery = await store.query(
         "SELECT total_stock FROM stuff WHERE stuff_id = $1 FOR UPDATE",
-        [q.stuff_id]
+        [q.stuff_id],
       );
 
       if (stockQuery.rows[0].total_stock < q.quantity)
         throw new Error("Stock insufficient");
 
-      await db.query(
+      await store.query(
         "UPDATE stuff SET total_stock = total_stock - $1 WHERE stuff_id = $2",
-        [q.quantity, q.stuff_id]
+        [q.quantity, q.stuff_id],
       );
     }
 
-    await db.query("COMMIT");
+    await store.query("COMMIT");
 
     return res.status(201).json({
       status: 201,
       message: "Success create order",
     });
   } catch (err) {
-    await db.query("ROLLBACK");
+    await store.query("ROLLBACK");
     console.error(err);
     return res.status(500).json({
       status: 500,

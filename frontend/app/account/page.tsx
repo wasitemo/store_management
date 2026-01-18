@@ -17,7 +17,7 @@ interface EmployeeAccount {
   account_status: string;
 }
 
-const BASE_URL = "http://localhost:3001";
+const BASE_URL = "http://localhost:3000";
 
 export default function EmployeeAccountsPage() {
   const router = useRouter();
@@ -44,7 +44,7 @@ export default function EmployeeAccountsPage() {
 
   // ================= LOAD =================
   const loadAccounts = async () => {
-    const res = await fetch(`${BASE_URL}/employee-accounts`, {
+    const res = await fetch(`${BASE_URL}/employee-account`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const json = await res.json();
@@ -52,7 +52,7 @@ export default function EmployeeAccountsPage() {
   };
 
   const loadEmployees = async () => {
-    const res = await fetch(`${BASE_URL}/employees`, {
+    const res = await fetch(`${BASE_URL}/employee`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const json = await res.json();

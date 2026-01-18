@@ -8,7 +8,7 @@ interface PaymentMethod {
   payment_method_name: string;
 }
 
-const BASE_URL = "http://localhost:3001";
+const BASE_URL = "http://localhost:3000";
 
 export default function PaymentMethodPage() {
   const router = useRouter();

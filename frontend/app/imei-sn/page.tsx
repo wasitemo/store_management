@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-const BASE_URL = "http://localhost:3001";
+const BASE_URL = "http://localhost:3000";
 
 export default function ImeiSnPage() {
   const router = useRouter();
@@ -106,8 +106,8 @@ export default function ImeiSnPage() {
                     item.stock_status === "ready"
                       ? "bg-success"
                       : item.stock_status === "sold"
-                      ? "bg-danger"
-                      : "bg-warning"
+                        ? "bg-danger"
+                        : "bg-warning"
                   }`}
                 >
                   {item.stock_status}

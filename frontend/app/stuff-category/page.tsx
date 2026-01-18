@@ -8,7 +8,7 @@ interface Category {
   stuff_category_name: string;
 }
 
-const BASE_URL = "http://localhost:3001";
+const BASE_URL = "http://localhost:3000";
 
 export default function StuffCategoryPage() {
   const router = useRouter();
@@ -30,7 +30,7 @@ export default function StuffCategoryPage() {
   // ================= LOAD DATA =================
   const loadCategories = async () => {
     try {
-      const res = await fetch(`${BASE_URL}/stuff-categories`, {
+      const res = await fetch(`${BASE_URL}/stuff-category`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
