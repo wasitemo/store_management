@@ -14,7 +14,7 @@ async function getEmployee(limit, offset) {
         ORDER BY employee_id ASC
         LIMIT $1 OFFSET $2
     `,
-    [limit, offset]
+    [limit, offset],
   );
   const result = query.rows;
 
@@ -33,7 +33,7 @@ async function getEmployeeById(employeeId) {
         FROM employee
         WHERE employee_id = $1 
     `,
-    [employeeId]
+    [employeeId],
   );
   const result = query.rows[0];
 
@@ -44,7 +44,7 @@ async function addEmployee(
   employeeNik,
   employeeName,
   employeeAddress,
-  employeeContact
+  employeeContact,
 ) {
   await store.query(
     `
@@ -53,7 +53,7 @@ async function addEmployee(
         VALUES
         ($1, $2, $3, $4)   
     `,
-    [employeeNik, employeeName, employeeContact, employeeAddress]
+    [employeeNik, employeeName, employeeContact, employeeAddress],
   );
 }
 
@@ -76,7 +76,7 @@ async function updateEmployee(data, employeeId) {
       employee_contact,
       employee_address,
       employeeId,
-    ]
+    ],
   );
 }
 
@@ -84,7 +84,7 @@ async function updateEmployee(data, employeeId) {
 async function findEmployeeByNik(employeeNik) {
   const query = await store.query(
     "SELECT employee_nik FROM employee WHERE LOWER(TRIM(employee_nik)) = LOWER(TRIM($1))",
-    [employeeNik]
+    [employeeNik],
   );
   const result = query.rows[0];
 

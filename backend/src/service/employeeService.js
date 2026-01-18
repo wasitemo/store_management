@@ -39,7 +39,7 @@ async function newEmployee(
   employeeNik,
   employeeName,
   employeeContact,
-  employeeAddress
+  employeeAddress,
 ) {
   const nik = await findEmployeeByNik(employeeNik);
   if (nik) {
@@ -50,7 +50,7 @@ async function newEmployee(
     employeeNik,
     employeeName,
     employeeAddress,
-    employeeContact
+    employeeContact,
   );
 }
 

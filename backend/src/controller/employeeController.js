@@ -55,7 +55,7 @@ async function saveEmployee(req, res, next) {
     if (employee_nik.length > 17) {
       throw new ErrorMessage(
         "Employee nik length cannot exceed 17 characters",
-        400
+        400,
       );
     }
 
@@ -70,7 +70,7 @@ async function saveEmployee(req, res, next) {
     if (employee_contact.length > 13) {
       throw new ErrorMessage(
         "Employee contact length cannot exceed 13 characters",
-        400
+        400,
       );
     }
 
@@ -87,7 +87,7 @@ async function saveEmployee(req, res, next) {
       employee_nik,
       employee_name,
       employee_contact,
-      employee_address
+      employee_address,
     );
     return res.status(201).json({
       status: 201,
@@ -114,7 +114,7 @@ async function changeEmployee(req, res, next) {
     if (invalidField.length > 0) {
       throw new ErrorMessage(
         `Missing required key: ${invalidField.join(", ")}`,
-        500
+        500,
       );
     }
 
@@ -126,14 +126,14 @@ async function changeEmployee(req, res, next) {
       if (k === "employee_nik" && update[k].length > 17) {
         throw new ErrorMessage(
           "Employee nik length cannot exceed 17 characters",
-          400
+          400,
         );
       }
 
       if (k === "employee_contact" && update[k].length > 13) {
         throw new ErrorMessage(
           "Employee contact length cannot exceed 13 characters",
-          400
+          400,
         );
       }
     }
