@@ -2,15 +2,24 @@ import ErrorMessage from "../error/ErrorMessage.js";
 import {
   showEmployee,
   showEmployeeById,
+  showTotalEmployee,
   newEmployee,
   editEmployee,
 } from "../service/employeeService.js";
 
 async function presentEmployee(req, res, next) {
   try {
-    const result = await showEmployee();
+    let page = parseInt(req.query.page) || 1;
+    let limit = parseInt(req.query.limit) || 15;
+    let offset = (page - 1) * limit;
+    let total = await showTotalEmployee();
+    const result = await showEmployee(limit, offset);
     return res.status(200).json({
       status: 200,
+      page,
+      limit,
+      total_data: parseInt(total.count),
+      total_page: Math.round(total.count / limit),
       data: result,
     });
   } catch (err) {
@@ -46,7 +55,7 @@ async function saveEmployee(req, res, next) {
     if (employee_nik.length > 17) {
       throw new ErrorMessage(
         "Employee nik length cannot exceed 17 characters",
-        400
+        400,
       );
     }
 
@@ -61,7 +70,7 @@ async function saveEmployee(req, res, next) {
     if (employee_contact.length > 13) {
       throw new ErrorMessage(
         "Employee contact length cannot exceed 13 characters",
-        400
+        400,
       );
     }
 
@@ -78,7 +87,7 @@ async function saveEmployee(req, res, next) {
       employee_nik,
       employee_name,
       employee_contact,
-      employee_address
+      employee_address,
     );
     return res.status(201).json({
       status: 201,
@@ -105,7 +114,7 @@ async function changeEmployee(req, res, next) {
     if (invalidField.length > 0) {
       throw new ErrorMessage(
         `Missing required key: ${invalidField.join(", ")}`,
-        500
+        500,
       );
     }
 
@@ -117,14 +126,14 @@ async function changeEmployee(req, res, next) {
       if (k === "employee_nik" && update[k].length > 17) {
         throw new ErrorMessage(
           "Employee nik length cannot exceed 17 characters",
-          400
+          400,
         );
       }
 
       if (k === "employee_contact" && update[k].length > 13) {
         throw new ErrorMessage(
           "Employee contact length cannot exceed 13 characters",
-          400
+          400,
         );
       }
     }

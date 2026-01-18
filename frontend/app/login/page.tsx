@@ -18,7 +18,7 @@ export default function LoginPage() {
 
     try {
       const body = { username: username, password: password };
-      const res = await fetch("http://localhost:3001/login", {
+      const res = await fetch("http://localhost:3000/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -40,6 +40,7 @@ export default function LoginPage() {
       router.push("/dashboard");
     } catch (err: any) {
       setError(err.message);
+      console.log(err);
     } finally {
       setLoading(false);
     }

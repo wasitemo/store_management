@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-const BASE_URL = "http://localhost:3001";
+const BASE_URL = "http://localhost:3000";
 
 interface Purchase {
   stuff_purchase_id: number;
@@ -49,9 +49,7 @@ export default function StuffPurchasePage() {
   const [file, setFile] = useState<File | null>(null);
 
   const token =
-    typeof window !== "undefined"
-      ? localStorage.getItem("access_token")
-      : null;
+    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
   // ================= LOAD =================
   const loadData = async () => {
@@ -222,9 +220,7 @@ export default function StuffPurchasePage() {
                 placeholder={key}
                 className="w-full border p-2"
                 value={(form as any)[key]}
-                onChange={(e) =>
-                  setForm({ ...form, [key]: e.target.value })
-                }
+                onChange={(e) => setForm({ ...form, [key]: e.target.value })}
               />
             ))}
 

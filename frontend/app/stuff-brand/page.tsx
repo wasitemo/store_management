@@ -8,7 +8,7 @@ interface Brand {
   stuff_brand_name: string;
 }
 
-const BASE_URL = "http://localhost:3001";
+const BASE_URL = "http://localhost:3000";
 
 export default function StuffBrandPage() {
   const router = useRouter();
@@ -30,7 +30,7 @@ export default function StuffBrandPage() {
   // ================= LOAD DATA =================
   const loadBrands = async () => {
     try {
-      const res = await fetch(`${BASE_URL}/stuff-brands`, {
+      const res = await fetch(`${BASE_URL}/stuff-brand`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -95,7 +95,7 @@ export default function StuffBrandPage() {
           : `${BASE_URL}/stuff-brand/${editingId}`;
 
       const res = await fetch(endpoint, {
-        method: editingId === null ? "POST" : "PATCH",
+        method: editingId === null ? "POST" : "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/x-www-form-urlencoded",

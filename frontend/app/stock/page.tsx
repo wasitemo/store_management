@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface StockSummary {
   warehouse_id: number;
@@ -21,7 +21,7 @@ interface Warehouse {
   warehouse_name: string;
 }
 
-const BASE_URL = 'http://localhost:3001';
+const BASE_URL = "http://localhost:3000";
 
 export default function StockPage() {
   const router = useRouter();
@@ -35,20 +35,18 @@ export default function StockPage() {
   const [showUpload, setShowUpload] = useState(false);
 
   const [form, setForm] = useState({
-    warehouse_id: '',
-    stuff_id: '',
-    imei_1: '',
-    imei_2: '',
-    sn: '',
+    warehouse_id: "",
+    stuff_id: "",
+    imei_1: "",
+    imei_2: "",
+    sn: "",
   });
 
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [debugPayload, setDebugPayload] = useState<any>(null);
 
   const token =
-    typeof window !== 'undefined'
-      ? localStorage.getItem('access_token')
-      : null;
+    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
   // ================= LOAD =================
   const loadStocks = async () => {
@@ -58,8 +56,8 @@ export default function StockPage() {
       });
 
       if (res.status === 401) {
-        localStorage.removeItem('access_token');
-        router.push('/login');
+        localStorage.removeItem("access_token");
+        router.push("/login");
         return;
       }
 
@@ -80,7 +78,7 @@ export default function StockPage() {
   };
 
   useEffect(() => {
-    if (!token) router.push('/login');
+    if (!token) router.push("/login");
     else {
       loadStocks();
       loadFormData();
@@ -96,25 +94,25 @@ export default function StockPage() {
       !form.imei_2 ||
       !form.sn
     ) {
-      alert('Semua field wajib diisi');
+      alert("Semua field wajib diisi");
       return;
     }
 
     const payload = new URLSearchParams();
-    payload.append('warehouse_id', form.warehouse_id);
-    payload.append('stuff_id', form.stuff_id);
-    payload.append('imei_1', form.imei_1.trim());
-    payload.append('imei_2', form.imei_2.trim());
-    payload.append('sn', form.sn.trim());
+    payload.append("warehouse_id", form.warehouse_id);
+    payload.append("stuff_id", form.stuff_id);
+    payload.append("imei_1", form.imei_1.trim());
+    payload.append("imei_2", form.imei_2.trim());
+    payload.append("sn", form.sn.trim());
 
     setDebugPayload(payload.toString());
 
     try {
       const res = await fetch(`${BASE_URL}/stock`, {
-        method: 'POST',
+        method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
+          "Content-Type": "application/x-www-form-urlencoded",
         },
         body: payload.toString(),
       });
@@ -122,21 +120,21 @@ export default function StockPage() {
       const json = await res.json();
 
       if (res.ok) {
-        alert('Stock added successfully!');
+        alert("Stock added successfully!");
         setShowModal(false);
         setForm({
-          warehouse_id: '',
-          stuff_id: '',
-          imei_1: '',
-          imei_2: '',
-          sn: '',
+          warehouse_id: "",
+          stuff_id: "",
+          imei_1: "",
+          imei_2: "",
+          sn: "",
         });
         loadStocks();
       } else {
-        alert(json.message || 'Error');
+        alert(json.message || "Error");
       }
     } catch (err) {
-      alert('Network error');
+      alert("Network error");
       console.error(err);
     }
   };
@@ -144,18 +142,18 @@ export default function StockPage() {
   // ================= UPLOAD CSV / EXCEL =================
   const submitUpload = async () => {
     if (!uploadFile) {
-      alert('Pilih file terlebih dahulu');
+      alert("Pilih file terlebih dahulu");
       return;
     }
 
     const formData = new FormData();
-    formData.append('file', uploadFile);
+    formData.append("file", uploadFile);
 
     setDebugPayload(`UPLOAD FILE: ${uploadFile.name}`);
 
     try {
       const res = await fetch(`${BASE_URL}/upload-stock`, {
-        method: 'POST',
+        method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -165,15 +163,15 @@ export default function StockPage() {
       const json = await res.json();
 
       if (res.ok) {
-        alert('Upload stock berhasil');
+        alert("Upload stock berhasil");
         setShowUpload(false);
         setUploadFile(null);
         loadStocks();
       } else {
-        alert(json.message || 'Upload gagal');
+        alert(json.message || "Upload gagal");
       }
     } catch (err) {
-      alert('Upload error');
+      alert("Upload error");
       console.error(err);
     }
   };
@@ -212,13 +210,11 @@ export default function StockPage() {
           </tr>
         </thead>
         <tbody>
-          {data.map(s => (
+          {data.map((s) => (
             <tr key={`${s.warehouse_id}-${s.stuff_id}`}>
               <td className="p-2 border">{s.warehouse_name}</td>
               <td className="p-2 border">{s.stuff_name}</td>
-              <td className="p-2 border text-center">
-                {s.total_stock}
-              </td>
+              <td className="p-2 border text-center">{s.total_stock}</td>
             </tr>
           ))}
         </tbody>
@@ -246,9 +242,7 @@ export default function StockPage() {
             <input
               type="file"
               accept=".csv,.xlsx,.xls"
-              onChange={e =>
-                setUploadFile(e.target.files?.[0] || null)
-              }
+              onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
             />
 
             <div className="flex justify-end gap-2 pt-3">
@@ -278,16 +272,13 @@ export default function StockPage() {
             <select
               className="w-full border p-2"
               value={form.warehouse_id}
-              onChange={e =>
+              onChange={(e) =>
                 setForm({ ...form, warehouse_id: e.target.value })
               }
             >
               <option value="">Select Warehouse</option>
-              {warehouseList.map(w => (
-                <option
-                  key={w.warehouse_id}
-                  value={w.warehouse_id}
-                >
+              {warehouseList.map((w) => (
+                <option key={w.warehouse_id} value={w.warehouse_id}>
                   {w.warehouse_name}
                 </option>
               ))}
@@ -296,16 +287,11 @@ export default function StockPage() {
             <select
               className="w-full border p-2"
               value={form.stuff_id}
-              onChange={e =>
-                setForm({ ...form, stuff_id: e.target.value })
-              }
+              onChange={(e) => setForm({ ...form, stuff_id: e.target.value })}
             >
               <option value="">Select Product</option>
-              {stuffList.map(s => (
-                <option
-                  key={s.stuff_id}
-                  value={s.stuff_id}
-                >
+              {stuffList.map((s) => (
+                <option key={s.stuff_id} value={s.stuff_id}>
                   {s.stuff_name}
                 </option>
               ))}
@@ -315,25 +301,19 @@ export default function StockPage() {
               placeholder="IMEI 1"
               className="w-full border p-2"
               value={form.imei_1}
-              onChange={e =>
-                setForm({ ...form, imei_1: e.target.value })
-              }
+              onChange={(e) => setForm({ ...form, imei_1: e.target.value })}
             />
             <input
               placeholder="IMEI 2"
               className="w-full border p-2"
               value={form.imei_2}
-              onChange={e =>
-                setForm({ ...form, imei_2: e.target.value })
-              }
+              onChange={(e) => setForm({ ...form, imei_2: e.target.value })}
             />
             <input
               placeholder="Serial Number"
               className="w-full border p-2"
               value={form.sn}
-              onChange={e =>
-                setForm({ ...form, sn: e.target.value })
-              }
+              onChange={(e) => setForm({ ...form, sn: e.target.value })}
             />
 
             <div className="flex justify-end gap-2 pt-3">

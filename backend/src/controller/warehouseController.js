@@ -2,15 +2,24 @@ import ErrorMessage from "../error/ErrorMessage.js";
 import {
   showWarehouse,
   showWarehouseById,
+  showtTotalWarehouse,
   newWarehouse,
   editWarehouse,
 } from "../service/warehouseService.js";
 
 async function presentWarehouse(req, res, next) {
   try {
-    const result = await showWarehouse();
+    let page = parseInt(req.query.page) || 1;
+    let limit = parseInt(req.query.limit) || 15;
+    let offset = (page - 1) * limit;
+    let total = await showtTotalWarehouse(limit, offset);
+    const result = await showWarehouse(limit);
     return res.status(200).json({
       status: 200,
+      page,
+      limit,
+      total_data: parseInt(total.count),
+      total_page: Math.round(total.count / limit),
       data: result,
     });
   } catch (err) {

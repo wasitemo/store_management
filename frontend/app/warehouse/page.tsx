@@ -9,7 +9,7 @@ interface Warehouse {
   warehouse_address: string;
 }
 
-const BASE_URL = "http://localhost:3001";
+const BASE_URL = "http://localhost:3000";
 
 export default function WarehousePage() {
   const router = useRouter();
@@ -33,7 +33,7 @@ export default function WarehousePage() {
   // ================= LOAD DATA =================
   const loadWarehouses = async () => {
     try {
-      const res = await fetch(`${BASE_URL}/warehouses`, {
+      const res = await fetch(`${BASE_URL}/warehouse`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

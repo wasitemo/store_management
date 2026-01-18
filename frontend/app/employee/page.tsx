@@ -11,7 +11,7 @@ interface Employee {
   employee_address: string;
 }
 
-const BASE_URL = "http://localhost:3001";
+const BASE_URL = "http://localhost:3000";
 
 export default function EmployeePage() {
   const router = useRouter();
@@ -36,7 +36,7 @@ export default function EmployeePage() {
   // ================= LOAD DATA =================
   const loadEmployees = async () => {
     try {
-      const res = await fetch(`${BASE_URL}/employees`, {
+      const res = await fetch(`${BASE_URL}/employee`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

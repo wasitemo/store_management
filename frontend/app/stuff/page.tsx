@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-const BASE_URL = "http://localhost:3001";
+const BASE_URL = "http://localhost:3000";
 
 const EMPTY_FORM = {
   stuff_code: "",
@@ -50,7 +50,7 @@ export default function StuffPage() {
 
     setStuffs(stuffsJson.data || []);
     setMeta(
-      metaJson.data || { stuff_category: [], stuff_brand: [], supplier: [] }
+      metaJson.data || { stuff_category: [], stuff_brand: [], supplier: [] },
     );
   };
 
