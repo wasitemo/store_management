@@ -218,6 +218,85 @@ app.get("/stuffs", async (req, res) => {
   }
 });
 
+app.get("/search", async (req, res) => {
+  try {
+    let warehouseId = {
+      key: "warehouse.warehouse_id",
+      value: parseInt(req.query.warehouse_id),
+    };
+    if (!warehouseId.value) {
+      return res.status(400).json({
+        status: 400,
+        message: "Warehouse id cannot be empty",
+      });
+    }
+
+    let identifiers = [
+      { key: "imei_1", value: req.query.imei_1 },
+      { key: "imei_2", value: req.query.imei_2 },
+      { key: "sn", value: req.query.sn },
+      { key: "barcode", value: req.query.barcode },
+    ].filter((i) => i.value);
+    if (!identifiers.length) {
+      throw new Error("No validated imei/sn provided for item");
+    }
+
+    let result = null;
+    let errors = [];
+
+    for (let id of identifiers) {
+      if (typeof id.value === "string") {
+        id.value = id.value.toLowerCase().trim();
+      }
+
+      let q = await store.query(
+        `
+        SELECT
+        stuff.stuff_id,
+        warehouse.warehouse_id,
+        warehouse_name,
+        stuff_name,
+        total_stock
+        FROM stuff_information
+        LEFT JOIN stuff ON stuff_information.stuff_id = stuff.stuff_id
+        LEFT JOIN stock ON stock.stuff_information_id = stuff_information.stuff_information_id
+        LEFT JOIN warehouse ON warehouse.warehouse_id = stock.warehouse_id
+        WHERE ${warehouseId.key} = $1 AND LOWER(TRIM(${id.key})) = LOWER(TRIM($2))
+      `,
+        [warehouseId.value, id.value],
+      );
+
+      if (!q.rows.length) {
+        errors.push(
+          `${id.key}: "${id.value}" not registered in warehouse: ${warehouseId.value}`,
+        );
+        continue;
+      }
+
+      let row = q.rows[0];
+      result = row;
+    }
+
+    if (errors.length) {
+      return res.status(409).json({
+        status: 409,
+        message: errors.join(" | "),
+      });
+    }
+
+    return res.status(200).json({
+      status: 200,
+      result,
+    });
+  } catch (err) {
+    console.log(err);
+    return res.status(500).json({
+      status: 500,
+      message: "Internal server error",
+    });
+  }
+});
+
 app.get("/imei-sn", verifyToken, async (req, res) => {
   try {
     let query = await store.query(`
