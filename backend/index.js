@@ -220,64 +220,80 @@ app.get("/stuffs", async (req, res) => {
 
 app.get("/search", async (req, res) => {
   try {
-    let warehouseId = {
-      key: "warehouse.warehouse_id",
-      value: parseInt(req.query.warehouse_id),
-    };
-    if (!warehouseId.value) {
+    const warehouseId = parseInt(req.query.warehouse_id);
+
+    if (!warehouseId) {
       return res.status(400).json({
         status: 400,
         message: "Warehouse id cannot be empty",
       });
     }
 
+    // Mapping kolom pencarian ke tabel yang benar
     let identifiers = [
-      { key: "imei_1", value: req.query.imei_1 },
-      { key: "imei_2", value: req.query.imei_2 },
-      { key: "sn", value: req.query.sn },
-      { key: "barcode", value: req.query.barcode },
+      { key: "si.imei_1", value: req.query.imei_1 },
+      { key: "si.imei_2", value: req.query.imei_2 },
+      { key: "si.sn", value: req.query.sn },
+      { key: "s.barcode", value: req.query.barcode },
     ].filter((i) => i.value);
+
     if (!identifiers.length) {
-      throw new Error("No validated imei/sn provided for item");
+      return res.status(400).json({
+        status: 400,
+        message: "No imei / sn / barcode provided",
+      });
     }
 
     let result = null;
     let errors = [];
 
     for (let id of identifiers) {
-      if (typeof id.value === "string") {
-        id.value = id.value.toLowerCase().trim();
+      let value = id.value;
+      if (typeof value === "string") {
+        value = value.toLowerCase().trim();
       }
 
-      let q = await store.query(
+      const q = await store.query(
         `
         SELECT
-        stuff.stuff_id,
-        warehouse.warehouse_id,
-        warehouse_name,
-        stuff_name,
-        total_stock
-        FROM stuff_information
-        LEFT JOIN stuff ON stuff_information.stuff_id = stuff.stuff_id
-        LEFT JOIN stock ON stock.stuff_information_id = stuff_information.stuff_information_id
-        LEFT JOIN warehouse ON warehouse.warehouse_id = stock.warehouse_id
-        WHERE ${warehouseId.key} = $1 AND LOWER(TRIM(${id.key})) = LOWER(TRIM($2))
-      `,
-        [warehouseId.value, id.value],
+          s.stuff_id,
+          s.stuff_name,
+          s.stuff_variant,
+          s.current_sell_price,
+          s.has_sn,
+          s.barcode,
+          s.total_stock,
+
+          w.warehouse_id,
+          w.warehouse_name,
+
+          si.stuff_information_id
+        FROM stuff_information si
+        LEFT JOIN stuff s
+          ON si.stuff_id = s.stuff_id
+        LEFT JOIN stock st
+          ON st.stuff_information_id = si.stuff_information_id
+        LEFT JOIN warehouse w
+          ON w.warehouse_id = st.warehouse_id
+        WHERE w.warehouse_id = $1
+          AND LOWER(TRIM(${id.key})) = LOWER(TRIM($2))
+        LIMIT 1
+        `,
+        [warehouseId, value],
       );
 
       if (!q.rows.length) {
         errors.push(
-          `${id.key}: "${id.value}" not registered in warehouse: ${warehouseId.value}`,
+          `${id.key.replace("si.", "").replace("s.", "")}: "${value}" not registered in warehouse ${warehouseId}`,
         );
         continue;
       }
 
-      let row = q.rows[0];
-      result = row;
+      result = q.rows[0];
+      break; // stop di identifier pertama yang ketemu
     }
 
-    if (errors.length) {
+    if (!result && errors.length) {
       return res.status(409).json({
         status: 409,
         message: errors.join(" | "),
@@ -289,13 +305,14 @@ app.get("/search", async (req, res) => {
       result,
     });
   } catch (err) {
-    console.log(err);
+    console.error(err);
     return res.status(500).json({
       status: 500,
       message: "Internal server error",
     });
   }
 });
+
 
 app.get("/imei-sn", verifyToken, async (req, res) => {
   try {

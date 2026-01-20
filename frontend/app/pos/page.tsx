@@ -236,20 +236,37 @@ export default function OrderCreatePage() {
             <thead className="bg-gray-100">
               <tr>
                 <th className="border px-3 py-2">Product</th>
-                <th className="border px-3 py-2">Warehouse</th>
+                <th className="border px-3 py-2">Variant</th>
+                <th className="border px-3 py-2">Barcode</th>
+                <th className="border px-3 py-2">Has SN</th>
+                <th className="border px-3 py-2">Price</th>
+                <th className="border px-3 py-2">Qty</th>
                 <th className="border px-3 py-2">Stock</th>
+                <th className="border px-3 py-2">Warehouse</th>
                 <th className="border px-3 py-2">Identifier</th>
               </tr>
             </thead>
+
             <tbody>
               {form.items.map((item: any, i: number) => (
                 <tr key={i}>
                   <td className="border px-3 py-2">{item.stuff_name}</td>
-                  <td className="border px-3 py-2">
-                    {item.warehouse_name}
+                  <td className="border px-3 py-2">{item.stuff_variant}</td>
+                  <td className="border px-3 py-2">{item.barcode || "-"}</td>
+                  <td className="border px-3 py-2 text-center">
+                    {item.has_sn ? "Yes" : "No"}
+                  </td>
+                  <td className="border px-3 py-2 text-right">
+                    {Number(item.current_sell_price).toLocaleString("id-ID")}
+                  </td>
+                  <td className="border px-3 py-2 text-center">
+                    {item.qty}
+                  </td>
+                  <td className="border px-3 py-2 text-center">
+                    {item.total_stock}
                   </td>
                   <td className="border px-3 py-2">
-                    {item.total_stock}
+                    {item.warehouse_name}
                   </td>
                   <td className="border px-3 py-2">
                     {item.identifier}
@@ -257,6 +274,7 @@ export default function OrderCreatePage() {
                 </tr>
               ))}
             </tbody>
+
           </table>
         </div>
       )}
