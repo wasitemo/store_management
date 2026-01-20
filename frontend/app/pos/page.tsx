@@ -1,24 +1,29 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const BASE_URL = "http://localhost:3000";
+const today = new Date().toISOString().split("T")[0];
 
 export default function OrderCreatePage() {
   const router = useRouter();
   const token =
-    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+    typeof window !== "undefined"
+      ? localStorage.getItem("access_token")
+      : null;
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [searchValue, setSearchValue] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
 
+  const [debugSearch, setDebugSearch] = useState<any>(null);
+  const [debugSubmit, setDebugSubmit] = useState<any>(null);
+
   const [master, setMaster] = useState<any>({
     customer: [],
     warehouse: [],
     payment_method: [],
-    stuff: [],
     order_discount: [],
   });
 
@@ -26,12 +31,41 @@ export default function OrderCreatePage() {
     customer_id: "",
     warehouse_id: "",
     payment_method_id: "",
-    order_date: "",
+    order_date: today, // 🔒 lock hari ini
     payment: "",
     items: [],
     discounts: [],
   });
 
+  /* ================= PAYLOAD FINAL ================= */
+  const orderPayload = useMemo(() => {
+    return {
+      customer_id: Number(form.customer_id),
+      warehouse_id: Number(form.warehouse_id),
+      payment_method_id: Number(form.payment_method_id),
+      order_date: form.order_date,
+      payment: Number(form.payment || 0),
+      discounts: form.discounts.map((d: any) => ({
+        discount_id: Number(d.discount_id),
+      })),
+      items: form.items.map((i: any) => ({
+        stuff_id: i.stuff_id,
+        imei_1: i.matched_by === "imei_1" ? i.identifier : "",
+        imei_2: i.matched_by === "imei_2" ? i.identifier : "",
+        sn: i.matched_by === "sn" ? i.identifier : "",
+        barcode: i.matched_by === "barcode" ? i.identifier : "",
+      })),
+    };
+  }, [form]);
+
+  /* ================= TOTAL HARGA ================= */
+  const totalPrice = useMemo(() => {
+    return form.items.reduce((sum: number, item: any) => {
+      return sum + Number(item.current_sell_price || 0);
+    }, 0);
+  }, [form.items]);
+
+  /* ================= LOAD MASTER ================= */
   useEffect(() => {
     if (!token) router.push("/login");
     else loadMaster();
@@ -48,13 +82,14 @@ export default function OrderCreatePage() {
   /* ================= SEARCH ITEM ================= */
   const searchItem = async () => {
     setErrorMsg(null);
+    setDebugSearch(null);
 
     if (!form.warehouse_id) {
       setErrorMsg("Warehouse wajib dipilih");
       return;
     }
 
-    if (!searchValue) {
+    if (!searchValue.trim()) {
       setErrorMsg("Masukkan IMEI / SN / Barcode");
       return;
     }
@@ -64,7 +99,7 @@ export default function OrderCreatePage() {
 
       const params = new URLSearchParams({
         warehouse_id: form.warehouse_id,
-        imei_1: searchValue,
+        identify: searchValue,
       });
 
       const res = await fetch(`${BASE_URL}/search?${params.toString()}`, {
@@ -72,19 +107,21 @@ export default function OrderCreatePage() {
       });
 
       const json = await res.json();
+      setDebugSearch(json);
 
       if (!res.ok) {
         setErrorMsg(json.message);
         return;
       }
 
-      // Cegah duplicate
-      const exists = form.items.some(
-        (i: any) => i.identifier === searchValue,
+      const existsStuff = form.items.some(
+        (i: any) => i.stuff_id === json.result.stuff_id,
       );
 
-      if (exists) {
-        setErrorMsg("Item sudah ada di order");
+      if (existsStuff) {
+        setErrorMsg(
+          `Produk "${json.result.stuff_name}" sudah ada di order`,
+        );
         return;
       }
 
@@ -95,24 +132,33 @@ export default function OrderCreatePage() {
           {
             stuff_id: json.result.stuff_id,
             stuff_name: json.result.stuff_name,
-            warehouse_name: json.result.warehouse_name,
-            total_stock: json.result.total_stock,
+            stuff_variant: json.result.stuff_variant,
+            current_sell_price: json.result.current_sell_price, // ✅ FIX
             identifier: searchValue,
+            matched_by: json.result.matched_by,
           },
         ],
       }));
 
       setSearchValue("");
-    } catch (err) {
+    } catch {
       setErrorMsg("Gagal mencari item");
     } finally {
       setSearchLoading(false);
     }
   };
 
+  const removeItem = (index: number) => {
+    setForm((prev: any) => ({
+      ...prev,
+      items: prev.items.filter((_: any, i: number) => i !== index),
+    }));
+  };
+
   /* ================= SUBMIT ================= */
   const submitOrder = async () => {
     setErrorMsg(null);
+    setDebugSubmit(null);
 
     if (!form.customer_id || !form.warehouse_id || !form.payment_method_id) {
       setErrorMsg("Customer, Warehouse, dan Payment Method wajib dipilih");
@@ -124,31 +170,22 @@ export default function OrderCreatePage() {
       return;
     }
 
-    const payload = {
-      ...form,
-      items: form.items.map((i: any) => ({
-        stuff_id: i.stuff_id,
-        imei_1: i.identifier,
-      })),
-    };
-
     const res = await fetch(`${BASE_URL}/customer-order`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(orderPayload),
     });
 
     const json = await res.json();
+    setDebugSubmit(json);
 
     if (!res.ok) {
       setErrorMsg(json.message || "Gagal menyimpan order");
       return;
     }
-
-    router.push("/order");
   };
 
   return (
@@ -192,10 +229,9 @@ export default function OrderCreatePage() {
           <label className="block mb-2 text-sm">Order Date</label>
           <input
             type="date"
-            className="w-full border rounded-lg px-4 py-3"
-            onChange={(e) =>
-              setForm({ ...form, order_date: e.target.value })
-            }
+            className="w-full border rounded-lg px-4 py-3 bg-gray-100 cursor-not-allowed"
+            value={form.order_date}
+            disabled
           />
         </div>
 
@@ -203,6 +239,7 @@ export default function OrderCreatePage() {
           <label className="block mb-2 text-sm">Payment</label>
           <input
             className="w-full border rounded-lg px-4 py-3"
+            value={form.payment}
             onChange={(e) => setForm({ ...form, payment: e.target.value })}
           />
         </div>
@@ -210,76 +247,76 @@ export default function OrderCreatePage() {
 
       {/* ================= SEARCH ITEM ================= */}
       <div className="mb-6">
-        <h3 className="font-semibold mb-3">Search Item</h3>
+        <h3 className="font-semibold mb-2">Scan Item</h3>
         <div className="flex gap-3">
           <input
             placeholder="IMEI / SN / Barcode"
             className="flex-1 border rounded px-4 py-3"
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && searchItem()}
           />
           <button
             onClick={searchItem}
             disabled={searchLoading}
-            className="bg-primary text-white px-6 rounded-lg"
+            className="bg-primary text-white px-6 rounded"
           >
             {searchLoading ? "Searching..." : "Search"}
           </button>
         </div>
       </div>
 
-      {/* ================= ITEM TABLE ================= */}
+      {/* ================= ITEMS TABLE ================= */}
       {form.items.length > 0 && (
         <div className="mb-6">
           <h3 className="font-semibold mb-3">Items</h3>
+
           <table className="w-full border text-sm">
             <thead className="bg-gray-100">
               <tr>
-                <th className="border px-3 py-2">Product</th>
-                <th className="border px-3 py-2">Variant</th>
-                <th className="border px-3 py-2">Barcode</th>
-                <th className="border px-3 py-2">Has SN</th>
-                <th className="border px-3 py-2">Price</th>
-                <th className="border px-3 py-2">Qty</th>
-                <th className="border px-3 py-2">Stock</th>
-                <th className="border px-3 py-2">Warehouse</th>
-                <th className="border px-3 py-2">Identifier</th>
+                <th className="border p-2 text-left">Nama</th>
+                <th className="border p-2 text-left">Varian</th>
+                <th className="border p-2 text-right">Harga</th>
+                <th className="border p-2 text-center">Aksi</th>
               </tr>
             </thead>
-
             <tbody>
-              {form.items.map((item: any, i: number) => (
-                <tr key={i}>
-                  <td className="border px-3 py-2">{item.stuff_name}</td>
-                  <td className="border px-3 py-2">{item.stuff_variant}</td>
-                  <td className="border px-3 py-2">{item.barcode || "-"}</td>
-                  <td className="border px-3 py-2 text-center">
-                    {item.has_sn ? "Yes" : "No"}
+              {form.items.map((item: any, index: number) => (
+                <tr key={index}>
+                  <td className="border p-2">{item.stuff_name}</td>
+                  <td className="border p-2">
+                    {item.stuff_variant || "-"}
                   </td>
-                  <td className="border px-3 py-2 text-right">
+                  <td className="border p-2 text-right">
                     {Number(item.current_sell_price).toLocaleString("id-ID")}
                   </td>
-                  <td className="border px-3 py-2 text-center">
-                    {item.qty}
-                  </td>
-                  <td className="border px-3 py-2 text-center">
-                    {item.total_stock}
-                  </td>
-                  <td className="border px-3 py-2">
-                    {item.warehouse_name}
-                  </td>
-                  <td className="border px-3 py-2">
-                    {item.identifier}
+                  <td className="border p-2 text-center">
+                    <button
+                      onClick={() => removeItem(index)}
+                      className="text-red-600 hover:underline"
+                    >
+                      Hapus
+                    </button>
                   </td>
                 </tr>
               ))}
-            </tbody>
 
+              {/* TOTAL */}
+              <tr className="font-semibold bg-gray-50">
+                <td className="border p-2" colSpan={2}>
+                  Total
+                </td>
+                <td className="border p-2 text-right">
+                  {totalPrice.toLocaleString("id-ID")}
+                </td>
+                <td className="border p-2"></td>
+              </tr>
+            </tbody>
           </table>
         </div>
       )}
 
-      {/* ================= DISCOUNT ================= */}
+      {/* ================= DISCOUNTS ================= */}
       <div className="mb-6">
         <h3 className="font-semibold mb-3">Discounts</h3>
         <div className="grid grid-cols-2 gap-3">
@@ -287,22 +324,46 @@ export default function OrderCreatePage() {
             <label key={d.discount_id} className="flex gap-2 items-center">
               <input
                 type="checkbox"
-                onChange={(e) =>
-                  e.target.checked &&
-                  setForm({
-                    ...form,
-                    discounts: [
-                      ...form.discounts,
-                      { discount_id: d.discount_id },
-                    ],
-                  })
-                }
+                checked={form.discounts.some(
+                  (x: any) => x.discount_id === d.discount_id,
+                )}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setForm({
+                      ...form,
+                      discounts: [
+                        ...form.discounts,
+                        { discount_id: d.discount_id },
+                      ],
+                    });
+                  } else {
+                    setForm({
+                      ...form,
+                      discounts: form.discounts.filter(
+                        (x: any) => x.discount_id !== d.discount_id,
+                      ),
+                    });
+                  }
+                }}
               />
               {d.discount_name}
             </label>
           ))}
         </div>
       </div>
+
+      {/* ================= DEBUG ================= */}
+      {debugSearch && (
+        <pre className="bg-gray-100 p-3 text-xs mb-4 overflow-auto">
+          {JSON.stringify(debugSearch, null, 2)}
+        </pre>
+      )}
+
+      {debugSubmit && (
+        <pre className="bg-gray-100 p-3 text-xs mb-4 overflow-auto">
+          {JSON.stringify(debugSubmit, null, 2)}
+        </pre>
+      )}
 
       <div className="flex justify-end">
         <button

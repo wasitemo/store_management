@@ -220,89 +220,79 @@ app.get("/stuffs", async (req, res) => {
 
 app.get("/search", async (req, res) => {
   try {
-    const warehouseId = parseInt(req.query.warehouse_id);
+    const warehouseId = Number(req.query.warehouse_id);
+    const identify = req.query.identify;
 
-    if (!warehouseId) {
+    if (!warehouseId || Number.isNaN(warehouseId)) {
       return res.status(400).json({
         status: 400,
-        message: "Warehouse id cannot be empty",
+        message: "Warehouse id cannot be empty or invalid",
       });
     }
 
-    // Mapping kolom pencarian ke tabel yang benar
-    let identifiers = [
-      { key: "si.imei_1", value: req.query.imei_1 },
-      { key: "si.imei_2", value: req.query.imei_2 },
-      { key: "si.sn", value: req.query.sn },
-      { key: "s.barcode", value: req.query.barcode },
-    ].filter((i) => i.value);
-
-    if (!identifiers.length) {
+    if (!identify || !identify.trim()) {
       return res.status(400).json({
         status: 400,
-        message: "No imei / sn / barcode provided",
+        message: "Identify cannot be empty",
       });
     }
 
-    let result = null;
-    let errors = [];
+    const value = identify.toLowerCase().trim();
 
-    for (let id of identifiers) {
-      let value = id.value;
-      if (typeof value === "string") {
-        value = value.toLowerCase().trim();
-      }
+    const q = await store.query(
+      `
+      SELECT
+        s.stuff_id,
+        s.stuff_name,
+        s.stuff_variant,
+        s.current_sell_price,
+        s.has_sn,
+        s.barcode,
+        s.total_stock,
 
-      const q = await store.query(
-        `
-        SELECT
-          s.stuff_id,
-          s.stuff_name,
-          s.stuff_variant,
-          s.current_sell_price,
-          s.has_sn,
-          s.barcode,
-          s.total_stock,
+        w.warehouse_id,
+        w.warehouse_name,
 
-          w.warehouse_id,
-          w.warehouse_name,
+        si.stuff_information_id,
+        si.imei_1,
+        si.imei_2,
+        si.sn,
 
-          si.stuff_information_id
-        FROM stuff_information si
-        LEFT JOIN stuff s
-          ON si.stuff_id = s.stuff_id
-        LEFT JOIN stock st
-          ON st.stuff_information_id = si.stuff_information_id
-        LEFT JOIN warehouse w
-          ON w.warehouse_id = st.warehouse_id
-        WHERE w.warehouse_id = $1
-          AND LOWER(TRIM(${id.key})) = LOWER(TRIM($2))
-        LIMIT 1
-        `,
-        [warehouseId, value],
-      );
+        CASE
+          WHEN LOWER(TRIM(si.imei_1)) = $2 THEN 'imei_1'
+          WHEN LOWER(TRIM(si.imei_2)) = $2 THEN 'imei_2'
+          WHEN LOWER(TRIM(si.sn)) = $2 THEN 'sn'
+          WHEN LOWER(TRIM(s.barcode)) = $2 THEN 'barcode'
+        END AS matched_by
+      FROM stuff_information si
+      JOIN stuff s
+        ON s.stuff_id = si.stuff_id
+      JOIN stock st
+        ON st.stuff_information_id = si.stuff_information_id
+      JOIN warehouse w
+        ON w.warehouse_id = st.warehouse_id
+      WHERE w.warehouse_id = $1
+        AND (
+          LOWER(TRIM(si.imei_1)) = $2 OR
+          LOWER(TRIM(si.imei_2)) = $2 OR
+          LOWER(TRIM(si.sn)) = $2 OR
+          LOWER(TRIM(s.barcode)) = $2
+        )
+      LIMIT 1
+      `,
+      [warehouseId, value]
+    );
 
-      if (!q.rows.length) {
-        errors.push(
-          `${id.key.replace("si.", "").replace("s.", "")}: "${value}" not registered in warehouse ${warehouseId}`,
-        );
-        continue;
-      }
-
-      result = q.rows[0];
-      break; // stop di identifier pertama yang ketemu
-    }
-
-    if (!result && errors.length) {
+    if (!q.rows.length) {
       return res.status(409).json({
         status: 409,
-        message: errors.join(" | "),
+        message: `"${identify}" not registered in warehouse ${warehouseId}`,
       });
     }
 
     return res.status(200).json({
       status: 200,
-      result,
+      result: q.rows[0],
     });
   } catch (err) {
     console.error(err);
@@ -312,7 +302,6 @@ app.get("/search", async (req, res) => {
     });
   }
 });
-
 
 app.get("/imei-sn", verifyToken, async (req, res) => {
   try {
