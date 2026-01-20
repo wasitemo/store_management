@@ -162,7 +162,7 @@ export default function OrderPage() {
                           </td>
                           <td className="px-3 py-2">{s.barcode}</td>
                           <td className="px-3 py-2">
-                            {s.stuff_discounts.map((d: any) => (
+                            {(s.stuff_discounts ?? []).map((d: any) => (
                               <div key={d.discount_id}>
                                 {d.discount_name}
                               </div>

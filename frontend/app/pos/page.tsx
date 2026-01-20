@@ -11,6 +11,8 @@ export default function OrderCreatePage() {
     typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [searchValue, setSearchValue] = useState("");
+  const [searchLoading, setSearchLoading] = useState(false);
 
   const [master, setMaster] = useState<any>({
     customer: [],
@@ -43,22 +45,72 @@ export default function OrderCreatePage() {
     setMaster(json.data);
   };
 
-  const addItem = () => {
-    setForm((prev: any) => ({
-      ...prev,
-      items: [
-        ...prev.items,
-        { stuff_id: "", imei_1: "", imei_2: "", sn: "", barcode: "" },
-      ],
-    }));
+  /* ================= SEARCH ITEM ================= */
+  const searchItem = async () => {
+    setErrorMsg(null);
+
+    if (!form.warehouse_id) {
+      setErrorMsg("Warehouse wajib dipilih");
+      return;
+    }
+
+    if (!searchValue) {
+      setErrorMsg("Masukkan IMEI / SN / Barcode");
+      return;
+    }
+
+    try {
+      setSearchLoading(true);
+
+      const params = new URLSearchParams({
+        warehouse_id: form.warehouse_id,
+        imei_1: searchValue,
+      });
+
+      const res = await fetch(`${BASE_URL}/search?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        setErrorMsg(json.message);
+        return;
+      }
+
+      // Cegah duplicate
+      const exists = form.items.some(
+        (i: any) => i.identifier === searchValue,
+      );
+
+      if (exists) {
+        setErrorMsg("Item sudah ada di order");
+        return;
+      }
+
+      setForm((prev: any) => ({
+        ...prev,
+        items: [
+          ...prev.items,
+          {
+            stuff_id: json.result.stuff_id,
+            stuff_name: json.result.stuff_name,
+            warehouse_name: json.result.warehouse_name,
+            total_stock: json.result.total_stock,
+            identifier: searchValue,
+          },
+        ],
+      }));
+
+      setSearchValue("");
+    } catch (err) {
+      setErrorMsg("Gagal mencari item");
+    } finally {
+      setSearchLoading(false);
+    }
   };
 
-  const updateItem = (index: number, key: string, value: string) => {
-    const items = [...form.items];
-    items[index][key] = value;
-    setForm({ ...form, items });
-  };
-
+  /* ================= SUBMIT ================= */
   const submitOrder = async () => {
     setErrorMsg(null);
 
@@ -72,17 +124,13 @@ export default function OrderCreatePage() {
       return;
     }
 
-    for (let i = 0; i < form.items.length; i++) {
-      const item = form.items[i];
-      if (!item.stuff_id) {
-        setErrorMsg(`Item ke-${i + 1}: Product wajib dipilih`);
-        return;
-      }
-      if (!item.imei_1 && !item.imei_2 && !item.sn) {
-        setErrorMsg(`Item ke-${i + 1}: IMEI / SN wajib diisi`);
-        return;
-      }
-    }
+    const payload = {
+      ...form,
+      items: form.items.map((i: any) => ({
+        stuff_id: i.stuff_id,
+        imei_1: i.identifier,
+      })),
+    };
 
     const res = await fetch(`${BASE_URL}/customer-order`, {
       method: "POST",
@@ -90,7 +138,7 @@ export default function OrderCreatePage() {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(form),
+      body: JSON.stringify(payload),
     });
 
     const json = await res.json();
@@ -100,7 +148,7 @@ export default function OrderCreatePage() {
       return;
     }
 
-    router.push("/orders"); // optional redirect
+    router.push("/order");
   };
 
   return (
@@ -113,7 +161,7 @@ export default function OrderCreatePage() {
         </div>
       )}
 
-      {/* MAIN FORM */}
+      {/* ================= MAIN FORM ================= */}
       <div className="grid grid-cols-2 gap-4 mb-6">
         {[
           ["Customer", "customer_id", master.customer],
@@ -160,57 +208,60 @@ export default function OrderCreatePage() {
         </div>
       </div>
 
-      {/* ITEMS */}
+      {/* ================= SEARCH ITEM ================= */}
       <div className="mb-6">
-        <div className="flex justify-between mb-3">
-          <h3 className="font-semibold">Items</h3>
+        <h3 className="font-semibold mb-3">Search Item</h3>
+        <div className="flex gap-3">
+          <input
+            placeholder="IMEI / SN / Barcode"
+            className="flex-1 border rounded px-4 py-3"
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+          />
           <button
-            onClick={addItem}
-            className="bg-primary text-white px-4 py-2 rounded-lg"
+            onClick={searchItem}
+            disabled={searchLoading}
+            className="bg-primary text-white px-6 rounded-lg"
           >
-            + Add Item
+            {searchLoading ? "Searching..." : "Search"}
           </button>
         </div>
-
-        {form.items.map((item: any, i: number) => (
-          <div key={i} className="grid grid-cols-5 gap-3 mb-3">
-            <select
-              className="border rounded px-3 py-2"
-              onChange={(e) => updateItem(i, "stuff_id", e.target.value)}
-            >
-              <option value="">Product</option>
-              {master.stuff.map((s: any) => (
-                <option key={s.stuff_id} value={s.stuff_id}>
-                  {s.stuff_name}
-                </option>
-              ))}
-            </select>
-
-            <input
-              placeholder="IMEI 1"
-              className="border rounded px-3 py-2"
-              onChange={(e) => updateItem(i, "imei_1", e.target.value)}
-            />
-            <input
-              placeholder="IMEI 2"
-              className="border rounded px-3 py-2"
-              onChange={(e) => updateItem(i, "imei_2", e.target.value)}
-            />
-            <input
-              placeholder="SN"
-              className="border rounded px-3 py-2"
-              onChange={(e) => updateItem(i, "sn", e.target.value)}
-            />
-            <input
-              placeholder="Barcode"
-              className="border rounded px-3 py-2"
-              onChange={(e) => updateItem(i, "barcode", e.target.value)}
-            />
-          </div>
-        ))}
       </div>
 
-      {/* DISCOUNTS */}
+      {/* ================= ITEM TABLE ================= */}
+      {form.items.length > 0 && (
+        <div className="mb-6">
+          <h3 className="font-semibold mb-3">Items</h3>
+          <table className="w-full border text-sm">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="border px-3 py-2">Product</th>
+                <th className="border px-3 py-2">Warehouse</th>
+                <th className="border px-3 py-2">Stock</th>
+                <th className="border px-3 py-2">Identifier</th>
+              </tr>
+            </thead>
+            <tbody>
+              {form.items.map((item: any, i: number) => (
+                <tr key={i}>
+                  <td className="border px-3 py-2">{item.stuff_name}</td>
+                  <td className="border px-3 py-2">
+                    {item.warehouse_name}
+                  </td>
+                  <td className="border px-3 py-2">
+                    {item.total_stock}
+                  </td>
+                  <td className="border px-3 py-2">
+                    {item.identifier}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* ================= DISCOUNT ================= */}
       <div className="mb-6">
         <h3 className="font-semibold mb-3">Discounts</h3>
         <div className="grid grid-cols-2 gap-3">
