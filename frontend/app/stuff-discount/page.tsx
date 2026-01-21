@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "../../src/lib/api";
 
 const BASE_URL = "http://localhost:3000";
 
@@ -56,7 +57,7 @@ export default function StuffDiscountPage() {
   }, []);
 
   const loadData = async () => {
-    const res = await fetch(`${BASE_URL}/stuff-discounts`, {
+    const res = await apiFetch(`${BASE_URL}/stuff-discounts`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const json = await res.json();
@@ -64,7 +65,7 @@ export default function StuffDiscountPage() {
   };
 
   const loadStuffList = async () => {
-    const res = await fetch(`${BASE_URL}/stuff-discount`, {
+    const res = await apiFetch(`${BASE_URL}/stuff-discount`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const json = await res.json();
@@ -108,7 +109,7 @@ export default function StuffDiscountPage() {
       body.append("discount_type", form.discount_type);
       body.append("discount_value", form.discount_value);
 
-      await fetch(`${BASE_URL}/stuff-discount/${editing.discount_id}`, {
+      await apiFetch(`${BASE_URL}/stuff-discount/${editing.discount_id}`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -126,7 +127,7 @@ export default function StuffDiscountPage() {
       body.append("discount_end", form.discount_end);
       body.append("discount_status", String(form.discount_status));
 
-      await fetch(`${BASE_URL}/stuff-discount`, {
+      await apiFetch(`${BASE_URL}/stuff-discount`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

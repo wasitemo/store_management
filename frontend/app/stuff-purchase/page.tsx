@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "../../src/lib/api";
 
 const BASE_URL = "http://localhost:3000";
 
@@ -53,7 +54,7 @@ export default function StuffPurchasePage() {
 
   // ================= LOAD =================
   const loadData = async () => {
-    const res = await fetch(`${BASE_URL}/stuff-purchases`, {
+    const res = await apiFetch(`${BASE_URL}/stuff-purchases`, {
       headers: { Authorization: `Bearer ${token}` },
       credentials: "include",
     });
@@ -71,7 +72,7 @@ export default function StuffPurchasePage() {
 
   // ================= DETAIL =================
   const openDetail = async (id: number) => {
-    const res = await fetch(`${BASE_URL}/stuff-purchase-detail/${id}`, {
+    const res = await apiFetch(`${BASE_URL}/stuff-purchase-detail/${id}`, {
       headers: { Authorization: `Bearer ${token}` },
       credentials: "include",
     });
@@ -86,7 +87,7 @@ export default function StuffPurchasePage() {
     const body = new URLSearchParams();
     Object.entries(form).forEach(([k, v]) => body.append(k, v));
 
-    const res = await fetch(`${BASE_URL}/stuff-purchase`, {
+    const res = await apiFetch(`${BASE_URL}/stuff-purchase`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -112,7 +113,7 @@ export default function StuffPurchasePage() {
     const formData = new FormData();
     formData.append("file", file);
 
-    const res = await fetch(`${BASE_URL}/upload-stuff-purchase`, {
+    const res = await apiFetch(`${BASE_URL}/upload-stuff-purchase`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
       body: formData,

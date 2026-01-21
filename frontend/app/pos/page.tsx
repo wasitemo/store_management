@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "../../src/lib/api";
 
 const BASE_URL = "http://localhost:3000";
 const today = new Date().toISOString().split("T")[0];
@@ -72,7 +73,7 @@ export default function OrderCreatePage() {
   }, []);
 
   const loadMaster = async () => {
-    const res = await fetch(`${BASE_URL}/customer-order`, {
+    const res = await apiFetch(`${BASE_URL}/customer-order`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const json = await res.json();
@@ -102,7 +103,7 @@ export default function OrderCreatePage() {
         identify: searchValue,
       });
 
-      const res = await fetch(`${BASE_URL}/search?${params.toString()}`, {
+      const res = await apiFetch(`${BASE_URL}/search?${params.toString()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -170,7 +171,7 @@ export default function OrderCreatePage() {
       return;
     }
 
-    const res = await fetch(`${BASE_URL}/customer-order`, {
+    const res = await apiFetch(`${BASE_URL}/customer-order`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
@@ -352,18 +353,6 @@ export default function OrderCreatePage() {
         </div>
       </div>
 
-      {/* ================= DEBUG ================= */}
-      {debugSearch && (
-        <pre className="bg-gray-100 p-3 text-xs mb-4 overflow-auto">
-          {JSON.stringify(debugSearch, null, 2)}
-        </pre>
-      )}
-
-      {debugSubmit && (
-        <pre className="bg-gray-100 p-3 text-xs mb-4 overflow-auto">
-          {JSON.stringify(debugSubmit, null, 2)}
-        </pre>
-      )}
 
       <div className="flex justify-end">
         <button

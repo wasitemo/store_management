@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "../../src/lib/api";
 
 const BASE_URL = "http://localhost:3000";
 
@@ -24,7 +25,7 @@ export default function OrderPage() {
   }, []);
 
   const loadOrders = async () => {
-    const res = await fetch(`${BASE_URL}/customer-orders`, {
+    const res = await apiFetch(`${BASE_URL}/customer-orders`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -33,7 +34,7 @@ export default function OrderPage() {
   };
 
   const openDetail = async (orderId: number) => {
-    const res = await fetch(
+    const res = await apiFetch(
       `${BASE_URL}/customer-order-detail/${orderId}`,
       {
         headers: { Authorization: `Bearer ${token}` },

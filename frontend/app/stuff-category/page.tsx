@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "../../src/lib/api";
 
 interface Category {
   stuff_category_id: number;
@@ -30,7 +31,7 @@ export default function StuffCategoryPage() {
   // ================= LOAD DATA =================
   const loadCategories = async () => {
     try {
-      const res = await fetch(`${BASE_URL}/stuff-category`, {
+      const res = await apiFetch(`${BASE_URL}/stuff-category`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -67,7 +68,7 @@ export default function StuffCategoryPage() {
 
   const openEdit = async (id: number) => {
     try {
-      const res = await fetch(`${BASE_URL}/stuff-category/${id}`, {
+      const res = await apiFetch(`${BASE_URL}/stuff-category/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -94,7 +95,7 @@ export default function StuffCategoryPage() {
           ? `${BASE_URL}/stuff-category`
           : `${BASE_URL}/stuff-category/${editingId}`;
 
-      const res = await fetch(endpoint, {
+      const res = await apiFetch(endpoint, {
         method: editingId === null ? "POST" : "PUT",
         headers: {
           Authorization: `Bearer ${token}`,

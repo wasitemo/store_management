@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "../../src/lib/api";
 
 interface StockSummary {
   warehouse_id: number;
@@ -51,7 +52,7 @@ export default function StockPage() {
   // ================= LOAD =================
   const loadStocks = async () => {
     try {
-      const res = await fetch(`${BASE_URL}/stocks`, {
+      const res = await apiFetch(`${BASE_URL}/stocks`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -69,7 +70,7 @@ export default function StockPage() {
   };
 
   const loadFormData = async () => {
-    const res = await fetch(`${BASE_URL}/stock`, {
+    const res = await apiFetch(`${BASE_URL}/stock`, {
       headers: { Authorization: `Bearer ${token}` },
     });
     const json = await res.json();
@@ -108,7 +109,7 @@ export default function StockPage() {
     setDebugPayload(payload.toString());
 
     try {
-      const res = await fetch(`${BASE_URL}/stock`, {
+      const res = await apiFetch(`${BASE_URL}/stock`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -152,7 +153,7 @@ export default function StockPage() {
     setDebugPayload(`UPLOAD FILE: ${uploadFile.name}`);
 
     try {
-      const res = await fetch(`${BASE_URL}/upload-stock`, {
+      const res = await apiFetch(`${BASE_URL}/upload-stock`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,

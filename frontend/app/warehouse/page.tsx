@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "../../src/lib/api";
 
 interface Warehouse {
   warehouse_id: number;
@@ -33,7 +34,7 @@ export default function WarehousePage() {
   // ================= LOAD DATA =================
   const loadWarehouses = async () => {
     try {
-      const res = await fetch(`${BASE_URL}/warehouse`, {
+      const res = await apiFetch(`${BASE_URL}/warehouse`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -71,7 +72,7 @@ export default function WarehousePage() {
 
   const openEdit = async (id: number) => {
     try {
-      const res = await fetch(`${BASE_URL}/warehouse/${id}`, {
+      const res = await apiFetch(`${BASE_URL}/warehouse/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -101,7 +102,7 @@ export default function WarehousePage() {
           ? `${BASE_URL}/warehouse`
           : `${BASE_URL}/warehouse/${editingId}`;
 
-      const res = await fetch(endpoint, {
+      const res = await apiFetch(endpoint, {
         method: editingId === null ? "POST" : "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,

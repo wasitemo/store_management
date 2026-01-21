@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 
 /* =======================
@@ -84,19 +84,47 @@ const StatusDot = ({ status }: { status?: StatusType }) => {
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   const toggleMenu = (name: string) => {
     setOpenMenu(openMenu === name ? null : name);
   };
 
+  /* =======================
+     LOGOUT HANDLER
+  ======================= */
+  const handleLogout = async () => {
+    if (loggingOut) return;
+
+    try {
+      setLoggingOut(true);
+
+      await fetch("http://localhost:3000/logout", {
+        method: "POST",
+        credentials: "include", // ⬅️ penting untuk clear refresh token cookie
+      });
+    } catch (err) {
+      console.error("Logout failed:", err);
+    } finally {
+      // bersihkan access token di frontend
+      localStorage.removeItem("access_token");
+
+      // redirect ke login
+      router.push("/login");
+    }
+  };
+
   return (
     <aside className="w-64 min-h-screen bg-sidebar-bg border-r border-border flex flex-col shadow-lg">
+      {/* Header */}
       <div className="h-16 flex items-center px-6 border-b border-border">
         <h1 className="text-xl font-bold">InventoryPro</h1>
       </div>
 
-      <nav className="flex-1 py-4">
+      {/* Menu */}
+      <nav className="flex-1 py-4 overflow-y-auto">
         <ul className="space-y-1 px-3">
           {menus.map((menu) => {
             if (menu.children) {
@@ -114,7 +142,7 @@ export default function Sidebar() {
                     }`}
                   >
                     <span className="mr-3">{menu.icon}</span>
-                    <span className="flex-1">{menu.name}</span>
+                    <span className="flex-1 text-left">{menu.name}</span>
                     <StatusDot status={menu.status} />
                     <span className={`ml-2 ${isOpen ? "rotate-90" : ""}`}>▶</span>
                   </button>
@@ -125,7 +153,11 @@ export default function Sidebar() {
                         <Link
                           key={child.path}
                           href={child.path!}
-                          className="flex items-center px-4 py-2 rounded-lg"
+                          className={`flex items-center px-4 py-2 rounded-lg ${
+                            pathname === child.path
+                              ? "bg-primary/10 text-primary"
+                              : ""
+                          }`}
                         >
                           <span className="mr-2">{child.icon}</span>
                           <span className="flex-1">{child.name}</span>
@@ -142,7 +174,11 @@ export default function Sidebar() {
               <li key={menu.path}>
                 <Link
                   href={menu.path!}
-                  className="flex items-center px-4 py-3 rounded-xl"
+                  className={`flex items-center px-4 py-3 rounded-xl ${
+                    pathname === menu.path
+                      ? "bg-primary/10 text-primary"
+                      : ""
+                  }`}
                 >
                   <span className="mr-3">{menu.icon}</span>
                   <span className="flex-1">{menu.name}</span>
@@ -153,6 +189,18 @@ export default function Sidebar() {
           })}
         </ul>
       </nav>
+
+      {/* Logout */}
+      <div className="p-4 border-t border-border">
+        <button
+          onClick={handleLogout}
+          disabled={loggingOut}
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-danger text-white hover:bg-danger-dark transition disabled:opacity-60"
+        >
+          <span>🚪</span>
+          {loggingOut ? "Logging out..." : "Logout"}
+        </button>
+      </div>
     </aside>
   );
 }

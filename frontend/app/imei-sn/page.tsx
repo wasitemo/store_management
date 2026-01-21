@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "../../src/lib/api";
 
 const BASE_URL = "http://localhost:3000";
 
@@ -16,7 +17,7 @@ export default function ImeiSnPage() {
   const [filter, setFilter] = useState({ search: "", status: "" });
 
   const loadData = async () => {
-    const res = await fetch(`${BASE_URL}/imei-sn`, {
+    const res = await apiFetch(`${BASE_URL}/imei-sn`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 

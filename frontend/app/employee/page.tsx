@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "../../src/lib/api";
 
 interface Employee {
   employee_id: number;
@@ -36,7 +37,7 @@ export default function EmployeePage() {
   // ================= LOAD DATA =================
   const loadEmployees = async () => {
     try {
-      const res = await fetch(`${BASE_URL}/employee`, {
+      const res = await apiFetch(`${BASE_URL}/employee`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -78,7 +79,7 @@ export default function EmployeePage() {
 
   const openEdit = async (id: number) => {
     try {
-      const res = await fetch(`${BASE_URL}/employee/${id}`, {
+      const res = await apiFetch(`${BASE_URL}/employee/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -115,7 +116,7 @@ export default function EmployeePage() {
           ? `${BASE_URL}/employee`
           : `${BASE_URL}/employee/${editingId}`;
 
-      const res = await fetch(endpoint, {
+      const res = await apiFetch(endpoint, {
         method: editingId === null ? "POST" : "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,

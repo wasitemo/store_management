@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "../../src/lib/api";
 
 interface Supplier {
   supplier_id: number;
@@ -34,7 +35,7 @@ export default function SupplierPage() {
   // ================= LOAD DATA =================
   const loadSuppliers = async () => {
     try {
-      const res = await fetch(`${BASE_URL}/supplier`, {
+      const res = await apiFetch(`${BASE_URL}/supplier`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -71,7 +72,7 @@ export default function SupplierPage() {
 
   const openEdit = async (id: number) => {
     try {
-      const res = await fetch(`${BASE_URL}/supplier/${id}`, {
+      const res = await apiFetch(`${BASE_URL}/supplier/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -106,7 +107,7 @@ export default function SupplierPage() {
           ? `${BASE_URL}/supplier`
           : `${BASE_URL}/supplier/${editingId}`;
 
-      const res = await fetch(endpoint, {
+      const res = await apiFetch(endpoint, {
         method: editingId === null ? "POST" : "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,

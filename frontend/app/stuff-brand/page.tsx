@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "../../src/lib/api";
 
 interface Brand {
   stuff_brand_id: number;
@@ -30,7 +31,7 @@ export default function StuffBrandPage() {
   // ================= LOAD DATA =================
   const loadBrands = async () => {
     try {
-      const res = await fetch(`${BASE_URL}/stuff-brand`, {
+      const res = await apiFetch(`${BASE_URL}/stuff-brand`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -67,7 +68,7 @@ export default function StuffBrandPage() {
 
   const openEdit = async (id: number) => {
     try {
-      const res = await fetch(`${BASE_URL}/stuff-brand/${id}`, {
+      const res = await apiFetch(`${BASE_URL}/stuff-brand/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -94,7 +95,7 @@ export default function StuffBrandPage() {
           ? `${BASE_URL}/stuff-brand`
           : `${BASE_URL}/stuff-brand/${editingId}`;
 
-      const res = await fetch(endpoint, {
+      const res = await apiFetch(endpoint, {
         method: editingId === null ? "POST" : "PUT",
         headers: {
           Authorization: `Bearer ${token}`,

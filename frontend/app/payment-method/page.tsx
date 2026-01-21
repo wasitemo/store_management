@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "../../src/lib/api";
 
 interface PaymentMethod {
   payment_method_id: number;
@@ -30,7 +31,7 @@ export default function PaymentMethodPage() {
   // ================= LOAD DATA =================
   const loadPaymentMethods = async () => {
     try {
-      const res = await fetch(`${BASE_URL}/payment-methods`, {
+      const res = await apiFetch(`${BASE_URL}/payment-methods`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -67,7 +68,7 @@ export default function PaymentMethodPage() {
 
   const openEdit = async (id: number) => {
     try {
-      const res = await fetch(`${BASE_URL}/payment-method/${id}`, {
+      const res = await apiFetch(`${BASE_URL}/payment-method/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -99,7 +100,7 @@ export default function PaymentMethodPage() {
           ? `${BASE_URL}/payment-method`
           : `${BASE_URL}/payment-method/${editingId}`;
 
-      const res = await fetch(endpoint, {
+      const res = await apiFetch(endpoint, {
         method: editingId === null ? "POST" : "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,

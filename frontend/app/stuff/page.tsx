@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "../../src/lib/api";
 
 const BASE_URL = "http://localhost:3000";
 
@@ -97,7 +98,7 @@ export default function StuffPage() {
     const url = editId ? `${BASE_URL}/stuff/${editId}` : `${BASE_URL}/stuff`;
     const method = editId ? "PATCH" : "POST";
 
-    const res = await fetch(url, {
+    const res = await apiFetch(url, {
       method,
       headers: {
         Authorization: `Bearer ${token}`,

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "../../src/lib/api";
 
 const BASE_URL = "http://localhost:3000";
 
@@ -37,7 +38,7 @@ export default function OrderDiscountPage() {
 
   // ================= LOAD DATA =================
   const loadData = async () => {
-    const res = await fetch(`${BASE_URL}/order-discounts`, {
+    const res = await apiFetch(`${BASE_URL}/order-discounts`, {
       headers: { Authorization: `Bearer ${token}` },
     });
 
@@ -79,7 +80,7 @@ export default function OrderDiscountPage() {
     body.append("discount_end", form.discount_end);
     body.append("discount_status", String(form.discount_status));
 
-    await fetch(`${BASE_URL}/order-discount`, {
+    await apiFetch(`${BASE_URL}/order-discount`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`,
