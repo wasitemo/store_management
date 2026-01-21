@@ -24,8 +24,6 @@ const BASE_URL = "http://localhost:3000";
 
 export default function EmployeeAccountsPage() {
   const router = useRouter();
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
   const [accounts, setAccounts] = useState<EmployeeAccount[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -46,32 +44,31 @@ export default function EmployeeAccountsPage() {
   });
 
   // ================= LOAD =================
-  const loadAccounts = async () => {
-    const res = await apiFetch(`${BASE_URL}/employee-account`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const json = await res.json();
-    setAccounts(json.data);
-  };
+const loadAccounts = async () => {
+  const res = await apiFetch("/employee-account");
+  const json = await res.json();
+  setAccounts(json.data);
+};
 
-  const loadEmployees = async () => {
-    const res = await apiFetch(`${BASE_URL}/employee`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const json = await res.json();
-    setEmployees(json.data);
-  };
+const loadEmployees = async () => {
+  const res = await apiFetch("/employee");
+  const json = await res.json();
+  setEmployees(json.data);
+};
 
-  useEffect(() => {
-    if (!token) {
-      router.push("/login");
-      return;
-    }
 
-    Promise.all([loadAccounts(), loadEmployees()])
-      .catch(() => setError("Gagal memuat data"))
-      .finally(() => setLoading(false));
-  }, []);
+useEffect(() => {
+  Promise.all([loadAccounts(), loadEmployees()])
+    .catch((err) => {
+      if (err.message === "UNAUTHORIZED") {
+        router.push("/login");
+      } else {
+        setError("Gagal memuat data");
+      }
+    })
+    .finally(() => setLoading(false));
+}, []);
+
 
   // ================= FORM =================
   const handleChange = (e: any) => {
@@ -129,13 +126,13 @@ export default function EmployeeAccountsPage() {
     body.append("account_status", form.account_status);
 
     const endpoint = editingId
-      ? `${BASE_URL}/employee-account/${editingId}`
-      : `${BASE_URL}/register`;
+      ? `/employee-account/${editingId}`
+      : `/register`;
+
 
     const res = await apiFetch(endpoint, {
       method: editingId ? "PATCH" : "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body,
