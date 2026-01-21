@@ -22,8 +22,6 @@ interface Warehouse {
   warehouse_name: string;
 }
 
-const BASE_URL = "http://localhost:3000";
-
 export default function StockPage() {
   const router = useRouter();
 
@@ -44,7 +42,6 @@ export default function StockPage() {
   });
 
   const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [debugPayload, setDebugPayload] = useState<any>(null);
 
   const token =
     typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
@@ -52,11 +49,10 @@ export default function StockPage() {
   // ================= LOAD =================
   const loadStocks = async () => {
     try {
-      const res = await apiFetch(`${BASE_URL}/stocks`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch("/stocks");
 
       if (res.status === 401) {
+        // Token refresh handled by apiFetch, but if still 401, redirect
         localStorage.removeItem("access_token");
         router.push("/login");
         return;
@@ -70,20 +66,15 @@ export default function StockPage() {
   };
 
   const loadFormData = async () => {
-    const res = await apiFetch(`${BASE_URL}/stock`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await apiFetch("/stock");
     const json = await res.json();
     setStuffList(json.data.stuff || []);
     setWarehouseList(json.data.warehouse || []);
   };
 
   useEffect(() => {
-    if (!token) router.push("/login");
-    else {
-      loadStocks();
-      loadFormData();
-    }
+    loadStocks();
+    loadFormData();
   }, []);
 
   // ================= SUBMIT MANUAL =================
@@ -106,13 +97,10 @@ export default function StockPage() {
     payload.append("imei_2", form.imei_2.trim());
     payload.append("sn", form.sn.trim());
 
-    setDebugPayload(payload.toString());
-
     try {
-      const res = await apiFetch(`${BASE_URL}/stock`, {
+      const res = await apiFetch("/stock", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/x-www-form-urlencoded",
         },
         body: payload.toString(),
@@ -136,7 +124,6 @@ export default function StockPage() {
       }
     } catch (err) {
       alert("Network error");
-      console.error(err);
     }
   };
 
@@ -150,14 +137,9 @@ export default function StockPage() {
     const formData = new FormData();
     formData.append("file", uploadFile);
 
-    setDebugPayload(`UPLOAD FILE: ${uploadFile.name}`);
-
     try {
-      const res = await apiFetch(`${BASE_URL}/upload-stock`, {
+      const res = await apiFetch("/upload-stock", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
         body: formData,
       });
 
@@ -173,92 +155,146 @@ export default function StockPage() {
       }
     } catch (err) {
       alert("Upload error");
-      console.error(err);
     }
   };
 
-  if (loading) return <div className="p-8 text-center">Loading...</div>;
+  if (loading)
+    return (
+      <div className="p-container-padding flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
 
   return (
-    <div className="p-8">
-      <div className="flex justify-between mb-4">
-        <h1 className="text-2xl font-bold">Stock Management</h1>
+    <div className="p-container-padding">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-text-primary">Stock Management</h1>
+        <p className="text-text-secondary mt-2">
+          Monitor and manage product inventory levels
+        </p>
+      </div>
 
-        <div className="flex gap-2">
+      <div className="flex justify-between items-center mb-6">
+        <div className="relative w-80">
+          <input
+            type="text"
+            placeholder="Search stocks..."
+            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text-primary"
+          />
+          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary">
+            🔍
+          </span>
+        </div>
+        <div className="flex gap-3">
           <button
             onClick={() => setShowUpload(true)}
-            className="bg-green-600 text-white px-4 py-2 rounded"
+            className="bg-success text-white px-5 py-2.5 rounded-lg hover:bg-emerald-600 transition flex items-center shadow-sm"
           >
+            <span className="mr-2">📤</span>
             Upload
           </button>
-
           <button
             onClick={() => setShowModal(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded"
+            className="bg-primary text-white px-5 py-2.5 rounded-lg hover:bg-primary-dark transition flex items-center shadow-sm"
           >
-            + Add Stock
+            <span className="mr-2">+</span>
+            Add Stock
           </button>
         </div>
       </div>
 
-      {/* TABLE */}
-      <table className="w-full border">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="p-2 border">Warehouse</th>
-            <th className="p-2 border">Product</th>
-            <th className="p-2 border">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((s) => (
-            <tr key={`${s.warehouse_id}-${s.stuff_id}`}>
-              <td className="p-2 border">{s.warehouse_name}</td>
-              <td className="p-2 border">{s.stuff_name}</td>
-              <td className="p-2 border text-center">{s.total_stock}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      {/* DEBUG */}
-      {debugPayload && (
-        <div className="mt-6 bg-black text-green-400 p-4 rounded text-sm relative">
-          <button
-            onClick={() => setDebugPayload(null)}
-            className="absolute top-2 right-2 text-white text-xs"
-          >
-            ✕
-          </button>
-          <pre>{debugPayload}</pre>
+      <div className="bg-surface rounded-xl border border-border shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-surface-hover">
+              <tr>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                >
+                  Warehouse
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                >
+                  Product
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-center text-xs font-medium text-text-secondary uppercase tracking-wider"
+                >
+                  Total
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-surface divide-y divide-border">
+              {data.map((s) => (
+                <tr
+                  key={`${s.warehouse_id}-${s.stuff_id}`}
+                  className="hover:bg-surface-hover transition-colors"
+                >
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
+                    {s.warehouse_name}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
+                    {s.stuff_name}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-text-primary">
+                    {s.total_stock}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
 
       {/* UPLOAD MODAL */}
       {showUpload && (
-        <div className="fixed inset-0 bg-black/50 flex justify-center items-center">
-          <div className="bg-white p-6 rounded w-96 space-y-4">
-            <h2 className="text-lg font-semibold">Upload Stock</h2>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-surface rounded-2xl shadow-xl w-full max-w-md border border-border">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-text-primary">
+                  Upload Stock
+                </h2>
+                <button
+                  onClick={() => setShowUpload(false)}
+                  className="text-text-secondary hover:text-text-primary"
+                >
+                  ✕
+                </button>
+              </div>
 
-            <input
-              type="file"
-              accept=".csv,.xlsx,.xls"
-              onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
-            />
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">
+                    Select File
+                  </label>
+                  <input
+                    type="file"
+                    accept=".csv,.xlsx,.xls"
+                    className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
+                    onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
+                  />
+                </div>
+              </div>
 
-            <div className="flex justify-end gap-2 pt-3">
-              <button
-                onClick={() => setShowUpload(false)}
-                className="border px-3 py-1"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={submitUpload}
-                className="bg-green-600 text-white px-3 py-1 rounded"
-              >
-                Upload
-              </button>
+              <div className="flex justify-end gap-3 pt-6">
+                <button
+                  onClick={() => setShowUpload(false)}
+                  className="px-5 py-2.5 rounded-lg border border-border text-text-primary hover:bg-surface-hover transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitUpload}
+                  className="bg-success text-white px-5 py-2.5 rounded-lg hover:bg-emerald-600 transition shadow-sm"
+                >
+                  Upload
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -266,70 +302,111 @@ export default function StockPage() {
 
       {/* ADD MANUAL MODAL */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex justify-center items-center">
-          <div className="bg-white p-6 rounded w-96 space-y-3">
-            <h2 className="text-lg font-semibold">Add Stock</h2>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-surface rounded-2xl shadow-xl w-full max-w-md border border-border">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-text-primary">
+                  Add Stock
+                </h2>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="text-text-secondary hover:text-text-primary"
+                >
+                  ✕
+                </button>
+              </div>
 
-            <select
-              className="w-full border p-2"
-              value={form.warehouse_id}
-              onChange={(e) =>
-                setForm({ ...form, warehouse_id: e.target.value })
-              }
-            >
-              <option value="">Select Warehouse</option>
-              {warehouseList.map((w) => (
-                <option key={w.warehouse_id} value={w.warehouse_id}>
-                  {w.warehouse_name}
-                </option>
-              ))}
-            </select>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">
+                    Warehouse
+                  </label>
+                  <select
+                    className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
+                    value={form.warehouse_id}
+                    onChange={(e) =>
+                      setForm({ ...form, warehouse_id: e.target.value })
+                    }
+                  >
+                    <option value="">Select Warehouse</option>
+                    {warehouseList.map((w) => (
+                      <option key={w.warehouse_id} value={w.warehouse_id}>
+                        {w.warehouse_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            <select
-              className="w-full border p-2"
-              value={form.stuff_id}
-              onChange={(e) => setForm({ ...form, stuff_id: e.target.value })}
-            >
-              <option value="">Select Product</option>
-              {stuffList.map((s) => (
-                <option key={s.stuff_id} value={s.stuff_id}>
-                  {s.stuff_name}
-                </option>
-              ))}
-            </select>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">
+                    Product
+                  </label>
+                  <select
+                    className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
+                    value={form.stuff_id}
+                    onChange={(e) => setForm({ ...form, stuff_id: e.target.value })}
+                  >
+                    <option value="">Select Product</option>
+                    {stuffList.map((s) => (
+                      <option key={s.stuff_id} value={s.stuff_id}>
+                        {s.stuff_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-            <input
-              placeholder="IMEI 1"
-              className="w-full border p-2"
-              value={form.imei_1}
-              onChange={(e) => setForm({ ...form, imei_1: e.target.value })}
-            />
-            <input
-              placeholder="IMEI 2"
-              className="w-full border p-2"
-              value={form.imei_2}
-              onChange={(e) => setForm({ ...form, imei_2: e.target.value })}
-            />
-            <input
-              placeholder="Serial Number"
-              className="w-full border p-2"
-              value={form.sn}
-              onChange={(e) => setForm({ ...form, sn: e.target.value })}
-            />
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">
+                    IMEI 1
+                  </label>
+                  <input
+                    placeholder="Enter IMEI 1"
+                    className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
+                    value={form.imei_1}
+                    onChange={(e) => setForm({ ...form, imei_1: e.target.value })}
+                  />
+                </div>
 
-            <div className="flex justify-end gap-2 pt-3">
-              <button
-                onClick={() => setShowModal(false)}
-                className="border px-3 py-1"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={submitStock}
-                className="bg-blue-600 text-white px-3 py-1 rounded"
-              >
-                Save
-              </button>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">
+                    IMEI 2
+                  </label>
+                  <input
+                    placeholder="Enter IMEI 2"
+                    className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
+                    value={form.imei_2}
+                    onChange={(e) => setForm({ ...form, imei_2: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">
+                    Serial Number
+                  </label>
+                  <input
+                    placeholder="Enter Serial Number"
+                    className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
+                    value={form.sn}
+                    onChange={(e) => setForm({ ...form, sn: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-6">
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="px-5 py-2.5 rounded-lg border border-border text-text-primary hover:bg-surface-hover transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitStock}
+                  className="bg-primary text-white px-5 py-2.5 rounded-lg hover:bg-primary-dark transition shadow-sm"
+                >
+                  Save
+                </button>
+              </div>
             </div>
           </div>
         </div>

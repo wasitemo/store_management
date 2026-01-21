@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "../../src/lib/api";
 
-apiFetch("/order");
 
 interface Employee {
   employee_id: number;
@@ -20,11 +19,23 @@ interface EmployeeAccount {
   account_status: string;
 }
 
-const BASE_URL = "http://localhost:3000";
-
 export default function EmployeeAccountsPage() {
   const router = useRouter();
+  const [search, setSearch] = useState("");
+  type SortKey =
+    | "employee_account_id"
+    | "employee_name"
+    | "username"
+    | "role"
+    | "account_status";
 
+  const [sortConfig, setSortConfig] = useState<{
+    key: SortKey | null;
+    direction: "asc" | "desc";
+  }>({
+    key: null,
+    direction: "asc",
+  });
   const [accounts, setAccounts] = useState<EmployeeAccount[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
 
@@ -44,30 +55,42 @@ export default function EmployeeAccountsPage() {
   });
 
   // ================= LOAD =================
-const loadAccounts = async () => {
-  const res = await apiFetch("/employee-account");
-  const json = await res.json();
-  setAccounts(json.data);
-};
+  const loadAccounts = async () => {
+    const res = await apiFetch("/employee-account");
 
-const loadEmployees = async () => {
-  const res = await apiFetch("/employee");
-  const json = await res.json();
-  setEmployees(json.data);
-};
+    if (res.status === 401) {
+      // Token refresh handled by apiFetch, but if still 401, redirect
+      localStorage.removeItem("access_token");
+      router.push("/login");
+      return;
+    }
+
+    const json = await res.json();
+    setAccounts(json.data);
+  };
+
+  const loadEmployees = async () => {
+    const res = await apiFetch("/employee");
+
+    if (res.status === 401) {
+      // Token refresh handled by apiFetch, but if still 401, redirect
+      localStorage.removeItem("access_token");
+      router.push("/login");
+      return;
+    }
+
+    const json = await res.json();
+    setEmployees(json.data);
+  };
 
 
-useEffect(() => {
-  Promise.all([loadAccounts(), loadEmployees()])
-    .catch((err) => {
-      if (err.message === "UNAUTHORIZED") {
-        router.push("/login");
-      } else {
+  useEffect(() => {
+    Promise.all([loadAccounts(), loadEmployees()])
+      .catch((err) => {
         setError("Gagal memuat data");
-      }
-    })
-    .finally(() => setLoading(false));
-}, []);
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
 
   // ================= FORM =================
@@ -138,6 +161,13 @@ useEffect(() => {
       body,
     });
 
+    if (res.status === 401) {
+      // Token refresh handled by apiFetch, but if still 401, redirect
+      localStorage.removeItem("access_token");
+      router.push("/login");
+      return;
+    }
+
     const result = await res.json();
 
     if (!res.ok) {
@@ -168,6 +198,42 @@ useEffect(() => {
         </div>
       </div>
     );
+  const handleSort = (key: SortKey) => {
+    setSortConfig((prev) => ({
+      key,
+      direction:
+        prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+    }));
+  };
+
+  const filteredAccounts = accounts
+    .filter((acc) => {
+      const keyword = search.toLowerCase();
+
+      return (
+        acc.employee_account_id.toString().includes(keyword) ||
+        acc.employee_name.toLowerCase().includes(keyword) ||
+        acc.username.toLowerCase().includes(keyword) ||
+        acc.role.toLowerCase().includes(keyword) ||
+        acc.account_status.toLowerCase().includes(keyword)
+      );
+    })
+    .sort((a, b) => {
+      if (!sortConfig.key) return 0;
+
+      const aVal = a[sortConfig.key];
+      const bVal = b[sortConfig.key];
+
+      if (typeof aVal === "number") {
+        return sortConfig.direction === "asc"
+          ? aVal - (bVal as number)
+          : (bVal as number) - aVal;
+      }
+
+      return sortConfig.direction === "asc"
+        ? String(aVal).localeCompare(String(bVal))
+        : String(bVal).localeCompare(String(aVal));
+    });
 
   return (
     <div className="p-container-padding">
@@ -184,13 +250,17 @@ useEffect(() => {
         <div className="relative w-80">
           <input
             type="text"
-            placeholder="Search accounts..."
+            placeholder="Search anything..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text-primary"
           />
+
           <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary">
             🔍
           </span>
         </div>
+
         <button
           onClick={openAdd}
           className="bg-primary text-white px-5 py-2.5 rounded-lg hover:bg-primary-dark transition flex items-center shadow-sm"
@@ -206,35 +276,27 @@ useEffect(() => {
             <thead className="bg-surface-hover">
               <tr>
                 <th
-                  scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                  onClick={() => handleSort("employee_account_id")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer select-none"
                 >
-                  Account ID
+                  Account ID {sortConfig.key === "employee_account_id" && (sortConfig.direction === "asc" ? "▲" : "▼")}
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
-                >
-                  Employee
+
+                <th onClick={() => handleSort("employee_name")} className="... cursor-pointer">
+                  Employee {sortConfig.key === "employee_name" && (sortConfig.direction === "asc" ? "▲" : "▼")}
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
-                >
-                  Username
+
+                <th onClick={() => handleSort("username")} className="... cursor-pointer">
+                  Username {sortConfig.key === "username" && (sortConfig.direction === "asc" ? "▲" : "▼")}
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
-                >
-                  Role
+                <th onClick={() => handleSort("role")} className="... cursor-pointer">
+                  Role {sortConfig.key === "role" && (sortConfig.direction === "asc" ? "▲" : "▼")}
                 </th>
-                <th
-                  scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
-                >
-                  Status
+
+                <th onClick={() => handleSort("account_status")} className="... cursor-pointer">
+                  Status {sortConfig.key === "account_status" && (sortConfig.direction === "asc" ? "▲" : "▼")}
                 </th>
+
                 <th
                   scope="col"
                   className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
@@ -245,7 +307,7 @@ useEffect(() => {
             </thead>
 
             <tbody className="bg-surface divide-y divide-border">
-              {accounts.map((acc) => (
+              {filteredAccounts.map((acc) => (
                 <tr
                   key={acc.employee_account_id}
                   className="hover:bg-surface-hover transition-colors"
@@ -264,11 +326,10 @@ useEffect(() => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <span
-                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                        acc.account_status === "active"
+                      className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${acc.account_status === "active"
                           ? "bg-success/10 text-success"
                           : "bg-danger/10 text-danger"
-                      }`}
+                        }`}
                     >
                       {acc.account_status}
                     </span>

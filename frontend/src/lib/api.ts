@@ -29,8 +29,7 @@ async function refreshAccessToken(): Promise<string | null> {
 
 /**
  * Global API fetch with auto refresh token
- */
-export async function apiFetch(
+ */export async function apiFetch(
   url: string,
   options: RequestInit = {}
 ): Promise<Response> {
@@ -41,27 +40,28 @@ export async function apiFetch(
     headers.set("Authorization", `Bearer ${accessToken}`);
   }
 
-  let response = await fetch(`${BASE_URL}${url}`, {
+  const finalUrl = url.startsWith("http")
+    ? url
+    : `${BASE_URL}${url}`;
+
+  let response = await fetch(finalUrl, {
     ...options,
     headers,
     credentials: "include",
   });
 
-  // ⛔ access token expired
   if (response.status === 401) {
     const newToken = await refreshAccessToken();
 
     if (!newToken) {
-      // refresh gagal → force logout
       localStorage.removeItem("access_token");
       window.location.href = "/login";
       throw new Error("Session expired");
     }
 
-    // 🔁 retry request with new token
     headers.set("Authorization", `Bearer ${newToken}`);
 
-    response = await fetch(`${BASE_URL}${url}`, {
+    response = await fetch(finalUrl, {
       ...options,
       headers,
       credentials: "include",

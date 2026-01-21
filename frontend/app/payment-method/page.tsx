@@ -9,10 +9,20 @@ interface PaymentMethod {
   payment_method_name: string;
 }
 
-const BASE_URL = "http://localhost:3000";
-
 export default function PaymentMethodPage() {
   const router = useRouter();
+  const [search, setSearch] = useState("");
+  type SortKey =
+    | "payment_method_id"
+    | "payment_method_name";
+
+  const [sortConfig, setSortConfig] = useState<{
+    key: SortKey | null;
+    direction: "asc" | "desc";
+  }>({
+    key: null,
+    direction: "asc",
+  });
 
   const [data, setData] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,11 +41,10 @@ export default function PaymentMethodPage() {
   // ================= LOAD DATA =================
   const loadPaymentMethods = async () => {
     try {
-      const res = await apiFetch(`${BASE_URL}/payment-methods`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch("/payment-methods");
 
       if (res.status === 401) {
+        // Token refresh handled by apiFetch, but if still 401, redirect
         localStorage.removeItem("access_token");
         router.push("/login");
         return;
@@ -51,8 +60,7 @@ export default function PaymentMethodPage() {
   };
 
   useEffect(() => {
-    if (!token) router.push("/login");
-    else loadPaymentMethods();
+    loadPaymentMethods();
   }, []);
 
   // ================= FORM =================
@@ -68,9 +76,7 @@ export default function PaymentMethodPage() {
 
   const openEdit = async (id: number) => {
     try {
-      const res = await apiFetch(`${BASE_URL}/payment-method/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch(`/payment-method/${id}`);
 
       const json = await res.json();
 
@@ -97,13 +103,12 @@ export default function PaymentMethodPage() {
 
       const endpoint =
         editingId === null
-          ? `${BASE_URL}/payment-method`
-          : `${BASE_URL}/payment-method/${editingId}`;
+          ? `/payment-method`
+          : `/payment-method/${editingId}`;
 
       const res = await apiFetch(endpoint, {
         method: editingId === null ? "POST" : "PATCH",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/x-www-form-urlencoded",
         },
         body: body.toString(),
@@ -111,7 +116,6 @@ export default function PaymentMethodPage() {
 
       if (!res.ok) {
         const text = await res.text();
-        console.error(text);
         alert("Server menolak permintaan");
         return;
       }
@@ -119,9 +123,39 @@ export default function PaymentMethodPage() {
       setShowModal(false);
       await loadPaymentMethods();
     } catch (err) {
-      console.error(err);
       alert("Gagal koneksi ke server");
     }
+  };
+
+  // ================= SORTING =================
+  const sortedData = [...data].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+
+    const aValue = a[sortConfig.key];
+    const bValue = b[sortConfig.key];
+
+    if (typeof aValue === "string" && typeof bValue === "string") {
+      const comparison = aValue.localeCompare(bValue);
+      return sortConfig.direction === "asc" ? comparison : -comparison;
+    } else {
+      const comparison = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      return sortConfig.direction === "asc" ? comparison : -comparison;
+    }
+  });
+
+  // ================= FILTERING =================
+  const filteredData = sortedData.filter((pm) => {
+    return (
+      pm.payment_method_name.toLowerCase().includes(search.toLowerCase())
+    );
+  });
+
+  // ================= HANDLE SORT =================
+  const handleSort = (key: SortKey) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc"
+    }));
   };
 
   // ================= UI =================
@@ -161,6 +195,8 @@ export default function PaymentMethodPage() {
             type="text"
             placeholder="Search payment methods..."
             className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text-primary"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
           <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary">
             🔍
@@ -182,15 +218,31 @@ export default function PaymentMethodPage() {
               <tr>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("payment_method_id")}
                 >
-                  ID
+                  <div className="flex items-center">
+                    ID
+                    {sortConfig.key === "payment_method_id" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      </span>
+                    )}
+                  </div>
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("payment_method_name")}
                 >
-                  Name
+                  <div className="flex items-center">
+                    Name
+                    {sortConfig.key === "payment_method_name" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      </span>
+                    )}
+                  </div>
                 </th>
                 <th
                   scope="col"
@@ -202,7 +254,7 @@ export default function PaymentMethodPage() {
             </thead>
 
             <tbody className="bg-surface divide-y divide-border">
-              {data.map((pm) => (
+              {filteredData.map((pm) => (
                 <tr
                   key={pm.payment_method_id}
                   className="hover:bg-surface-hover transition-colors"

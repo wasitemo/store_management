@@ -12,10 +12,23 @@ interface Employee {
   employee_address: string;
 }
 
-const BASE_URL = "http://localhost:3000";
-
 export default function EmployeePage() {
   const router = useRouter();
+  const [search, setSearch] = useState("");
+  type SortKey =
+    | "employee_id"
+    | "employee_nik"
+    | "employee_name"
+    | "employee_contact"
+    | "employee_address";
+
+  const [sortConfig, setSortConfig] = useState<{
+    key: SortKey | null;
+    direction: "asc" | "desc";
+  }>({
+    key: null,
+    direction: "asc",
+  });
 
   const [data, setData] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,11 +50,10 @@ export default function EmployeePage() {
   // ================= LOAD DATA =================
   const loadEmployees = async () => {
     try {
-      const res = await apiFetch(`${BASE_URL}/employee`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch("/employee");
 
       if (res.status === 401) {
+        // Token refresh handled by apiFetch, but if still 401, redirect
         localStorage.removeItem("access_token");
         router.push("/login");
         return;
@@ -57,8 +69,7 @@ export default function EmployeePage() {
   };
 
   useEffect(() => {
-    if (!token) router.push("/login");
-    else loadEmployees();
+    loadEmployees();
   }, []);
 
   // ================= FORM =================
@@ -79,9 +90,7 @@ export default function EmployeePage() {
 
   const openEdit = async (id: number) => {
     try {
-      const res = await apiFetch(`${BASE_URL}/employee/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch(`/employee/${id}`);
 
       const json = await res.json();
 
@@ -113,13 +122,12 @@ export default function EmployeePage() {
 
       const endpoint =
         editingId === null
-          ? `${BASE_URL}/employee`
-          : `${BASE_URL}/employee/${editingId}`;
+          ? `/employee`
+          : `/employee/${editingId}`;
 
       const res = await apiFetch(endpoint, {
         method: editingId === null ? "POST" : "PATCH",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/x-www-form-urlencoded",
         },
         body: body.toString(),
@@ -127,7 +135,6 @@ export default function EmployeePage() {
 
       if (!res.ok) {
         const text = await res.text();
-        console.error(text);
         alert("Server menolak permintaan");
         return;
       }
@@ -135,9 +142,42 @@ export default function EmployeePage() {
       setShowModal(false);
       await loadEmployees();
     } catch (err) {
-      console.error(err);
       alert("Gagal koneksi ke server");
     }
+  };
+
+  // ================= SORTING =================
+  const sortedData = [...data].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+
+    const aValue = a[sortConfig.key];
+    const bValue = b[sortConfig.key];
+
+    if (typeof aValue === "string" && typeof bValue === "string") {
+      const comparison = aValue.localeCompare(bValue);
+      return sortConfig.direction === "asc" ? comparison : -comparison;
+    } else {
+      const comparison = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      return sortConfig.direction === "asc" ? comparison : -comparison;
+    }
+  });
+
+  // ================= FILTERING =================
+  const filteredData = sortedData.filter((emp) => {
+    return (
+      emp.employee_nik.toLowerCase().includes(search.toLowerCase()) ||
+      emp.employee_name.toLowerCase().includes(search.toLowerCase()) ||
+      emp.employee_contact.toLowerCase().includes(search.toLowerCase()) ||
+      emp.employee_address.toLowerCase().includes(search.toLowerCase())
+    );
+  });
+
+  // ================= HANDLE SORT =================
+  const handleSort = (key: SortKey) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc"
+    }));
   };
 
   // ================= UI =================
@@ -175,6 +215,8 @@ export default function EmployeePage() {
             type="text"
             placeholder="Search employees..."
             className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text-primary"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
           <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary">
             🔍
@@ -196,33 +238,73 @@ export default function EmployeePage() {
               <tr>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("employee_id")}
                 >
-                  ID
+                  <div className="flex items-center">
+                    ID
+                    {sortConfig.key === "employee_id" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      </span>
+                    )}
+                  </div>
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("employee_nik")}
                 >
-                  NIK
+                  <div className="flex items-center">
+                    NIK
+                    {sortConfig.key === "employee_nik" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      </span>
+                    )}
+                  </div>
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("employee_name")}
                 >
-                  Name
+                  <div className="flex items-center">
+                    Name
+                    {sortConfig.key === "employee_name" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      </span>
+                    )}
+                  </div>
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("employee_contact")}
                 >
-                  Contact
+                  <div className="flex items-center">
+                    Contact
+                    {sortConfig.key === "employee_contact" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      </span>
+                    )}
+                  </div>
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("employee_address")}
                 >
-                  Address
+                  <div className="flex items-center">
+                    Address
+                    {sortConfig.key === "employee_address" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      </span>
+                    )}
+                  </div>
                 </th>
                 <th
                   scope="col"
@@ -233,7 +315,7 @@ export default function EmployeePage() {
               </tr>
             </thead>
             <tbody className="bg-surface divide-y divide-border">
-              {data.map((emp) => (
+              {filteredData.map((emp) => (
                 <tr
                   key={emp.employee_id}
                   className="hover:bg-surface-hover transition-colors"

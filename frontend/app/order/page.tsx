@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "../../src/lib/api";
 
-const BASE_URL = "http://localhost:3000";
-
 export default function OrderPage() {
   const router = useRouter();
   const token =
@@ -16,18 +14,18 @@ export default function OrderPage() {
   const [detail, setDetail] = useState<any>(null);
 
   useEffect(() => {
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-
     loadOrders();
   }, []);
 
   const loadOrders = async () => {
-    const res = await apiFetch(`${BASE_URL}/customer-orders`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await apiFetch("/customer-orders");
+
+    if (res.status === 401) {
+      // Token refresh handled by apiFetch, but if still 401, redirect
+      localStorage.removeItem("access_token");
+      router.push("/login");
+      return;
+    }
 
     const json = await res.json();
     setOrders(Array.isArray(json.data) ? json.data : []);
@@ -35,11 +33,15 @@ export default function OrderPage() {
 
   const openDetail = async (orderId: number) => {
     const res = await apiFetch(
-      `${BASE_URL}/customer-order-detail/${orderId}`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-      }
+      `/customer-order-detail/${orderId}`
     );
+
+    if (res.status === 401) {
+      // Token refresh handled by apiFetch, but if still 401, redirect
+      localStorage.removeItem("access_token");
+      router.push("/login");
+      return;
+    }
 
     const json = await res.json();
     setDetail(json.data);

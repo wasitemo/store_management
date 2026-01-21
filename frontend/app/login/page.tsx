@@ -27,9 +27,6 @@ export default function LoginPage() {
         body: JSON.stringify(body),
       });
 
-      const text = await res.clone().text();
-      console.log("RESPONSE:", text);
-
       const data = await res.json();
 
       if (!res.ok) {
@@ -40,7 +37,6 @@ export default function LoginPage() {
       router.push("/dashboard");
     } catch (err: any) {
       setError(err.message);
-      console.log(err);
     } finally {
       setLoading(false);
     }

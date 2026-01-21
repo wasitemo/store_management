@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch } from "../../src/lib/api";
 
-const BASE_URL = "http://localhost:3000";
 const today = new Date().toISOString().split("T")[0];
 
 export default function OrderCreatePage() {
@@ -17,9 +16,6 @@ export default function OrderCreatePage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [searchValue, setSearchValue] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
-
-  const [debugSearch, setDebugSearch] = useState<any>(null);
-  const [debugSubmit, setDebugSubmit] = useState<any>(null);
 
   const [master, setMaster] = useState<any>({
     customer: [],
@@ -68,14 +64,19 @@ export default function OrderCreatePage() {
 
   /* ================= LOAD MASTER ================= */
   useEffect(() => {
-    if (!token) router.push("/login");
-    else loadMaster();
+    loadMaster();
   }, []);
 
   const loadMaster = async () => {
-    const res = await apiFetch(`${BASE_URL}/customer-order`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await apiFetch("/customer-order");
+
+    if (res.status === 401) {
+      // Token refresh handled by apiFetch, but if still 401, redirect
+      localStorage.removeItem("access_token");
+      router.push("/login");
+      return;
+    }
+
     const json = await res.json();
     setMaster(json.data);
   };
@@ -83,7 +84,6 @@ export default function OrderCreatePage() {
   /* ================= SEARCH ITEM ================= */
   const searchItem = async () => {
     setErrorMsg(null);
-    setDebugSearch(null);
 
     if (!form.warehouse_id) {
       setErrorMsg("Warehouse wajib dipilih");
@@ -103,12 +103,16 @@ export default function OrderCreatePage() {
         identify: searchValue,
       });
 
-      const res = await apiFetch(`${BASE_URL}/search?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch(`/search?${params.toString()}`);
+
+      if (res.status === 401) {
+        // Token refresh handled by apiFetch, but if still 401, redirect
+        localStorage.removeItem("access_token");
+        router.push("/login");
+        return;
+      }
 
       const json = await res.json();
-      setDebugSearch(json);
 
       if (!res.ok) {
         setErrorMsg(json.message);
@@ -159,7 +163,6 @@ export default function OrderCreatePage() {
   /* ================= SUBMIT ================= */
   const submitOrder = async () => {
     setErrorMsg(null);
-    setDebugSubmit(null);
 
     if (!form.customer_id || !form.warehouse_id || !form.payment_method_id) {
       setErrorMsg("Customer, Warehouse, dan Payment Method wajib dipilih");
@@ -171,17 +174,22 @@ export default function OrderCreatePage() {
       return;
     }
 
-    const res = await apiFetch(`${BASE_URL}/customer-order`, {
+    const res = await apiFetch("/customer-order", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(orderPayload),
     });
 
+    if (res.status === 401) {
+      // Token refresh handled by apiFetch, but if still 401, redirect
+      localStorage.removeItem("access_token");
+      router.push("/login");
+      return;
+    }
+
     const json = await res.json();
-    setDebugSubmit(json);
 
     if (!res.ok) {
       setErrorMsg(json.message || "Gagal menyimpan order");

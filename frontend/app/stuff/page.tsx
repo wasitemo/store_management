@@ -23,6 +23,22 @@ export default function StuffPage() {
   const router = useRouter();
   const token =
     typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+  const [search, setSearch] = useState("");
+  type SortKey =
+    | "stuff_id"
+    | "stuff_name"
+    | "stuff_category_name"
+    | "stuff_brand_name"
+    | "supplier_name"
+    | "current_sell_price";
+
+  const [sortConfig, setSortConfig] = useState<{
+    key: SortKey | null;
+    direction: "asc" | "desc";
+  }>({
+    key: null,
+    direction: "asc",
+  });
 
   const [stuffs, setStuffs] = useState<any[]>([]);
   const [meta, setMeta] = useState({
@@ -37,14 +53,53 @@ export default function StuffPage() {
   const [form, setForm] = useState<any>(EMPTY_FORM);
   const [preview, setPreview] = useState<any>(null);
 
+  // ================= SORTING =================
+  const sortedStuffs = [...stuffs].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+
+    const aValue = a[sortConfig.key];
+    const bValue = b[sortConfig.key];
+
+    if (typeof aValue === "string" && typeof bValue === "string") {
+      const comparison = aValue.localeCompare(bValue);
+      return sortConfig.direction === "asc" ? comparison : -comparison;
+    } else {
+      const comparison = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      return sortConfig.direction === "asc" ? comparison : -comparison;
+    }
+  });
+
+  // ================= FILTERING =================
+  const filteredStuffs = sortedStuffs.filter((s) => {
+    return (
+      s.stuff_name.toLowerCase().includes(search.toLowerCase()) ||
+      s.stuff_category_name.toLowerCase().includes(search.toLowerCase()) ||
+      s.stuff_brand_name.toLowerCase().includes(search.toLowerCase()) ||
+      s.supplier_name.toLowerCase().includes(search.toLowerCase())
+    );
+  });
+
+  // ================= HANDLE SORT =================
+  const handleSort = (key: SortKey) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc"
+    }));
+  };
+
   // ================= LOAD =================
   const loadAll = async () => {
-    const headers = { Authorization: `Bearer ${token}` };
-
     const [stuffsRes, metaRes] = await Promise.all([
-      fetch(`${BASE_URL}/stuffs`, { headers }),
-      fetch(`${BASE_URL}/stuff`, { headers }),
+      apiFetch(`${BASE_URL}/stuffs`),
+      apiFetch(`${BASE_URL}/stuff`),
     ]);
+
+    if (stuffsRes.status === 401 || metaRes.status === 401) {
+      // Token refresh handled by apiFetch, but if still 401, redirect
+      localStorage.removeItem("access_token");
+      router.push("/login");
+      return;
+    }
 
     const stuffsJson = await stuffsRes.json();
     const metaJson = await metaRes.json();
@@ -56,8 +111,7 @@ export default function StuffPage() {
   };
 
   useEffect(() => {
-    if (!token) router.push("/login");
-    else loadAll();
+    loadAll();
   }, []);
 
   // ================= OPEN FORM =================
@@ -95,13 +149,12 @@ export default function StuffPage() {
     const body = new URLSearchParams();
     Object.keys(payload).forEach((k) => body.append(k, payload[k]));
 
-    const url = editId ? `${BASE_URL}/stuff/${editId}` : `${BASE_URL}/stuff`;
+    const url = editId ? `/stuff/${editId}` : `/stuff`;
     const method = editId ? "PATCH" : "POST";
 
     const res = await apiFetch(url, {
       method,
       headers: {
-        Authorization: `Bearer ${token}`,
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body,
@@ -120,235 +173,378 @@ export default function StuffPage() {
   };
 
   return (
-    <div className="p-10 space-y-8">
-      <div className="flex justify-between">
-        <h1 className="text-3xl font-bold">Stuff Management</h1>
+    <div className="p-container-padding">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-text-primary">Stuff Management</h1>
+        <p className="text-text-secondary mt-2">Manage your product inventory</p>
+      </div>
+
+      <div className="flex justify-between items-center mb-6">
+        <div className="relative w-80">
+          <input
+            type="text"
+            placeholder="Search products..."
+            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text-primary"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary">
+            🔍
+          </span>
+        </div>
         <button
           onClick={openAddForm}
-          className="bg-blue-600 text-white px-5 py-2 rounded-lg"
+          className="bg-primary text-white px-5 py-2.5 rounded-lg hover:bg-primary-dark transition flex items-center shadow-sm"
         >
-          + Add Product
+          <span className="mr-2">+</span>
+          Add Product
         </button>
       </div>
 
       {/* ================= TABLE ================= */}
-      <table className="w-full border">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="p-2">ID</th>
-            <th>Name</th>
-            <th>Category</th>
-            <th>Brand</th>
-            <th>Supplier</th>
-            <th>Price</th>
-            <th>SN</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {stuffs.map((s) => (
-            <tr key={s.stuff_id} className="border-t">
-              <td className="p-2">{s.stuff_id}</td>
-              <td>{s.stuff_name}</td>
-              <td>{s.stuff_category_name}</td>
-              <td>{s.stuff_brand_name}</td>
-              <td>{s.supplier_name}</td>
-              <td>{s.current_sell_price}</td>
-              <td>{String(s.has_sn)}</td>
-              <td>
-                <button
-                  onClick={() => openEditForm(s)}
-                  className="px-2 py-1 bg-yellow-400 rounded text-white"
+      <div className="bg-surface rounded-xl border border-border shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-surface-hover">
+              <tr>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("stuff_id")}
                 >
-                  Edit
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                  <div className="flex items-center">
+                    ID
+                    {sortConfig.key === "stuff_id" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      </span>
+                    )}
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("stuff_name")}
+                >
+                  <div className="flex items-center">
+                    Name
+                    {sortConfig.key === "stuff_name" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      </span>
+                    )}
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("stuff_category_name")}
+                >
+                  <div className="flex items-center">
+                    Category
+                    {sortConfig.key === "stuff_category_name" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      </span>
+                    )}
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("stuff_brand_name")}
+                >
+                  <div className="flex items-center">
+                    Brand
+                    {sortConfig.key === "stuff_brand_name" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      </span>
+                    )}
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("supplier_name")}
+                >
+                  <div className="flex items-center">
+                    Supplier
+                    {sortConfig.key === "supplier_name" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      </span>
+                    )}
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("current_sell_price")}
+                >
+                  <div className="flex items-center">
+                    Price
+                    {sortConfig.key === "current_sell_price" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      </span>
+                    )}
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                >
+                  SN
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                >
+                  Action
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-surface divide-y divide-border">
+              {filteredStuffs.map((s) => (
+                <tr key={s.stuff_id} className="hover:bg-surface-hover transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary font-medium">
+                    {s.stuff_id}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
+                    {s.stuff_name}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
+                    {s.stuff_category_name}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
+                    {s.stuff_brand_name}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
+                    {s.supplier_name}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
+                    {s.current_sell_price}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
+                    {String(s.has_sn)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <button
+                      onClick={() => openEditForm(s)}
+                      className="text-primary hover:text-primary-dark mr-3 flex items-center"
+                    >
+                      <span className="mr-1">✏️</span> Edit
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {/* ================= FORM ================= */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/40 flex justify-center items-center">
-          <div className="bg-white p-6 w-[500px] space-y-4 rounded-xl">
-            <h2 className="text-xl font-bold">
-              {editId ? "Edit Product" : "Add Product"}
-            </h2>
-
-            {/* ================= ADD FORM ================= */}
-            {!editId && (
-              <>
-                <input
-                  placeholder="Code"
-                  className="input"
-                  value={form.stuff_code}
-                  onChange={(e) =>
-                    setForm({ ...form, stuff_code: e.target.value })
-                  }
-                />
-                <input
-                  placeholder="Name"
-                  className="input"
-                  value={form.stuff_name}
-                  onChange={(e) =>
-                    setForm({ ...form, stuff_name: e.target.value })
-                  }
-                />
-                <input
-                  placeholder="Variant"
-                  className="input"
-                  value={form.stuff_variant}
-                  onChange={(e) =>
-                    setForm({ ...form, stuff_variant: e.target.value })
-                  }
-                />
-                <input
-                  placeholder="SKU"
-                  className="input"
-                  value={form.stuff_sku}
-                  onChange={(e) =>
-                    setForm({ ...form, stuff_sku: e.target.value })
-                  }
-                />
-                <input
-                  placeholder="Price"
-                  className="input"
-                  value={form.current_sell_price}
-                  onChange={(e) =>
-                    setForm({ ...form, current_sell_price: e.target.value })
-                  }
-                />
-
-                <select
-                  className="input"
-                  value={form.stuff_category_id}
-                  onChange={(e) =>
-                    setForm({ ...form, stuff_category_id: e.target.value })
-                  }
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-surface rounded-2xl shadow-xl w-full max-w-md border border-border">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-text-primary">
+                  {editId ? "Edit Product" : "Add Product"}
+                </h2>
+                <button
+                  onClick={() => setShowForm(false)}
+                  className="text-text-secondary hover:text-text-primary"
                 >
-                  <option value="">Category</option>
-                  {meta.stuff_category.map((c: any) => (
-                    <option
-                      key={c.stuff_category_id}
-                      value={c.stuff_category_id}
-                    >
-                      {c.stuff_category_name}
-                    </option>
-                  ))}
-                </select>
+                  ✕
+                </button>
+              </div>
 
-                <select
-                  className="input"
-                  value={form.stuff_brand_id}
-                  onChange={(e) =>
-                    setForm({ ...form, stuff_brand_id: e.target.value })
-                  }
-                >
-                  <option value="">Brand</option>
-                  {meta.stuff_brand.map((b: any) => (
-                    <option key={b.stuff_brand_id} value={b.stuff_brand_id}>
-                      {b.stuff_brand_name}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  className="input"
-                  value={form.supplier_id}
-                  onChange={(e) =>
-                    setForm({ ...form, supplier_id: e.target.value })
-                  }
-                >
-                  <option value="">Supplier</option>
-                  {meta.supplier.map((s: any) => (
-                    <option key={s.supplier_id} value={s.supplier_id}>
-                      {s.supplier_name}
-                    </option>
-                  ))}
-                </select>
-
-                <input
-                  placeholder="Barcode"
-                  className="input"
-                  value={form.barcode}
-                  onChange={(e) =>
-                    setForm({ ...form, barcode: e.target.value })
-                  }
-                />
-                <label className="flex gap-2">
+              {/* ================= ADD FORM ================= */}
+              {!editId && (
+                <div className="space-y-3">
                   <input
-                    type="checkbox"
-                    checked={form.has_sn}
+                    placeholder="Code"
+                    className="w-full rounded-lg border border-border px-4 py-3"
+                    value={form.stuff_code}
                     onChange={(e) =>
-                      setForm({ ...form, has_sn: e.target.checked })
+                      setForm({ ...form, stuff_code: e.target.value })
                     }
                   />
-                  Has Serial Number
-                </label>
-              </>
-            )}
 
-            {/* ================= EDIT FORM ================= */}
-            {editId && (
-              <>
-                <input
-                  placeholder="Name"
-                  className="input"
-                  value={form.stuff_name}
-                  onChange={(e) =>
-                    setForm({ ...form, stuff_name: e.target.value })
-                  }
-                />
-                <input
-                  placeholder="SKU"
-                  className="input"
-                  value={form.stuff_sku}
-                  onChange={(e) =>
-                    setForm({ ...form, stuff_sku: e.target.value })
-                  }
-                />
-                <input
-                  placeholder="Price"
-                  className="input"
-                  value={form.current_sell_price}
-                  onChange={(e) =>
-                    setForm({ ...form, current_sell_price: e.target.value })
-                  }
-                />
-                <label className="flex gap-2">
                   <input
-                    type="checkbox"
-                    checked={form.has_sn}
+                    placeholder="Name"
+                    className="w-full rounded-lg border border-border px-4 py-3"
+                    value={form.stuff_name}
                     onChange={(e) =>
-                      setForm({ ...form, has_sn: e.target.checked })
+                      setForm({ ...form, stuff_name: e.target.value })
                     }
                   />
-                  Has Serial Number
-                </label>
-              </>
-            )}
 
-            {/* PREVIEW */}
-            {preview && (
-              <pre className="bg-gray-100 p-3 text-sm overflow-auto rounded">
-                {JSON.stringify(preview, null, 2)}
-              </pre>
-            )}
+                  <input
+                    placeholder="Variant"
+                    className="w-full rounded-lg border border-border px-4 py-3"
+                    value={form.stuff_variant}
+                    onChange={(e) =>
+                      setForm({ ...form, stuff_variant: e.target.value })
+                    }
+                  />
 
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowForm(false)}
-                className="px-4 py-2 border rounded"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={save}
-                className="px-4 py-2 bg-blue-600 text-white rounded"
-              >
-                Save
-              </button>
+                  <input
+                    placeholder="SKU"
+                    className="w-full rounded-lg border border-border px-4 py-3"
+                    value={form.stuff_sku}
+                    onChange={(e) =>
+                      setForm({ ...form, stuff_sku: e.target.value })
+                    }
+                  />
+
+                  <input
+                    placeholder="Price"
+                    className="w-full rounded-lg border border-border px-4 py-3"
+                    value={form.current_sell_price}
+                    onChange={(e) =>
+                      setForm({ ...form, current_sell_price: e.target.value })
+                    }
+                  />
+
+                  <select
+                    className="w-full rounded-lg border border-border px-4 py-3"
+                    value={form.stuff_category_id}
+                    onChange={(e) =>
+                      setForm({ ...form, stuff_category_id: e.target.value })
+                    }
+                  >
+                    <option value="">Category</option>
+                    {meta.stuff_category.map((c: any) => (
+                      <option
+                        key={c.stuff_category_id}
+                        value={c.stuff_category_id}
+                      >
+                        {c.stuff_category_name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    className="w-full rounded-lg border border-border px-4 py-3"
+                    value={form.stuff_brand_id}
+                    onChange={(e) =>
+                      setForm({ ...form, stuff_brand_id: e.target.value })
+                    }
+                  >
+                    <option value="">Brand</option>
+                    {meta.stuff_brand.map((b: any) => (
+                      <option key={b.stuff_brand_id} value={b.stuff_brand_id}>
+                        {b.stuff_brand_name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    className="w-full rounded-lg border border-border px-4 py-3"
+                    value={form.supplier_id}
+                    onChange={(e) =>
+                      setForm({ ...form, supplier_id: e.target.value })
+                    }
+                  >
+                    <option value="">Supplier</option>
+                    {meta.supplier.map((s: any) => (
+                      <option key={s.supplier_id} value={s.supplier_id}>
+                        {s.supplier_name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <input
+                    placeholder="Barcode"
+                    className="w-full rounded-lg border border-border px-4 py-3"
+                    value={form.barcode}
+                    onChange={(e) =>
+                      setForm({ ...form, barcode: e.target.value })
+                    }
+                  />
+
+                  <label className="flex gap-2 items-center">
+                    <input
+                      type="checkbox"
+                      checked={form.has_sn}
+                      onChange={(e) =>
+                        setForm({ ...form, has_sn: e.target.checked })
+                      }
+                    />
+                    Has Serial Number
+                  </label>
+                </div>
+              )}
+
+
+              {/* ================= EDIT FORM ================= */}
+              {editId && (
+                <div className="space-y-3">
+                  <input
+                    placeholder="Name"
+                    className="w-full rounded-lg border border-border px-4 py-3"
+                    value={form.stuff_name}
+                    onChange={(e) =>
+                      setForm({ ...form, stuff_name: e.target.value })
+                    }
+                  />
+
+                  <input
+                    placeholder="SKU"
+                    className="w-full rounded-lg border border-border px-4 py-3"
+                    value={form.stuff_sku}
+                    onChange={(e) =>
+                      setForm({ ...form, stuff_sku: e.target.value })
+                    }
+                  />
+
+                  <input
+                    placeholder="Price"
+                    className="w-full rounded-lg border border-border px-4 py-3"
+                    value={form.current_sell_price}
+                    onChange={(e) =>
+                      setForm({ ...form, current_sell_price: e.target.value })
+                    }
+                  />
+
+                  <label className="flex gap-2 items-center">
+                    <input
+                      type="checkbox"
+                      checked={form.has_sn}
+                      onChange={(e) =>
+                        setForm({ ...form, has_sn: e.target.checked })
+                      }
+                    />
+                    Has Serial Number
+                  </label>
+                </div>
+              )}
+
+
+              {/* PREVIEW */}
+              {preview && (
+                <pre className="bg-surface-hover p-3 text-sm overflow-auto rounded-lg border border-border">
+                  {JSON.stringify(preview, null, 2)}
+                </pre>
+              )}
+
+              <div className="flex justify-end gap-3 pt-6">
+                <button
+                  onClick={() => setShowForm(false)}
+                  className="px-5 py-2.5 rounded-lg border border-border text-text-primary hover:bg-surface-hover transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={save}
+                  className="bg-primary text-white px-5 py-2.5 rounded-lg hover:bg-primary-dark transition shadow-sm"
+                >
+                  Save
+                </button>
+              </div>
             </div>
           </div>
         </div>

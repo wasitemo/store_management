@@ -28,6 +28,20 @@ interface Detail {
 
 export default function StuffPurchasePage() {
   const router = useRouter();
+  const [search, setSearch] = useState("");
+  type SortKey =
+    | "stuff_purchase_id"
+    | "supplier_name"
+    | "buy_date"
+    | "total_price";
+
+  const [sortConfig, setSortConfig] = useState<{
+    key: SortKey | null;
+    direction: "asc" | "desc";
+  }>({
+    key: null,
+    direction: "asc",
+  });
 
   const [data, setData] = useState<Purchase[]>([]);
   const [detail, setDetail] = useState<Detail | null>(null);
@@ -54,28 +68,26 @@ export default function StuffPurchasePage() {
 
   // ================= LOAD =================
   const loadData = async () => {
-    const res = await apiFetch(`${BASE_URL}/stuff-purchases`, {
-      headers: { Authorization: `Bearer ${token}` },
-      credentials: "include",
-    });
+    const res = await apiFetch(`${BASE_URL}/stuff-purchases`);
 
-    if (res.status === 401) return router.push("/login");
+    if (res.status === 401) {
+      // Token refresh handled by apiFetch, but if still 401, redirect
+      localStorage.removeItem("access_token");
+      router.push("/login");
+      return;
+    }
 
     const json = await res.json();
     setData(json.data);
   };
 
   useEffect(() => {
-    if (!token) router.push("/login");
-    else loadData();
+    loadData();
   }, []);
 
   // ================= DETAIL =================
   const openDetail = async (id: number) => {
-    const res = await apiFetch(`${BASE_URL}/stuff-purchase-detail/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-      credentials: "include",
-    });
+    const res = await apiFetch(`${BASE_URL}/stuff-purchase-detail/${id}`);
 
     const json = await res.json();
     setDetail(json.data);
@@ -90,11 +102,9 @@ export default function StuffPurchasePage() {
     const res = await apiFetch(`${BASE_URL}/stuff-purchase`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: body.toString(),
-      credentials: "include",
     });
 
     if (!res.ok) {
@@ -115,9 +125,7 @@ export default function StuffPurchasePage() {
 
     const res = await apiFetch(`${BASE_URL}/upload-stuff-purchase`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
       body: formData,
-      credentials: "include",
     });
 
     const json = await res.json();
@@ -133,57 +141,176 @@ export default function StuffPurchasePage() {
     loadData();
   };
 
+  // ================= SORTING =================
+  const sortedData = [...data].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+
+    const aValue = a[sortConfig.key];
+    const bValue = b[sortConfig.key];
+
+    if (typeof aValue === "string" && typeof bValue === "string") {
+      const comparison = aValue.localeCompare(bValue);
+      return sortConfig.direction === "asc" ? comparison : -comparison;
+    } else {
+      const comparison = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      return sortConfig.direction === "asc" ? comparison : -comparison;
+    }
+  });
+
+  // ================= FILTERING =================
+  const filteredData = sortedData.filter((purchase) => {
+    return (
+      purchase.supplier_name.toLowerCase().includes(search.toLowerCase()) ||
+      purchase.buy_date.toLowerCase().includes(search.toLowerCase()) ||
+      purchase.total_price.toLowerCase().includes(search.toLowerCase())
+    );
+  });
+
+  // ================= HANDLE SORT =================
+  const handleSort = (key: SortKey) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc"
+    }));
+  };
+
   return (
-    <div className="p-6 space-y-4">
-      {/* HEADER */}
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Stuff Purchases</h1>
-        <div className="space-x-2">
+    <div className="p-container-padding">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-text-primary">Stuff Purchases</h1>
+        <p className="text-text-secondary mt-2">Manage your product purchases</p>
+      </div>
+
+      <div className="flex justify-between items-center mb-6">
+        <div className="relative w-80">
+          <input
+            type="text"
+            placeholder="Search purchases..."
+            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text-primary"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary">
+            🔍
+          </span>
+        </div>
+        <div className="space-x-3">
           <button
             onClick={() => setShowAdd(true)}
-            className="bg-primary text-white px-4 py-2 rounded"
+            className="bg-primary text-white px-5 py-2.5 rounded-lg hover:bg-primary-dark transition flex items-center shadow-sm"
           >
-            + Add Purchase
+            <span className="mr-2">+</span>
+            Add Purchase
           </button>
           <button
             onClick={() => setShowUpload(true)}
-            className="bg-success text-white px-4 py-2 rounded"
+            className="bg-success text-white px-5 py-2.5 rounded-lg hover:bg-emerald-600 transition flex items-center shadow-sm"
           >
+            <span className="mr-2">📤</span>
             Upload CSV / Excel
           </button>
         </div>
       </div>
 
       {/* TABLE */}
-      <table className="w-full border">
-        <thead>
-          <tr className="border-b">
-            <th className="p-2">ID</th>
-            <th>Supplier</th>
-            <th>Date</th>
-            <th>Total</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((p) => (
-            <tr key={p.stuff_purchase_id} className="border-b">
-              <td className="p-2">{p.stuff_purchase_id}</td>
-              <td>{p.supplier_name}</td>
-              <td>{p.buy_date}</td>
-              <td>{p.total_price}</td>
-              <td>
-                <button
-                  onClick={() => openDetail(p.stuff_purchase_id)}
-                  className="bg-warning text-white px-3 py-1 rounded"
+      <div className="bg-surface rounded-xl border border-border shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-surface-hover">
+              <tr>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("stuff_purchase_id")}
                 >
-                  Detail
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+                  <div className="flex items-center">
+                    ID
+                    {sortConfig.key === "stuff_purchase_id" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      </span>
+                    )}
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("supplier_name")}
+                >
+                  <div className="flex items-center">
+                    Supplier
+                    {sortConfig.key === "supplier_name" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      </span>
+                    )}
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("buy_date")}
+                >
+                  <div className="flex items-center">
+                    Date
+                    {sortConfig.key === "buy_date" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      </span>
+                    )}
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("total_price")}
+                >
+                  <div className="flex items-center">
+                    Total
+                    {sortConfig.key === "total_price" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      </span>
+                    )}
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                >
+                  Action
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-surface divide-y divide-border">
+              {filteredData.map((p) => (
+                <tr key={p.stuff_purchase_id} className="hover:bg-surface-hover transition-colors">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary font-medium">
+                    {p.stuff_purchase_id}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
+                    {p.supplier_name}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
+                    {p.buy_date}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
+                    {p.total_price}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <button
+                      onClick={() => openDetail(p.stuff_purchase_id)}
+                      className="text-primary hover:text-primary-dark mr-3 flex items-center"
+                    >
+                      <span className="mr-1">📋</span> Detail
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       {/* DETAIL MODAL */}
       {showDetail && detail && (

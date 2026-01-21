@@ -11,10 +11,22 @@ interface Customer {
   customer_address: string;
 }
 
-const BASE_URL = "http://localhost:3000";
-
 export default function CustomerPage() {
   const router = useRouter();
+  const [search, setSearch] = useState("");
+  type SortKey =
+    | "customer_id"
+    | "customer_name"
+    | "customer_contact"
+    | "customer_address";
+
+  const [sortConfig, setSortConfig] = useState<{
+    key: SortKey | null;
+    direction: "asc" | "desc";
+  }>({
+    key: null,
+    direction: "asc",
+  });
 
   const [data, setData] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,11 +47,10 @@ export default function CustomerPage() {
   // ================= LOAD DATA =================
   const loadCustomers = async () => {
     try {
-      const res = await apiFetch(`${BASE_URL}/customers`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch("/customers");
 
       if (res.status === 401) {
+        // Token refresh handled by apiFetch, but if still 401, redirect
         localStorage.removeItem("access_token");
         router.push("/login");
         return;
@@ -55,8 +66,7 @@ export default function CustomerPage() {
   };
 
   useEffect(() => {
-    if (!token) router.push("/login");
-    else loadCustomers();
+    loadCustomers();
   }, []);
 
   // ================= FORM =================
@@ -72,9 +82,7 @@ export default function CustomerPage() {
 
   const openEdit = async (id: number) => {
     try {
-      const res = await apiFetch(`${BASE_URL}/customer/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await apiFetch(`/customer/${id}`);
 
       const json = await res.json();
 
@@ -100,13 +108,12 @@ export default function CustomerPage() {
 
       const endpoint =
         editingId === null
-          ? `${BASE_URL}/customer`
-          : `${BASE_URL}/customer/${editingId}`;
+          ? `/customer`
+          : `/customer/${editingId}`;
 
       const res = await apiFetch(endpoint, {
         method: editingId === null ? "POST" : "PATCH",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": "application/x-www-form-urlencoded",
         },
         body: body.toString(),
@@ -114,7 +121,6 @@ export default function CustomerPage() {
 
       if (!res.ok) {
         const text = await res.text();
-        console.error(text);
         alert("Server menolak permintaan");
         return;
       }
@@ -122,9 +128,41 @@ export default function CustomerPage() {
       setShowModal(false);
       await loadCustomers();
     } catch (err) {
-      console.error(err);
       alert("Gagal koneksi ke server");
     }
+  };
+
+  // ================= SORTING =================
+  const sortedData = [...data].sort((a, b) => {
+    if (!sortConfig.key) return 0;
+
+    const aValue = a[sortConfig.key];
+    const bValue = b[sortConfig.key];
+
+    if (typeof aValue === "string" && typeof bValue === "string") {
+      const comparison = aValue.localeCompare(bValue);
+      return sortConfig.direction === "asc" ? comparison : -comparison;
+    } else {
+      const comparison = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      return sortConfig.direction === "asc" ? comparison : -comparison;
+    }
+  });
+
+  // ================= FILTERING =================
+  const filteredData = sortedData.filter((cus) => {
+    return (
+      cus.customer_name.toLowerCase().includes(search.toLowerCase()) ||
+      cus.customer_contact.toLowerCase().includes(search.toLowerCase()) ||
+      cus.customer_address.toLowerCase().includes(search.toLowerCase())
+    );
+  });
+
+  // ================= HANDLE SORT =================
+  const handleSort = (key: SortKey) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc"
+    }));
   };
 
   // ================= UI =================
@@ -162,6 +200,8 @@ export default function CustomerPage() {
             type="text"
             placeholder="Search customers..."
             className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text-primary"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
           <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary">
             🔍
@@ -183,27 +223,59 @@ export default function CustomerPage() {
               <tr>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("customer_id")}
                 >
-                  ID
+                  <div className="flex items-center">
+                    ID
+                    {sortConfig.key === "customer_id" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      </span>
+                    )}
+                  </div>
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("customer_name")}
                 >
-                  Name
+                  <div className="flex items-center">
+                    Name
+                    {sortConfig.key === "customer_name" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      </span>
+                    )}
+                  </div>
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("customer_contact")}
                 >
-                  Contact
+                  <div className="flex items-center">
+                    Contact
+                    {sortConfig.key === "customer_contact" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      </span>
+                    )}
+                  </div>
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("customer_address")}
                 >
-                  Address
+                  <div className="flex items-center">
+                    Address
+                    {sortConfig.key === "customer_address" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "↑" : "↓"}
+                      </span>
+                    )}
+                  </div>
                 </th>
                 <th
                   scope="col"
@@ -214,7 +286,7 @@ export default function CustomerPage() {
               </tr>
             </thead>
             <tbody className="bg-surface divide-y divide-border">
-              {data.map((cus) => (
+              {filteredData.map((cus) => (
                 <tr
                   key={cus.customer_id}
                   className="hover:bg-surface-hover transition-colors"

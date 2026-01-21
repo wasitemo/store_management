@@ -29,6 +29,18 @@ interface StuffDiscount {
 
 export default function StuffDiscountPage() {
   const router = useRouter();
+  const [search, setSearch] = useState("");
+  type SortKey =
+    | "stuff_id"
+    | "stuff_name";
+
+  const [sortConfig, setSortConfig] = useState<{
+    key: SortKey | null;
+    direction: "asc" | "desc";
+  }>({
+    key: null,
+    direction: "asc",
+  });
 
   const [data, setData] = useState<StuffDiscount[]>([]);
   const [stuffList, setStuffList] = useState<Stuff[]>([]);
@@ -65,9 +77,15 @@ export default function StuffDiscountPage() {
   };
 
   const loadStuffList = async () => {
-    const res = await apiFetch(`${BASE_URL}/stuff-discount`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await apiFetch(`${BASE_URL}/stuff-discount`);
+
+    if (res.status === 401) {
+      // Token refresh handled by apiFetch, but if still 401, redirect
+      localStorage.removeItem("access_token");
+      router.push("/login");
+      return;
+    }
+
     const json = await res.json();
     setStuffList(json.data.stuff);
   };
