@@ -30,6 +30,10 @@ interface StuffDiscount {
 export default function StuffDiscountPage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
+
   type SortKey =
     | "stuff_id"
     | "stuff_name";
@@ -69,25 +73,37 @@ export default function StuffDiscountPage() {
   }, []);
 
   const loadData = async () => {
-    const res = await apiFetch(`${BASE_URL}/stuff-discounts`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const json = await res.json();
-    setData(json.data);
+    setLoading(true);
+    setError("");
+    try {
+      const res = await apiFetch(`${BASE_URL}/stuff-discounts`);
+      if (res.status === 401) {
+        localStorage.removeItem("access_token");
+        router.push("/login");
+        return;
+      }
+      const json = await res.json();
+      setData(json.data);
+    } catch (err) {
+      setError("Failed to load data");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const loadStuffList = async () => {
-    const res = await apiFetch(`${BASE_URL}/stuff-discount`);
-
-    if (res.status === 401) {
-      // Token refresh handled by apiFetch, but if still 401, redirect
-      localStorage.removeItem("access_token");
-      router.push("/login");
-      return;
+    try {
+      const res = await apiFetch(`${BASE_URL}/stuff-discount`);
+      if (res.status === 401) {
+        localStorage.removeItem("access_token");
+        router.push("/login");
+        return;
+      }
+      const json = await res.json();
+      setStuffList(json.data.stuff);
+    } catch (err) {
+      setError("Failed to load stuff list");
     }
-
-    const json = await res.json();
-    setStuffList(json.data.stuff);
   };
 
   const openAdd = () => {
@@ -118,7 +134,36 @@ export default function StuffDiscountPage() {
     setShowModal(true);
   };
 
+  const handleSort = (key: SortKey) => {
+    setSortConfig((prev) => ({
+      key,
+      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+    }));
+  };
+
+  const filteredAndSortedData = data
+    .filter((stuff) => stuff.stuff_name.toLowerCase().includes(search.toLowerCase()))
+    .sort((a, b) => {
+      if (!sortConfig.key) return 0;
+      const aVal = a[sortConfig.key];
+      const bVal = b[sortConfig.key];
+      return sortConfig.direction === "asc"
+        ? String(aVal).localeCompare(String(bVal))
+        : String(bVal).localeCompare(String(aVal));
+    });
+
   const submitForm = async () => {
+    setFormError("");
+    // Basic validation
+    if (!editing && !selectedStuff) {
+      setFormError("Please select a stuff");
+      return;
+    }
+    if (!form.discount_name || !form.discount_value) {
+      setFormError("Discount name and value are required");
+      return;
+    }
+
     const body = new URLSearchParams();
 
     if (editing) {
@@ -145,7 +190,7 @@ export default function StuffDiscountPage() {
       body.append("discount_end", form.discount_end);
       body.append("discount_status", String(form.discount_status));
 
-      await apiFetch(`${BASE_URL}/stuff-discount`, {
+      const res = await apiFetch(`${BASE_URL}/stuff-discount`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -153,185 +198,250 @@ export default function StuffDiscountPage() {
         },
         body: body.toString(),
       });
+
+      if (!res.ok) {
+        setFormError("Failed to save discount");
+        return;
+      }
     }
 
     setShowModal(false);
     loadData();
   };
 
+  // ================= UI =================
+  if (loading) {
+    return (
+      <div className="p-container-padding flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-container-padding">
+        <div className="bg-danger/10 border border-danger text-danger px-4 py-3 rounded-lg">
+          <div className="flex items-center">
+            <span className="mr-2 text-lg">⚠️</span>
+            <span>{error}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="p-6">
-      <div className="flex justify-between mb-6">
-        <h1 className="text-2xl font-bold">Stuff Discounts</h1>
+    <div className="p-container-padding">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-text-primary">Stuff Discounts</h1>
+        <p className="text-text-secondary mt-2">Manage discounts for products</p>
+      </div>
+
+      <div className="flex justify-between items-center mb-6">
+        <div className="relative w-80">
+          <input
+            type="text"
+            placeholder="Search stuff..."
+            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text-primary"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary">
+            🔍
+          </span>
+        </div>
         <button
           onClick={openAdd}
-          className="bg-blue-600 text-white px-4 py-2 rounded"
+          className="bg-primary text-white px-5 py-2.5 rounded-lg hover:bg-primary-dark transition flex items-center shadow-sm"
         >
-          + Add Discount
+          <span className="mr-2">+</span>
+          Add Discount
         </button>
       </div>
 
-      {data.map((stuff) => (
-        <div key={stuff.stuff_id} className="mb-6 border rounded">
-          <div className="bg-gray-100 px-4 py-2 font-semibold">
-            {stuff.stuff_name}
+      {filteredAndSortedData.map((stuff) => (
+        <div key={stuff.stuff_id} className="mb-6 bg-surface rounded-xl border border-border shadow-sm overflow-hidden">
+          <div className="bg-surface-hover px-6 py-4 font-semibold text-text-primary">
+            <div className="flex items-center">
+              <span>{stuff.stuff_name}</span>
+              {sortConfig.key === "stuff_name" && (
+                <span className="ml-2">
+                  {sortConfig.direction === "asc" ? "▲" : "▼"}
+                </span>
+              )}
+            </div>
           </div>
 
-          <table className="w-full">
-            <thead>
-              <tr className="text-left border-b">
-                <th className="p-2">Name</th>
-                <th className="p-2">Type</th>
-                <th className="p-2">Value</th>
-                <th className="p-2">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stuff.stuff_discounts.map((d) => (
-                <tr key={d.discount_id} className="border-b">
-                  <td className="p-2">{d.discount_name}</td>
-                  <td className="p-2">{d.discount_type}</td>
-                  <td className="p-2">{d.discount_value}</td>
-                  <td className="p-2">
-                    <button
-                      onClick={() => openEdit(stuff.stuff_id, d)}
-                      className="text-blue-600"
-                    >
-                      Edit
-                    </button>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-border">
+              <thead className="bg-surface-hover">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                    Name
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                    Type
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                    Value
+                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                    Action
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="bg-surface divide-y divide-border">
+                {stuff.stuff_discounts.map((d) => (
+                  <tr key={d.discount_id} className="hover:bg-surface-hover transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
+                      {d.discount_name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
+                      {d.discount_type}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
+                      {d.discount_value}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <button
+                        onClick={() => openEdit(stuff.stuff_id, d)}
+                        className="text-primary hover:text-primary-dark mr-3 flex items-center"
+                      >
+                        <span className="mr-1">✏️</span> Edit
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       ))}
 
       {/* MODAL */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
-          <div className="bg-white w-full max-w-md rounded p-6 space-y-4">
-            <h2 className="text-xl font-bold">
-              {editing ? "Edit Discount" : "Add Discount"}
-            </h2>
-
-            {editing ? (
-              <>
-                <input
-                  placeholder="Discount Name"
-                  value={form.discount_name}
-                  onChange={(e) =>
-                    setForm({ ...form, discount_name: e.target.value })
-                  }
-                  className="w-full border px-3 py-2 rounded"
-                />
-
-                <select
-                  value={form.discount_type}
-                  onChange={(e) =>
-                    setForm({ ...form, discount_type: e.target.value })
-                  }
-                  className="w-full border px-3 py-2 rounded"
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-surface rounded-2xl shadow-xl w-full max-w-md border border-border">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-text-primary">
+                  {editing ? "Edit Discount" : "Add Discount"}
+                </h2>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="text-text-secondary hover:text-text-primary"
                 >
-                  <option value="fixed">Fixed</option>
-                  <option value="percentage">Percentage</option>
-                </select>
-
-                <input
-                  placeholder="Value"
-                  value={form.discount_value}
-                  onChange={(e) =>
-                    setForm({ ...form, discount_value: e.target.value })
-                  }
-                  className="w-full border px-3 py-2 rounded"
-                />
-              </>
-            ) : (
-              <>
-                <select
-                  value={selectedStuff}
-                  onChange={(e) => setSelectedStuff(Number(e.target.value))}
-                  className="w-full border px-3 py-2 rounded"
-                >
-                  <option value="">Select Product</option>
-                  {stuffList.map((s) => (
-                    <option key={s.stuff_id} value={s.stuff_id}>
-                      {s.stuff_name}
-                    </option>
-                  ))}
-                </select>
-
-                <input
-                  placeholder="Discount Name"
-                  value={form.discount_name}
-                  onChange={(e) =>
-                    setForm({ ...form, discount_name: e.target.value })
-                  }
-                  className="w-full border px-3 py-2 rounded"
-                />
-
-                <div className="grid grid-cols-2 gap-2">
-                  <select
-                    value={form.discount_type}
-                    onChange={(e) =>
-                      setForm({ ...form, discount_type: e.target.value })
-                    }
-                    className="border px-3 py-2 rounded"
-                  >
-                    <option value="fixed">Fixed</option>
-                    <option value="percentage">Percentage</option>
-                  </select>
-
+                  ✕
+                </button>
+              </div>
+              {formError && (
+                <div className="mb-4 bg-danger/10 border border-danger text-danger px-4 py-3 rounded-lg">
+                  <div className="flex items-center">
+                    <span className="mr-2 text-lg">⚠️</span>
+                    <span>{formError}</span>
+                  </div>
+                </div>
+              )}
+              <div className="space-y-4">
+                {!editing && (
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-2">Stuff</label>
+                    <select
+                      value={selectedStuff}
+                      onChange={(e) => setSelectedStuff(Number(e.target.value))}
+                      className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
+                    >
+                      <option value="">Select Stuff</option>
+                      {stuffList.map((s) => (
+                        <option key={s.stuff_id} value={s.stuff_id}>
+                          {s.stuff_name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Discount Name</label>
                   <input
-                    placeholder="Value"
-                    value={form.discount_value}
-                    onChange={(e) =>
-                      setForm({ ...form, discount_value: e.target.value })
-                    }
-                    className="border px-3 py-2 rounded"
+                    placeholder="Enter discount name"
+                    value={form.discount_name}
+                    onChange={(e) => setForm({ ...form, discount_name: e.target.value })}
+                    className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
                   />
                 </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="date"
-                    value={form.discount_start}
-                    onChange={(e) =>
-                      setForm({ ...form, discount_start: e.target.value })
-                    }
-                    className="border px-3 py-2 rounded"
-                  />
-                  <input
-                    type="date"
-                    value={form.discount_end}
-                    onChange={(e) =>
-                      setForm({ ...form, discount_end: e.target.value })
-                    }
-                    className="border px-3 py-2 rounded"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-2">Type</label>
+                    <select
+                      value={form.discount_type}
+                      onChange={(e) => setForm({ ...form, discount_type: e.target.value })}
+                      className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
+                    >
+                      <option value="fixed">Fixed</option>
+                      <option value="percentage">Percentage</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-2">Value</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      placeholder="Enter value"
+                      value={form.discount_value}
+                      onChange={(e) => setForm({ ...form, discount_value: e.target.value })}
+                      className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
+                    />
+                  </div>
                 </div>
-
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={form.discount_status}
-                    onChange={(e) =>
-                      setForm({ ...form, discount_status: e.target.checked })
-                    }
-                  />
-                  Active
-                </label>
-              </>
-            )}
-
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setShowModal(false)}>Cancel</button>
-              <button
-                onClick={submitForm}
-                className="bg-blue-600 text-white px-4 py-2 rounded"
-              >
-                {editing ? "Update" : "Create"}
-              </button>
+                {!editing && (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-text-secondary mb-2">Start Date</label>
+                        <input
+                          type="date"
+                          value={form.discount_start}
+                          onChange={(e) => setForm({ ...form, discount_start: e.target.value })}
+                          className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-text-secondary mb-2">End Date</label>
+                        <input
+                          type="date"
+                          value={form.discount_end}
+                          onChange={(e) => setForm({ ...form, discount_end: e.target.value })}
+                          className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
+                        />
+                      </div>
+                    </div>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={form.discount_status}
+                        onChange={(e) => setForm({ ...form, discount_status: e.target.checked })}
+                        className="rounded"
+                      />
+                      <span className="text-sm text-text-secondary">Active</span>
+                    </label>
+                  </>
+                )}
+              </div>
+              <div className="flex justify-end gap-3 pt-6">
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="px-5 py-2.5 rounded-lg border border-border text-text-primary hover:bg-surface-hover transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitForm}
+                  className="bg-primary text-white px-5 py-2.5 rounded-lg hover:bg-primary-dark transition shadow-sm"
+                >
+                  {editing ? "Update" : "Create"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

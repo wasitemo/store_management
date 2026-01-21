@@ -29,37 +29,35 @@ export default function StockPage() {
   const [stuffList, setStuffList] = useState<Stuff[]>([]);
   const [warehouseList, setWarehouseList] = useState<Warehouse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
+  const [search, setSearch] = useState("");
 
-  const [showModal, setShowModal] = useState(false);
-  const [showUpload, setShowUpload] = useState(false);
+  type SortKey = "warehouse_name" | "stuff_name" | "total_stock";
 
-  const [form, setForm] = useState({
-    warehouse_id: "",
-    stuff_id: "",
-    imei_1: "",
-    imei_2: "",
-    sn: "",
+  const [sortConfig, setSortConfig] = useState<{
+    key: SortKey | null;
+    direction: "asc" | "desc";
+  }>({
+    key: null,
+    direction: "asc",
   });
-
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
   // ================= LOAD =================
   const loadStocks = async () => {
+    setLoading(true);
+    setError("");
     try {
       const res = await apiFetch("/stocks");
-
       if (res.status === 401) {
-        // Token refresh handled by apiFetch, but if still 401, redirect
         localStorage.removeItem("access_token");
         router.push("/login");
         return;
       }
-
       const json = await res.json();
       setData(json.data || []);
+    } catch (err) {
+      setError("Failed to load data");
     } finally {
       setLoading(false);
     }
@@ -79,14 +77,9 @@ export default function StockPage() {
 
   // ================= SUBMIT MANUAL =================
   const submitStock = async () => {
-    if (
-      !form.warehouse_id ||
-      !form.stuff_id ||
-      !form.imei_1 ||
-      !form.imei_2 ||
-      !form.sn
-    ) {
-      alert("Semua field wajib diisi");
+    setFormError("");
+    if (!form.warehouse_id || !form.stuff_id || !form.imei_1 || !form.imei_2 || !form.sn) {
+      setFormError("All fields are required");
       return;
     }
 
@@ -120,7 +113,7 @@ export default function StockPage() {
         });
         loadStocks();
       } else {
-        alert(json.message || "Error");
+        setFormError(json.message || "Error");
       }
     } catch (err) {
       alert("Network error");
@@ -129,8 +122,9 @@ export default function StockPage() {
 
   // ================= UPLOAD CSV / EXCEL =================
   const submitUpload = async () => {
+    setFormError("");
     if (!uploadFile) {
-      alert("Pilih file terlebih dahulu");
+      setFormError("Please select a file");
       return;
     }
 
@@ -151,19 +145,73 @@ export default function StockPage() {
         setUploadFile(null);
         loadStocks();
       } else {
-        alert(json.message || "Upload gagal");
+        setFormError(json.message || "Upload failed");
       }
     } catch (err) {
       alert("Upload error");
     }
   };
 
-  if (loading)
+  const [showModal, setShowModal] = useState(false);
+  const [showUpload, setShowUpload] = useState(false);
+
+  const [form, setForm] = useState({
+    warehouse_id: "",
+    stuff_id: "",
+    imei_1: "",
+    imei_2: "",
+    sn: "",
+  });
+
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+
+  const handleSort = (key: SortKey) => {
+    setSortConfig((prev) => ({
+      key,
+      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+    }));
+  };
+
+  const filteredAndSortedData = data
+    .filter((s) => {
+      const keyword = search.toLowerCase();
+      return (
+        s.warehouse_name.toLowerCase().includes(keyword) ||
+        s.stuff_name.toLowerCase().includes(keyword)
+      );
+    })
+    .sort((a, b) => {
+      if (!sortConfig.key) return 0;
+      const aVal = a[sortConfig.key];
+      const bVal = b[sortConfig.key];
+      return sortConfig.direction === "asc"
+        ? String(aVal).localeCompare(String(bVal))
+        : String(bVal).localeCompare(String(aVal));
+    });
+
+  if (loading) {
     return (
       <div className="p-container-padding flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
+  }
+
+  if (error) {
+    return (
+      <div className="p-container-padding">
+        <div className="bg-danger/10 border border-danger text-danger px-4 py-3 rounded-lg">
+          <div className="flex items-center">
+            <span className="mr-2 text-lg">⚠️</span>
+            <span>{error}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-container-padding">
@@ -180,6 +228,8 @@ export default function StockPage() {
             type="text"
             placeholder="Search stocks..."
             className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text-primary"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
           <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary">
             🔍
@@ -209,27 +259,48 @@ export default function StockPage() {
             <thead className="bg-surface-hover">
               <tr>
                 <th
-                  scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("warehouse_name")}
                 >
-                  Warehouse
+                  <div className="flex items-center">
+                    Warehouse
+                    {sortConfig.key === "warehouse_name" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "▲" : "▼"}
+                      </span>
+                    )}
+                  </div>
                 </th>
                 <th
-                  scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("stuff_name")}
                 >
-                  Product
+                  <div className="flex items-center">
+                    Product
+                    {sortConfig.key === "stuff_name" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "▲" : "▼"}
+                      </span>
+                    )}
+                  </div>
                 </th>
                 <th
-                  scope="col"
-                  className="px-6 py-4 text-center text-xs font-medium text-text-secondary uppercase tracking-wider"
+                  className="px-6 py-4 text-center text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("total_stock")}
                 >
-                  Total
+                  <div className="flex items-center justify-center">
+                    Total
+                    {sortConfig.key === "total_stock" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "▲" : "▼"}
+                      </span>
+                    )}
+                  </div>
                 </th>
               </tr>
             </thead>
             <tbody className="bg-surface divide-y divide-border">
-              {data.map((s) => (
+              {filteredAndSortedData.map((s) => (
                 <tr
                   key={`${s.warehouse_id}-${s.stuff_id}`}
                   className="hover:bg-surface-hover transition-colors"
@@ -256,9 +327,7 @@ export default function StockPage() {
           <div className="bg-surface rounded-2xl shadow-xl w-full max-w-md border border-border">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-text-primary">
-                  Upload Stock
-                </h2>
+                <h2 className="text-xl font-bold text-text-primary">Upload Stock</h2>
                 <button
                   onClick={() => setShowUpload(false)}
                   className="text-text-secondary hover:text-text-primary"
@@ -266,12 +335,17 @@ export default function StockPage() {
                   ✕
                 </button>
               </div>
-
+              {formError && (
+                <div className="mb-4 bg-danger/10 border border-danger text-danger px-4 py-3 rounded-lg">
+                  <div className="flex items-center">
+                    <span className="mr-2 text-lg">⚠️</span>
+                    <span>{formError}</span>
+                  </div>
+                </div>
+              )}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-2">
-                    Select File
-                  </label>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Select File</label>
                   <input
                     type="file"
                     accept=".csv,.xlsx,.xls"
@@ -280,7 +354,6 @@ export default function StockPage() {
                   />
                 </div>
               </div>
-
               <div className="flex justify-end gap-3 pt-6">
                 <button
                   onClick={() => setShowUpload(false)}
@@ -306,9 +379,7 @@ export default function StockPage() {
           <div className="bg-surface rounded-2xl shadow-xl w-full max-w-md border border-border">
             <div className="p-6">
               <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-text-primary">
-                  Add Stock
-                </h2>
+                <h2 className="text-xl font-bold text-text-primary">Add Stock</h2>
                 <button
                   onClick={() => setShowModal(false)}
                   className="text-text-secondary hover:text-text-primary"
@@ -316,18 +387,21 @@ export default function StockPage() {
                   ✕
                 </button>
               </div>
-
+              {formError && (
+                <div className="mb-4 bg-danger/10 border border-danger text-danger px-4 py-3 rounded-lg">
+                  <div className="flex items-center">
+                    <span className="mr-2 text-lg">⚠️</span>
+                    <span>{formError}</span>
+                  </div>
+                </div>
+              )}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-2">
-                    Warehouse
-                  </label>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Warehouse</label>
                   <select
                     className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
                     value={form.warehouse_id}
-                    onChange={(e) =>
-                      setForm({ ...form, warehouse_id: e.target.value })
-                    }
+                    onChange={(e) => setForm({ ...form, warehouse_id: e.target.value })}
                   >
                     <option value="">Select Warehouse</option>
                     {warehouseList.map((w) => (
@@ -337,11 +411,8 @@ export default function StockPage() {
                     ))}
                   </select>
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-2">
-                    Product
-                  </label>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Product</label>
                   <select
                     className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
                     value={form.stuff_id}
@@ -355,11 +426,8 @@ export default function StockPage() {
                     ))}
                   </select>
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-2">
-                    IMEI 1
-                  </label>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">IMEI 1</label>
                   <input
                     placeholder="Enter IMEI 1"
                     className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
@@ -367,11 +435,8 @@ export default function StockPage() {
                     onChange={(e) => setForm({ ...form, imei_1: e.target.value })}
                   />
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-2">
-                    IMEI 2
-                  </label>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">IMEI 2</label>
                   <input
                     placeholder="Enter IMEI 2"
                     className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
@@ -379,11 +444,8 @@ export default function StockPage() {
                     onChange={(e) => setForm({ ...form, imei_2: e.target.value })}
                   />
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-2">
-                    Serial Number
-                  </label>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Serial Number</label>
                   <input
                     placeholder="Enter Serial Number"
                     className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
@@ -392,7 +454,6 @@ export default function StockPage() {
                   />
                 </div>
               </div>
-
               <div className="flex justify-end gap-3 pt-6">
                 <button
                   onClick={() => setShowModal(false)}

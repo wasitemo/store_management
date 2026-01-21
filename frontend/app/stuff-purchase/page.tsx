@@ -63,22 +63,31 @@ export default function StuffPurchasePage() {
 
   const [file, setFile] = useState<File | null>(null);
 
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
+
   const token =
     typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
   // ================= LOAD =================
   const loadData = async () => {
-    const res = await apiFetch(`${BASE_URL}/stuff-purchases`);
-
-    if (res.status === 401) {
-      // Token refresh handled by apiFetch, but if still 401, redirect
-      localStorage.removeItem("access_token");
-      router.push("/login");
-      return;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await apiFetch(`${BASE_URL}/stuff-purchases`);
+      if (res.status === 401) {
+        localStorage.removeItem("access_token");
+        router.push("/login");
+        return;
+      }
+      const json = await res.json();
+      setData(json.data);
+    } catch (err) {
+      setError("Failed to load data");
+    } finally {
+      setLoading(false);
     }
-
-    const json = await res.json();
-    setData(json.data);
   };
 
   useEffect(() => {
@@ -87,15 +96,26 @@ export default function StuffPurchasePage() {
 
   // ================= DETAIL =================
   const openDetail = async (id: number) => {
-    const res = await apiFetch(`${BASE_URL}/stuff-purchase-detail/${id}`);
-
-    const json = await res.json();
-    setDetail(json.data);
-    setShowDetail(true);
+    setError("");
+    try {
+      const res = await apiFetch(`${BASE_URL}/stuff-purchase-detail/${id}`);
+      const json = await res.json();
+      setDetail(json.data);
+      setShowDetail(true);
+    } catch (err) {
+      setError("Failed to load detail");
+    }
   };
 
   // ================= MANUAL ADD =================
   const submitForm = async () => {
+    setFormError("");
+    // Basic validation
+    if (!form.supplier_id || !form.warehouse_id || !form.stuff_id || !form.buy_date || !form.quantity || !form.buy_price) {
+      setFormError("All fields are required");
+      return;
+    }
+
     const body = new URLSearchParams();
     Object.entries(form).forEach(([k, v]) => body.append(k, v));
 
@@ -108,7 +128,7 @@ export default function StuffPurchasePage() {
     });
 
     if (!res.ok) {
-      alert("Failed to save purchase");
+      setFormError("Failed to save purchase");
       return;
     }
 
@@ -174,6 +194,28 @@ export default function StuffPurchasePage() {
     }));
   };
 
+  // ================= UI =================
+  if (loading) {
+    return (
+      <div className="p-container-padding flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-container-padding">
+        <div className="bg-danger/10 border border-danger text-danger px-4 py-3 rounded-lg">
+          <div className="flex items-center">
+            <span className="mr-2 text-lg">⚠️</span>
+            <span>{error}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-container-padding">
       <div className="mb-8">
@@ -227,7 +269,7 @@ export default function StuffPurchasePage() {
                     ID
                     {sortConfig.key === "stuff_purchase_id" && (
                       <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "↑" : "↓"}
+                        {sortConfig.direction === "asc" ? "▲" : "▼"}
                       </span>
                     )}
                   </div>
@@ -314,57 +356,162 @@ export default function StuffPurchasePage() {
 
       {/* DETAIL MODAL */}
       {showDetail && detail && (
-        <div className="fixed inset-0 bg-black/40 flex justify-center items-center">
-          <div className="bg-white p-6 rounded w-96 space-y-2">
-            <h2 className="font-bold text-lg">Purchase Detail</h2>
-            <p>Supplier: {detail.supplier_name}</p>
-            <p>Employee: {detail.employee_name}</p>
-            <p>Warehouse: {detail.warehouse_name}</p>
-            <p>Stuff: {detail.stuff_name}</p>
-            <p>Batch: {detail.buy_batch}</p>
-            <p>Qty: {detail.quantity}</p>
-            <p>Price: {detail.buy_price}</p>
-            <p>Total: {detail.total_price}</p>
-
-            <button
-              onClick={() => setShowDetail(false)}
-              className="w-full border py-2 mt-2"
-            >
-              Close
-            </button>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-surface rounded-2xl shadow-xl w-full max-w-md border border-border">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-text-primary">Purchase Detail</h2>
+                <button
+                  onClick={() => setShowDetail(false)}
+                  className="text-text-secondary hover:text-text-primary"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="space-y-2">
+                <p><strong>Supplier:</strong> {detail.supplier_name}</p>
+                <p><strong>Employee:</strong> {detail.employee_name}</p>
+                <p><strong>Warehouse:</strong> {detail.warehouse_name}</p>
+                <p><strong>Stuff:</strong> {detail.stuff_name}</p>
+                <p><strong>Batch:</strong> {detail.buy_batch}</p>
+                <p><strong>Qty:</strong> {detail.quantity}</p>
+                <p><strong>Price:</strong> {detail.buy_price}</p>
+                <p><strong>Total:</strong> {detail.total_price}</p>
+              </div>
+              <button
+                onClick={() => setShowDetail(false)}
+                className="w-full border border-border py-2 mt-4 rounded-lg hover:bg-surface-hover transition"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* MANUAL MODAL */}
       {showAdd && (
-        <div className="fixed inset-0 bg-black/40 flex justify-center items-center">
-          <div className="bg-white p-6 rounded w-96 space-y-2">
-            <h2 className="font-bold text-lg">Add Purchase</h2>
-
-            {Object.keys(form).map((key) => (
-              <input
-                key={key}
-                placeholder={key}
-                className="w-full border p-2"
-                value={(form as any)[key]}
-                onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-              />
-            ))}
-
-            <div className="flex gap-2 pt-3">
-              <button
-                onClick={() => setShowAdd(false)}
-                className="border w-1/2 py-2"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={submitForm}
-                className="bg-primary text-white w-1/2 py-2"
-              >
-                Save
-              </button>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-surface rounded-2xl shadow-xl w-full max-w-md border border-border">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-text-primary">Add Purchase</h2>
+                <button
+                  onClick={() => setShowAdd(false)}
+                  className="text-text-secondary hover:text-text-primary"
+                >
+                  ✕
+                </button>
+              </div>
+              {formError && (
+                <div className="mb-4 bg-danger/10 border border-danger text-danger px-4 py-3 rounded-lg">
+                  <div className="flex items-center">
+                    <span className="mr-2 text-lg">⚠️</span>
+                    <span>{formError}</span>
+                  </div>
+                </div>
+              )}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Supplier ID</label>
+                  <input
+                    name="supplier_id"
+                    placeholder="Enter supplier ID"
+                    className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
+                    value={form.supplier_id}
+                    onChange={(e) => setForm({ ...form, supplier_id: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Warehouse ID</label>
+                  <input
+                    name="warehouse_id"
+                    placeholder="Enter warehouse ID"
+                    className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
+                    value={form.warehouse_id}
+                    onChange={(e) => setForm({ ...form, warehouse_id: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Stuff ID</label>
+                  <input
+                    name="stuff_id"
+                    placeholder="Enter stuff ID"
+                    className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
+                    value={form.stuff_id}
+                    onChange={(e) => setForm({ ...form, stuff_id: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Buy Date</label>
+                  <input
+                    name="buy_date"
+                    type="date"
+                    className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
+                    value={form.buy_date}
+                    onChange={(e) => setForm({ ...form, buy_date: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Buy Batch</label>
+                  <input
+                    name="buy_batch"
+                    placeholder="Enter batch"
+                    className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
+                    value={form.buy_batch}
+                    onChange={(e) => setForm({ ...form, buy_batch: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Quantity</label>
+                  <input
+                    name="quantity"
+                    type="number"
+                    placeholder="Enter quantity"
+                    className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
+                    value={form.quantity}
+                    onChange={(e) => setForm({ ...form, quantity: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Buy Price</label>
+                  <input
+                    name="buy_price"
+                    type="number"
+                    step="0.01"
+                    placeholder="Enter price"
+                    className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
+                    value={form.buy_price}
+                    onChange={(e) => setForm({ ...form, buy_price: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Total Price</label>
+                  <input
+                    name="total_price"
+                    type="number"
+                    step="0.01"
+                    placeholder="Enter total"
+                    className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
+                    value={form.total_price}
+                    onChange={(e) => setForm({ ...form, total_price: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-6">
+                <button
+                  onClick={() => setShowAdd(false)}
+                  className="px-5 py-2.5 rounded-lg border border-border text-text-primary hover:bg-surface-hover transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitForm}
+                  className="bg-primary text-white px-5 py-2.5 rounded-lg hover:bg-primary-dark transition shadow-sm"
+                >
+                  Save
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -372,32 +519,40 @@ export default function StuffPurchasePage() {
 
       {/* UPLOAD MODAL */}
       {showUpload && (
-        <div className="fixed inset-0 bg-black/40 flex justify-center items-center">
-          <div className="bg-white p-6 rounded w-96 space-y-4">
-            <h2 className="font-bold text-lg">Upload Purchase File</h2>
-
-            <input
-              type="file"
-              accept=".csv,.xlsx,.xls"
-              className="w-full border p-2"
-              onChange={(e) =>
-                setFile(e.target.files ? e.target.files[0] : null)
-              }
-            />
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowUpload(false)}
-                className="border w-1/2 py-2"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={submitUpload}
-                className="bg-success text-white w-1/2 py-2"
-              >
-                Upload
-              </button>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-surface rounded-2xl shadow-xl w-full max-w-md border border-border">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-text-primary">Upload Purchase File</h2>
+                <button
+                  onClick={() => setShowUpload(false)}
+                  className="text-text-secondary hover:text-text-primary"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="space-y-4">
+                <input
+                  type="file"
+                  accept=".csv,.xlsx,.xls"
+                  className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
+                  onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)}
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-6">
+                <button
+                  onClick={() => setShowUpload(false)}
+                  className="px-5 py-2.5 rounded-lg border border-border text-text-primary hover:bg-surface-hover transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitUpload}
+                  className="bg-success text-white px-5 py-2.5 rounded-lg hover:bg-emerald-600 transition shadow-sm"
+                >
+                  Upload
+                </button>
+              </div>
             </div>
           </div>
         </div>

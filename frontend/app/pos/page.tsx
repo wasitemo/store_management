@@ -16,6 +16,8 @@ export default function OrderCreatePage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [searchValue, setSearchValue] = useState("");
   const [searchLoading, setSearchLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const [master, setMaster] = useState<any>({
     customer: [],
@@ -68,17 +70,22 @@ export default function OrderCreatePage() {
   }, []);
 
   const loadMaster = async () => {
-    const res = await apiFetch("/customer-order");
-
-    if (res.status === 401) {
-      // Token refresh handled by apiFetch, but if still 401, redirect
-      localStorage.removeItem("access_token");
-      router.push("/login");
-      return;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await apiFetch("/customer-order");
+      if (res.status === 401) {
+        localStorage.removeItem("access_token");
+        router.push("/login");
+        return;
+      }
+      const json = await res.json();
+      setMaster(json.data);
+    } catch (err) {
+      setError("Failed to load master data");
+    } finally {
+      setLoading(false);
     }
-
-    const json = await res.json();
-    setMaster(json.data);
   };
 
   /* ================= SEARCH ITEM ================= */
@@ -197,13 +204,41 @@ export default function OrderCreatePage() {
     }
   };
 
+  // ================= UI =================
+  if (loading) {
+    return (
+      <div className="p-container-padding flex justify-center items-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-container-padding">
+        <div className="bg-danger/10 border border-danger text-danger px-4 py-3 rounded-lg">
+          <div className="flex items-center">
+            <span className="mr-2 text-lg">⚠️</span>
+            <span>{error}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-container-padding max-w-5xl mx-auto">
-      <h1 className="text-3xl font-bold mb-6">Create Order</h1>
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-text-primary">Create Order</h1>
+        <p className="text-text-secondary mt-2">Create a new customer order</p>
+      </div>
 
       {errorMsg && (
-        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-          ⚠️ {errorMsg}
+        <div className="mb-4 bg-danger/10 border border-danger text-danger px-4 py-3 rounded-lg">
+          <div className="flex items-center">
+            <span className="mr-2 text-lg">⚠️</span>
+            <span>{errorMsg}</span>
+          </div>
         </div>
       )}
 
@@ -215,9 +250,9 @@ export default function OrderCreatePage() {
           ["Payment Method", "payment_method_id", master.payment_method],
         ].map(([label, key, list]: any) => (
           <div key={key}>
-            <label className="block mb-2 text-sm">{label}</label>
+            <label className="block text-sm font-medium text-text-secondary mb-2">{label}</label>
             <select
-              className="w-full border rounded-lg px-4 py-3"
+              className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
               value={form[key]}
               onChange={(e) => setForm({ ...form, [key]: e.target.value })}
             >
@@ -235,19 +270,22 @@ export default function OrderCreatePage() {
         ))}
 
         <div>
-          <label className="block mb-2 text-sm">Order Date</label>
+          <label className="block text-sm font-medium text-text-secondary mb-2">Order Date</label>
           <input
             type="date"
-            className="w-full border rounded-lg px-4 py-3 bg-gray-100 cursor-not-allowed"
+            className="w-full rounded-lg border border-border px-4 py-3 bg-surface text-text-primary cursor-not-allowed"
             value={form.order_date}
             disabled
           />
         </div>
 
         <div>
-          <label className="block mb-2 text-sm">Payment</label>
+          <label className="block text-sm font-medium text-text-secondary mb-2">Payment</label>
           <input
-            className="w-full border rounded-lg px-4 py-3"
+            type="number"
+            step="0.01"
+            placeholder="Enter payment amount"
+            className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
             value={form.payment}
             onChange={(e) => setForm({ ...form, payment: e.target.value })}
           />
@@ -256,11 +294,11 @@ export default function OrderCreatePage() {
 
       {/* ================= SEARCH ITEM ================= */}
       <div className="mb-6">
-        <h3 className="font-semibold mb-2">Scan Item</h3>
+        <h3 className="font-semibold text-text-primary mb-2">Scan Item</h3>
         <div className="flex gap-3">
           <input
             placeholder="IMEI / SN / Barcode"
-            className="flex-1 border rounded px-4 py-3"
+            className="flex-1 rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && searchItem()}
@@ -268,7 +306,7 @@ export default function OrderCreatePage() {
           <button
             onClick={searchItem}
             disabled={searchLoading}
-            className="bg-primary text-white px-6 rounded"
+            className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition shadow-sm"
           >
             {searchLoading ? "Searching..." : "Search"}
           </button>
@@ -278,61 +316,74 @@ export default function OrderCreatePage() {
       {/* ================= ITEMS TABLE ================= */}
       {form.items.length > 0 && (
         <div className="mb-6">
-          <h3 className="font-semibold mb-3">Items</h3>
-
-          <table className="w-full border text-sm">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="border p-2 text-left">Nama</th>
-                <th className="border p-2 text-left">Varian</th>
-                <th className="border p-2 text-right">Harga</th>
-                <th className="border p-2 text-center">Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {form.items.map((item: any, index: number) => (
-                <tr key={index}>
-                  <td className="border p-2">{item.stuff_name}</td>
-                  <td className="border p-2">
-                    {item.stuff_variant || "-"}
-                  </td>
-                  <td className="border p-2 text-right">
-                    {Number(item.current_sell_price).toLocaleString("id-ID")}
-                  </td>
-                  <td className="border p-2 text-center">
-                    <button
-                      onClick={() => removeItem(index)}
-                      className="text-red-600 hover:underline"
-                    >
-                      Hapus
-                    </button>
-                  </td>
-                </tr>
-              ))}
-
-              {/* TOTAL */}
-              <tr className="font-semibold bg-gray-50">
-                <td className="border p-2" colSpan={2}>
-                  Total
-                </td>
-                <td className="border p-2 text-right">
-                  {totalPrice.toLocaleString("id-ID")}
-                </td>
-                <td className="border p-2"></td>
-              </tr>
-            </tbody>
-          </table>
+          <h3 className="font-semibold text-text-primary mb-3">Items</h3>
+          <div className="bg-surface rounded-xl border border-border shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-border">
+                <thead className="bg-surface-hover">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                      Name
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
+                      Variant
+                    </th>
+                    <th className="px-6 py-4 text-right text-xs font-medium text-text-secondary uppercase tracking-wider">
+                      Price
+                    </th>
+                    <th className="px-6 py-4 text-center text-xs font-medium text-text-secondary uppercase tracking-wider">
+                      Action
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-surface divide-y divide-border">
+                  {form.items.map((item: any, index: number) => (
+                    <tr key={index} className="hover:bg-surface-hover transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
+                        {item.stuff_name}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
+                        {item.stuff_variant || "-"}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary text-right">
+                        {Number(item.current_sell_price).toLocaleString("id-ID")}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center text-sm">
+                        <button
+                          onClick={() => removeItem(index)}
+                          className="text-danger hover:text-danger-dark"
+                        >
+                          Remove
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {/* TOTAL */}
+                  <tr className="font-semibold bg-surface-hover">
+                    <td className="px-6 py-4 text-sm text-text-primary" colSpan={2}>
+                      Total
+                    </td>
+                    <td className="px-6 py-4 text-sm text-text-primary text-right">
+                      {totalPrice.toLocaleString("id-ID")}
+                    </td>
+                    <td className="px-6 py-4"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 
       {/* ================= DISCOUNTS ================= */}
       <div className="mb-6">
-        <h3 className="font-semibold mb-3">Discounts</h3>
+        <h3 className="font-semibold text-text-primary mb-3">Discounts</h3>
         <div className="grid grid-cols-2 gap-3">
           {master.order_discount.map((d: any) => (
             <label key={d.discount_id} className="flex gap-2 items-center">
               <input
                 type="checkbox"
+                className="rounded"
                 checked={form.discounts.some(
                   (x: any) => x.discount_id === d.discount_id,
                 )}
@@ -355,17 +406,16 @@ export default function OrderCreatePage() {
                   }
                 }}
               />
-              {d.discount_name}
+              <span className="text-sm text-text-secondary">{d.discount_name}</span>
             </label>
           ))}
         </div>
       </div>
 
-
       <div className="flex justify-end">
         <button
           onClick={submitOrder}
-          className="bg-primary text-white px-6 py-3 rounded-lg"
+          className="bg-primary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition shadow-sm"
         >
           Save Order
         </button>

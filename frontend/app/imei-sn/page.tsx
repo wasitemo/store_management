@@ -11,48 +11,97 @@ export default function ImeiSnPage() {
 
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const [filter, setFilter] = useState({ search: "", status: "" });
 
+  type SortKey = "stuff_name" | "warehouse_name" | "imei_1" | "imei_2" | "sn" | "stock_status";
+
+  const [sortConfig, setSortConfig] = useState<{
+    key: SortKey | null;
+    direction: "asc" | "desc";
+  }>({
+    key: null,
+    direction: "asc",
+  });
+
   const loadData = async () => {
-    const res = await apiFetch("/imei-sn");
-
-    if (res.status === 401) {
-      // Token refresh handled by apiFetch, but if still 401, redirect
-      localStorage.removeItem("access_token");
-      router.push("/login");
-      return;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await apiFetch("/imei-sn");
+      if (res.status === 401) {
+        localStorage.removeItem("access_token");
+        router.push("/login");
+        return;
+      }
+      const json = await res.json();
+      setData(json.data);
+    } catch (err) {
+      setError("Failed to load data");
+    } finally {
+      setLoading(false);
     }
-
-    const json = await res.json();
-    setData(json.data);
-    setLoading(false);
   };
 
   useEffect(() => {
     loadData();
   }, []);
 
-  const filtered = data.filter((item) => {
-    const matchSearch =
-      item.stuff_name.toLowerCase().includes(filter.search.toLowerCase()) ||
-      item.warehouse_name.toLowerCase().includes(filter.search.toLowerCase()) ||
-      (item.imei_1 || "").includes(filter.search) ||
-      (item.sn || "").includes(filter.search);
+  const handleSort = (key: SortKey) => {
+    setSortConfig((prev) => ({
+      key,
+      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
+    }));
+  };
 
-    const matchStatus = filter.status
-      ? item.stock_status === filter.status
-      : true;
+  const filteredAndSorted = data
+    .filter((item) => {
+      const matchSearch =
+        (item.stuff_name || "").toLowerCase().includes(filter.search.toLowerCase()) ||
+        (item.warehouse_name || "").toLowerCase().includes(filter.search.toLowerCase()) ||
+        (item.imei_1 || "").includes(filter.search) ||
+        (item.sn || "").includes(filter.search);
 
-    return matchSearch && matchStatus;
-  });
+      const matchStatus = filter.status ? item.stock_status === filter.status : true;
 
-  if (loading)
+      return matchSearch && matchStatus;
+    })
+    .sort((a, b) => {
+      if (!sortConfig.key) return 0;
+
+      const aVal = a[sortConfig.key];
+      const bVal = b[sortConfig.key];
+
+      if (typeof aVal === "number") {
+        return sortConfig.direction === "asc" ? aVal - (bVal as number) : (bVal as number) - aVal;
+      }
+
+      return sortConfig.direction === "asc"
+        ? String(aVal).localeCompare(String(bVal))
+        : String(bVal).localeCompare(String(aVal));
+    });
+
+  if (loading) {
     return (
       <div className="p-container-padding flex justify-center items-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
+  }
+
+  if (error) {
+    return (
+      <div className="p-container-padding">
+        <div className="bg-danger/10 border border-danger text-danger px-4 py-3 rounded-lg">
+          <div className="flex items-center">
+            <span className="mr-2 text-lg">⚠️</span>
+            <span>{error}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-container-padding">
@@ -62,17 +111,29 @@ export default function ImeiSnPage() {
       </div>
 
       <div className="flex justify-between items-center mb-6">
-        <div className="relative w-80">
-          <input
-            type="text"
-            placeholder="Search stuff, warehouse, imei, sn..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text-primary"
-            value={filter.search}
-            onChange={(e) => setFilter({ ...filter, search: e.target.value })}
-          />
-          <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary">
-            🔍
-          </span>
+        <div className="flex gap-4">
+          <div className="relative w-80">
+            <input
+              type="text"
+              placeholder="Search stuff, warehouse, imei, sn..."
+              className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text-primary"
+              value={filter.search}
+              onChange={(e) => setFilter({ ...filter, search: e.target.value })}
+            />
+            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary">
+              🔍
+            </span>
+          </div>
+          <select
+            value={filter.status}
+            onChange={(e) => setFilter({ ...filter, status: e.target.value })}
+            className="rounded-lg border border-border px-4 py-2.5 bg-surface focus:outline-none focus:ring-2 focus:ring-primary text-text-primary"
+          >
+            <option value="">All Status</option>
+            <option value="ready">Ready</option>
+            <option value="sold">Sold</option>
+            <option value="damaged">Damaged</option>
+          </select>
         </div>
       </div>
 
@@ -81,29 +142,89 @@ export default function ImeiSnPage() {
           <table className="min-w-full divide-y divide-border">
             <thead className="bg-surface-hover">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  Stuff
+                <th
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("stuff_name")}
+                >
+                  <div className="flex items-center">
+                    Stuff
+                    {sortConfig.key === "stuff_name" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "▲" : "▼"}
+                      </span>
+                    )}
+                  </div>
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  Warehouse
+                <th
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("warehouse_name")}
+                >
+                  <div className="flex items-center">
+                    Warehouse
+                    {sortConfig.key === "warehouse_name" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "▲" : "▼"}
+                      </span>
+                    )}
+                  </div>
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  IMEI 1
+                <th
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("imei_1")}
+                >
+                  <div className="flex items-center">
+                    IMEI 1
+                    {sortConfig.key === "imei_1" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "▲" : "▼"}
+                      </span>
+                    )}
+                  </div>
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  IMEI 2
+                <th
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("imei_2")}
+                >
+                  <div className="flex items-center">
+                    IMEI 2
+                    {sortConfig.key === "imei_2" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "▲" : "▼"}
+                      </span>
+                    )}
+                  </div>
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  Serial Number
+                <th
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("sn")}
+                >
+                  <div className="flex items-center">
+                    Serial Number
+                    {sortConfig.key === "sn" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "▲" : "▼"}
+                      </span>
+                    )}
+                  </div>
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">
-                  Status
+                <th
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
+                  onClick={() => handleSort("stock_status")}
+                >
+                  <div className="flex items-center">
+                    Status
+                    {sortConfig.key === "stock_status" && (
+                      <span className="ml-1">
+                        {sortConfig.direction === "asc" ? "▲" : "▼"}
+                      </span>
+                    )}
+                  </div>
                 </th>
               </tr>
             </thead>
 
             <tbody className="divide-y divide-border bg-surface">
-              {filtered.map((item, i) => (
+              {filteredAndSorted.map((item, i) => (
                 <tr key={i} className="hover:bg-surface-hover transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
                     {item.stuff_name}
