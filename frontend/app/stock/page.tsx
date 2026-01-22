@@ -64,10 +64,19 @@ export default function StockPage() {
   };
 
   const loadFormData = async () => {
-    const res = await apiFetch("/stock");
-    const json = await res.json();
-    setStuffList(json.data.stuff || []);
-    setWarehouseList(json.data.warehouse || []);
+    try {
+      const [warehouseRes, stuffRes] = await Promise.all([
+        apiFetch("/warehouse"),
+        apiFetch("/stuffs"),
+      ]);
+      const warehouseJson = await warehouseRes.json();
+      const stuffJson = await stuffRes.json();
+      setStuffList(Array.isArray(stuffJson.data) ? stuffJson.data : []);
+      setWarehouseList(Array.isArray(warehouseJson.data) ? warehouseJson.data : []);
+    } catch (err) {
+      setStuffList([]);
+      setWarehouseList([]);
+    }
   };
 
   useEffect(() => {
@@ -316,6 +325,13 @@ export default function StockPage() {
                   </td>
                 </tr>
               ))}
+              {filteredAndSortedData.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="px-6 py-4 text-center text-text-secondary">
+                    Tidak ada data
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

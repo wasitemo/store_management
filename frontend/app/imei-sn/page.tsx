@@ -36,7 +36,7 @@ export default function ImeiSnPage() {
         return;
       }
       const json = await res.json();
-      setData(json.data);
+      setData(Array.isArray(json.data) ? json.data : []);
     } catch (err) {
       setError("Failed to load data");
     } finally {
@@ -256,6 +256,13 @@ export default function ImeiSnPage() {
                   </td>
                 </tr>
               ))}
+              {filteredAndSorted.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-4 text-center text-text-secondary">
+                    Tidak ada data
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

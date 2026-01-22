@@ -68,7 +68,7 @@ export default function OrderDiscountPage() {
         return;
       }
       const json = await res.json();
-      setData(json.data);
+      setData(Array.isArray(json.data) ? json.data : []);
     } catch (err) {
       setError("Failed to load data");
     } finally {
@@ -337,6 +337,13 @@ export default function OrderDiscountPage() {
                   </td>
                 </tr>
               ))}
+              {filteredAndSortedData.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-6 py-4 text-center text-text-secondary">
+                    Tidak ada data
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

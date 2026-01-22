@@ -22,46 +22,46 @@ type MenuItem = {
 ======================= */
 const menus: MenuItem[] = [
   { name: "Dashboard", path: "/dashboard", icon: "📈", status: "clear" },
-  { name: "Account", path: "/account", icon: "👤", status: "ok" },
-  { name: "Employee", path: "/employee", icon: "🧑‍💼", status: "ok" },
-  { name: "Warehouse", path: "/warehouse", icon: "🏢", status: "ok" },
-  { name: "Supplier", path: "/supplier", icon: "🚚", status: "ok" },
-  { name: "Customer", path: "/customer", icon: "🧑‍🤝‍🧑", status: "ok" },
-  { name: "Payment Method", path: "/payment-method", icon: "💳", status: "ok" },
+  { name: "Account", path: "/account", icon: "👤", status: "clear" },
+  { name: "Employee", path: "/employee", icon: "🧑‍💼", status: "clear" },
+  { name: "Warehouse", path: "/warehouse", icon: "🏢", status: "clear" },
+  { name: "Supplier", path: "/supplier", icon: "🚚", status: "clear" },
+  { name: "Customer", path: "/customer", icon: "🧑‍🤝‍🧑", status: "clear" },
+  { name: "Payment Method", path: "/payment-method", icon: "💳", status: "clear" },
 
   {
     name: "Stuff",
     icon: "📦",
     status: "clear",
     children: [
-      { name: "Stuff", path: "/stuff", icon: "📦", status: "ok" },
-      { name: "Stuff Brand", path: "/stuff-brand", icon: "🏷️", status: "ok" },
-      { name: "Stuff Category", path: "/stuff-category", icon: "🗂️", status: "ok" },
-      { name: "Stuff Purchase", path: "/stuff-purchase", icon: "🧾", status: "fix" },
+      { name: "Stuff", path: "/stuff", icon: "📦", status: "clear" },
+      { name: "Stuff Brand", path: "/stuff-brand", icon: "🏷️", status: "clear" },
+      { name: "Stuff Category", path: "/stuff-category", icon: "🗂️", status: "clear" },
+      { name: "Stuff Purchase", path: "/stuff-purchase", icon: "🧾", status: "clear" },
     ],
   },
 
-  { name: "IMEI & SN", path: "/imei-sn", icon: "📱", status: "ok" },
+  { name: "IMEI & SN", path: "/imei-sn", icon: "📱", status: "clear" },
 
   {
     name: "Discounts",
     icon: "💸",
     status: "clear",
     children: [
-      { name: "Stuff Discount", path: "/stuff-discount", icon: "🏷️", status: "ok" },
-      { name: "Order Discount", path: "/order-discount", icon: "🧮", status: "ok" },
+      { name: "Stuff Discount", path: "/stuff-discount", icon: "🏷️", status: "clear" },
+      { name: "Order Discount", path: "/order-discount", icon: "🧮", status: "clear" },
     ],
   },
 
-  { name: "Stock", path: "/stock", icon: "📊", status: "ok" },
+  { name: "Stock", path: "/stock", icon: "📊", status: "clear" },
 
   {
     name: "Order",
     icon: "🛒",
     status: "clear",
     children: [
-      { name: "Order", path: "/order", icon: "🧾", status: "ok" },
-      { name: "POS", path: "/pos", icon: "💰", status: "fix" },
+      { name: "Order", path: "/order", icon: "🧾", status: "clear" },
+      { name: "POS", path: "/pos", icon: "💰", status: "clear" },
     ],
   },
 ];

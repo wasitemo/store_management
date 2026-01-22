@@ -57,7 +57,7 @@ export default function SupplierPage() {
       }
 
       const json = await res.json();
-      setData(json.data);
+      setData(Array.isArray(json.data) ? json.data : []);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -317,6 +317,13 @@ export default function SupplierPage() {
                   </td>
                 </tr>
               ))}
+              {filteredData.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-4 text-center text-text-secondary">
+                    Tidak ada data
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

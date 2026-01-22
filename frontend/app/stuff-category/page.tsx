@@ -50,8 +50,13 @@ export default function StuffCategoryPage() {
         return;
       }
 
+      if (res.status === 404) {
+        setData([]);
+        return;
+      }
+
       const json = await res.json();
-      setData(json.data);
+      setData(Array.isArray(json.data) ? json.data : []);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -268,6 +273,13 @@ export default function StuffCategoryPage() {
                   </td>
                 </tr>
               ))}
+              {filteredData.length === 0 && (
+                <tr>
+                  <td colSpan={3} className="px-6 py-4 text-center text-text-secondary">
+                    Tidak ada data
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

@@ -249,6 +249,13 @@ export default function OrderPage() {
                   </td>
                 </tr>
               ))}
+              {filteredAndSortedOrders.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-4 text-center text-text-secondary">
+                    Tidak ada data
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

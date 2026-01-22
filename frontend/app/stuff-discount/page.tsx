@@ -83,7 +83,7 @@ export default function StuffDiscountPage() {
         return;
       }
       const json = await res.json();
-      setData(json.data);
+      setData(Array.isArray(json.data) ? json.data : []);
     } catch (err) {
       setError("Failed to load data");
     } finally {
@@ -97,6 +97,10 @@ export default function StuffDiscountPage() {
       if (res.status === 401) {
         localStorage.removeItem("access_token");
         router.push("/login");
+        return;
+      }
+      if (res.status === 404) {
+        setStuffList([]);
         return;
       }
       const json = await res.json();
@@ -260,6 +264,11 @@ export default function StuffDiscountPage() {
         </button>
       </div>
 
+      {filteredAndSortedData.length === 0 && (
+        <div className="text-center text-text-secondary py-8">
+          Tidak ada data
+        </div>
+      )}
       {filteredAndSortedData.map((stuff) => (
         <div key={stuff.stuff_id} className="mb-6 bg-surface rounded-xl border border-border shadow-sm overflow-hidden">
           <div className="bg-surface-hover px-6 py-4 font-semibold text-text-primary">

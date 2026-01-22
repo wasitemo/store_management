@@ -24,12 +24,14 @@ export default function OrderCreatePage() {
     warehouse: [],
     payment_method: [],
     order_discount: [],
+    employee: [],
   });
 
   const [form, setForm] = useState<any>({
     customer_id: "",
     warehouse_id: "",
     payment_method_id: "",
+    employee_id: "",
     order_date: today, // 🔒 lock hari ini
     payment: "",
     items: [],
@@ -42,6 +44,7 @@ export default function OrderCreatePage() {
       customer_id: Number(form.customer_id),
       warehouse_id: Number(form.warehouse_id),
       payment_method_id: Number(form.payment_method_id),
+      employee_id: Number(form.employee_id),
       order_date: form.order_date,
       payment: Number(form.payment || 0),
       discounts: form.discounts.map((d: any) => ({
@@ -73,14 +76,28 @@ export default function OrderCreatePage() {
     setLoading(true);
     setError("");
     try {
-      const res = await apiFetch("/customer-order");
-      if (res.status === 401) {
-        localStorage.removeItem("access_token");
-        router.push("/login");
-        return;
-      }
-      const json = await res.json();
-      setMaster(json.data);
+      const [customerRes, warehouseRes, paymentRes, discountRes, employeeRes] = await Promise.all([
+        apiFetch("/customers"),
+        apiFetch("/warehouse"),
+        apiFetch("/payment-methods"),
+        apiFetch("/order-discounts"),
+        apiFetch("/employee-account"),
+      ]);
+      const customerJson = await customerRes.json();
+      const warehouseJson = await warehouseRes.json();
+      const paymentJson = await paymentRes.json();
+      const discountJson = await discountRes.json();
+      const employeeJson = await employeeRes.json();
+      setMaster({
+        customer: Array.isArray(customerJson.data) ? customerJson.data : [],
+        warehouse: Array.isArray(warehouseJson.data) ? warehouseJson.data : [],
+        payment_method: Array.isArray(paymentJson.data) ? paymentJson.data : [],
+        order_discount: Array.isArray(discountJson.data) ? discountJson.data : [],
+        employee: Array.isArray(employeeJson.data) ? employeeJson.data.map((emp: any) => ({
+          employee_id: emp.employee_id,
+          employee_name: emp.username,
+        })) : [],
+      });
     } catch (err) {
       setError("Failed to load master data");
     } finally {
@@ -171,8 +188,8 @@ export default function OrderCreatePage() {
   const submitOrder = async () => {
     setErrorMsg(null);
 
-    if (!form.customer_id || !form.warehouse_id || !form.payment_method_id) {
-      setErrorMsg("Customer, Warehouse, dan Payment Method wajib dipilih");
+    if (!form.customer_id || !form.warehouse_id || !form.payment_method_id || !form.employee_id) {
+      setErrorMsg("Customer, Warehouse, Payment Method, and Employee wajib dipilih");
       return;
     }
 
@@ -248,6 +265,7 @@ export default function OrderCreatePage() {
           ["Customer", "customer_id", master.customer],
           ["Warehouse", "warehouse_id", master.warehouse],
           ["Payment Method", "payment_method_id", master.payment_method],
+          ["Employee", "employee_id", master.employee],
         ].map(([label, key, list]: any) => (
           <div key={key}>
             <label className="block text-sm font-medium text-text-secondary mb-2">{label}</label>
@@ -378,7 +396,7 @@ export default function OrderCreatePage() {
       {/* ================= DISCOUNTS ================= */}
       <div className="mb-6">
         <h3 className="font-semibold text-text-primary mb-3">Discounts</h3>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-4">
           {master.order_discount.map((d: any) => (
             <label key={d.discount_id} className="flex gap-2 items-center">
               <input
@@ -410,6 +428,11 @@ export default function OrderCreatePage() {
             </label>
           ))}
         </div>
+        {master.order_discount.length === 0 && (
+          <div className="text-center text-text-secondary py-4">
+            Tidak ada data
+          </div>
+        )}
       </div>
 
       <div className="flex justify-end">

@@ -67,6 +67,12 @@ export default function StuffPurchasePage() {
   const [error, setError] = useState("");
   const [formError, setFormError] = useState("");
 
+  const [meta, setMeta] = useState({
+    supplier: [],
+    warehouse: [],
+    stuff: [],
+  });
+
   const token =
     typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
@@ -75,14 +81,19 @@ export default function StuffPurchasePage() {
     setLoading(true);
     setError("");
     try {
-      const res = await apiFetch(`${BASE_URL}/stuff-purchases`);
-      if (res.status === 401) {
+      const [dataRes, metaRes] = await Promise.all([
+        apiFetch(`${BASE_URL}/stuff-purchases`),
+        apiFetch(`${BASE_URL}/stuff-purchase`),
+      ]);
+      if (dataRes.status === 401 || metaRes.status === 401) {
         localStorage.removeItem("access_token");
         router.push("/login");
         return;
       }
-      const json = await res.json();
-      setData(json.data);
+      const dataJson = await dataRes.json();
+      const metaJson = await metaRes.json();
+      setData(Array.isArray(dataJson.data) ? dataJson.data : []);
+      setMeta(metaJson.data || { supplier: [], warehouse: [], stuff: [] });
     } catch (err) {
       setError("Failed to load data");
     } finally {
@@ -349,6 +360,13 @@ export default function StuffPurchasePage() {
                   </td>
                 </tr>
               ))}
+              {filteredData.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-4 text-center text-text-secondary">
+                    Tidak ada data
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -393,7 +411,7 @@ export default function StuffPurchasePage() {
       {showAdd && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-surface rounded-2xl shadow-xl w-full max-w-md border border-border">
-            <div className="p-6">
+            <div className="p-6 overflow-y-auto max-h-[70vh]">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-bold text-text-primary">Add Purchase</h2>
                 <button
@@ -413,34 +431,52 @@ export default function StuffPurchasePage() {
               )}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-2">Supplier ID</label>
-                  <input
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Supplier</label>
+                  <select
                     name="supplier_id"
-                    placeholder="Enter supplier ID"
                     className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
                     value={form.supplier_id}
                     onChange={(e) => setForm({ ...form, supplier_id: e.target.value })}
-                  />
+                  >
+                    <option value="">Select Supplier</option>
+                    {meta.supplier.map((s: any) => (
+                      <option key={s.supplier_id} value={s.supplier_id}>
+                        {s.supplier_name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-2">Warehouse ID</label>
-                  <input
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Warehouse</label>
+                  <select
                     name="warehouse_id"
-                    placeholder="Enter warehouse ID"
                     className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
                     value={form.warehouse_id}
                     onChange={(e) => setForm({ ...form, warehouse_id: e.target.value })}
-                  />
+                  >
+                    <option value="">Select Warehouse</option>
+                    {meta.warehouse.map((w: any) => (
+                      <option key={w.warehouse_id} value={w.warehouse_id}>
+                        {w.warehouse_name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-text-secondary mb-2">Stuff ID</label>
-                  <input
+                  <label className="block text-sm font-medium text-text-secondary mb-2">Stuff</label>
+                  <select
                     name="stuff_id"
-                    placeholder="Enter stuff ID"
                     className="w-full rounded-lg border border-border px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary text-text-primary bg-surface transition-all"
                     value={form.stuff_id}
                     onChange={(e) => setForm({ ...form, stuff_id: e.target.value })}
-                  />
+                  >
+                    <option value="">Select Stuff</option>
+                    {meta.stuff.map((st: any) => (
+                      <option key={st.stuff_id} value={st.stuff_id}>
+                        {st.stuff_name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-2">Buy Date</label>
