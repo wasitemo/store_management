@@ -176,48 +176,7 @@ app.use("/", stuffCategoryRoute);
 app.use("/", stuffBrandRoute);
 
 // STUFF
-app.get("/stuffs", async (req, res) => {
-  try {
-    let query = await store.query(`
-      SELECT DISTINCT 
-      stuff.stuff_id,
-      stuff.stuff_name,
-      stuff_category.stuff_category_name,
-      stuff_brand.stuff_brand_name,
-      supplier.supplier_name,
-      stuff.stuff_code,
-      stuff.stuff_sku,
-      stuff.stuff_variant,
-      stuff.current_sell_price,
-      stuff.barcode,
-      stuff.has_sn
-      FROM stuff
-      LEFT JOIN stuff_category ON stuff.stuff_category_id = stuff_category.stuff_category_id
-      LEFT JOIN stuff_brand ON stuff.stuff_brand_id = stuff_brand.stuff_brand_id
-      LEFT JOIN supplier ON stuff.supplier_id = supplier.supplier_id
-    `);
-    let result = query.rows;
-
-    if (query.rows.length === 0) {
-      return res.status(404).json({
-        status: 404,
-        message: "Data not found",
-      });
-    }
-
-    return res.status(200).json({
-      status: 200,
-      data: result,
-    });
-  } catch (err) {
-    console.log(err);
-    return res.status(500).json({
-      status: 500,
-      message: "Internal server error",
-    });
-  }
-});
-
+// search-scan
 app.get("/search", async (req, res) => {
   try {
     const warehouseId = Number(req.query.warehouse_id);
@@ -241,46 +200,9 @@ app.get("/search", async (req, res) => {
 
     const q = await store.query(
       `
-      SELECT
-        s.stuff_id,
-        s.stuff_name,
-        s.stuff_variant,
-        s.current_sell_price,
-        s.has_sn,
-        s.barcode,
-        s.total_stock,
-
-        w.warehouse_id,
-        w.warehouse_name,
-
-        si.stuff_information_id,
-        si.imei_1,
-        si.imei_2,
-        si.sn,
-
-        CASE
-          WHEN LOWER(TRIM(si.imei_1)) = $2 THEN 'imei_1'
-          WHEN LOWER(TRIM(si.imei_2)) = $2 THEN 'imei_2'
-          WHEN LOWER(TRIM(si.sn)) = $2 THEN 'sn'
-          WHEN LOWER(TRIM(s.barcode)) = $2 THEN 'barcode'
-        END AS matched_by
-      FROM stuff_information si
-      JOIN stuff s
-        ON s.stuff_id = si.stuff_id
-      JOIN stock st
-        ON st.stuff_information_id = si.stuff_information_id
-      JOIN warehouse w
-        ON w.warehouse_id = st.warehouse_id
-      WHERE w.warehouse_id = $1
-        AND (
-          LOWER(TRIM(si.imei_1)) = $2 OR
-          LOWER(TRIM(si.imei_2)) = $2 OR
-          LOWER(TRIM(si.sn)) = $2 OR
-          LOWER(TRIM(s.barcode)) = $2
-        )
-      LIMIT 1
+      
       `,
-      [warehouseId, value]
+      [warehouseId, value],
     );
 
     if (!q.rows.length) {
@@ -306,18 +228,7 @@ app.get("/search", async (req, res) => {
 app.get("/imei-sn", verifyToken, async (req, res) => {
   try {
     let query = await store.query(`
-      SELECT DISTINCT
-      stuff_information.stuff_information_id,
-      stuff_name,
-      warehouse_name,
-      imei_1,
-      imei_2,
-      sn,
-      stock_status
-      FROM stuff_information
-      LEFT JOIN stuff ON stuff.stuff_id = stuff_information.stuff_id
-      LEFT JOIN stock ON stock.stuff_information_id = stuff_information.stuff_information_id
-      LEFT JOIN warehouse ON warehouse.warehouse_id = stock.warehouse_id  
+      
     `);
     let result = query.rows;
 
@@ -537,22 +448,6 @@ app.post("/stuff", verifyToken, async (req, res) => {
 
 app.get("/stuff-history", verifyToken, async (req, res) => {
   try {
-    let query = await store.query(`
-      SELECT
-      employee.employee_id,
-      stuff.stuff_id,
-      employee.employee_name,
-      stuff.stuff_name,
-      operation,
-      change_at,
-      old_data,
-      new_data
-      FROM stuff_history
-      LEFT JOIN employee ON employee.employee_id = stuff_history.employee_id
-      LEFT JOIN stuff ON stuff.stuff_id = stuff_history.stuff_id
-    `);
-    let result = query.rows;
-
     if (query.rows.length === 0) {
       return res.status(404).json({
         status: 404,
@@ -574,36 +469,7 @@ app.get("/stuff-history", verifyToken, async (req, res) => {
 });
 
 app.get("/stuff/:stuff_id", verifyToken, async (req, res) => {
-  let reqId = parseInt(req.params.stuff_id);
-
   try {
-    let stuffQuery = await store.query(
-      `
-      SELECT 
-      stuff.stuff_id,
-      stuff_category.stuff_category_id,
-      stuff_brand.stuff_brand_id,
-      supplier.supplier_id,
-      stuff.stuff_name,
-      stuff_category.stuff_category_name,
-      stuff_brand.stuff_brand_name,
-      supplier.supplier_name,
-      stuff.stuff_code,
-      stuff.stuff_sku,
-      stuff.stuff_variant,
-      stuff.barcode,
-      stuff.has_sn,
-      stuff.current_sell_price
-      FROM stuff
-      LEFT JOIN stuff_category ON stuff_category.stuff_category_id = stuff.stuff_category_id
-      LEFT JOIN stuff_brand ON stuff_brand.stuff_brand_id = stuff.stuff_brand_id
-      LEFT JOIN supplier ON supplier.supplier_id = stuff.supplier_id
-      WHERE stuff_id = $1   
-    `,
-      [reqId],
-    );
-    let stuffResult = stuffQuery.rows[0];
-
     let stuffCategoryQuery = await store.query(
       "SELECT stuff_category_id, stuff_category_name FROM stuff_category",
     );
