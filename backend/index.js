@@ -198,13 +198,6 @@ app.get("/search", async (req, res) => {
 
     const value = identify.toLowerCase().trim();
 
-    const q = await store.query(
-      `
-      
-      `,
-      [warehouseId, value],
-    );
-
     if (!q.rows.length) {
       return res.status(409).json({
         status: 409,

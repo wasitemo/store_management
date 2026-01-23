@@ -61,7 +61,7 @@ async function getStuffByStuffId(stuffId) {
   return result;
 }
 
-async function getValidImeiSn(warehouseId, identity) {
+async function getValidImeiSn(warehouseId, identify) {
   const query = await store.query(
     `
         SELECT
@@ -100,9 +100,9 @@ async function getValidImeiSn(warehouseId, identity) {
         )
       LIMIT 1
     `,
-    [warehouseId, identity],
+    [warehouseId, identify],
   );
-  const result = query.rows[0];
+  const result = query.rows;
 
   return result;
 }
@@ -149,57 +149,58 @@ async function getStuffHistory() {
   return result;
 }
 
-async function addStuff(
-  stuffCategoryId,
-  stuffBrandId,
-  supplierId,
-  stuffCode,
-  stuffSku,
-  stuffName,
-  stuffVariant,
-  currentSellPrice,
-  hasSn,
-  barcode,
-) {
+async function addStuff(data) {
+  const {
+    stuff_category_id,
+    stuff_brand_id,
+    supplier_id,
+    stuff_code,
+    stuff_sku,
+    stuff_name,
+    stuff_variant,
+    current_sell_price,
+    has_sn,
+    barcode,
+  } = data;
   await store.query(
     `
-            INSERT INTO stuff 
-            (
-                stuff_category_id, 
-                stuff_brand_id, 
-                supplier_id, 
-                stuff_code, 
-                stuff_sku, 
-                stuff_name, 
-                stuff_variant, 
-                current_sell_price, 
-                has_sn, 
-                barcode
-            )
-            VALUES 
-            (
-                $1,
-                $2,
-                $3,
-                $4,
-                $5,
-                $6,
-                $7,
-                $8,
-                $9,
-                $10
-            )
+        INSERT INTO stuff 
+        (
+            stuff_category_id, 
+            stuff_brand_id, 
+            supplier_id, 
+            stuff_code, 
+            stuff_sku, 
+            stuff_name, 
+            stuff_variant, 
+            current_sell_price, 
+            has_sn, 
+            barcode
+        )
+        VALUES 
+        (
+            $1,
+            $2,
+            $3,
+            $4,
+            $5,
+            $6,
+            $7,
+            $8,
+            $9,
+            $10
+        )
     `,
     [
-      stuffCategoryId,
-      stuffBrandId,
-      supplierId,
-      stuffCode,
-      stuffSku,
-      stuffName,
-      stuffVariant,
-      currentSellPrice,
-      hasSn,
+      stuff_category_id,
+      stuff_brand_id,
+      supplier_id,
+      stuff_code,
+      stuff_sku,
+      stuff_name,
+      stuff_variant,
+      current_sell_price,
+      has_sn,
       barcode,
     ],
   );
