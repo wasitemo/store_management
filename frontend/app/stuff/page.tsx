@@ -78,17 +78,17 @@ export default function StuffPage() {
 
   // ================= HANDLE SORT =================
   const handleSort = (key: SortKey) => {
-    setSortConfig(prev => ({
+    setSortConfig((prev) => ({
       key,
-      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc"
+      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
     }));
   };
 
   // ================= LOAD =================
   const loadAll = async () => {
     const [stuffsRes, metaRes] = await Promise.all([
-      apiFetch(`${BASE_URL}/stuffs`),
       apiFetch(`${BASE_URL}/stuff`),
+      apiFetch(`${BASE_URL}/stuff-cbs`),
     ]);
 
     if (stuffsRes.status === 401 || metaRes.status === 401) {
@@ -166,11 +166,14 @@ export default function StuffPage() {
   };
 
   return (
-    
     <div className="p-container-padding">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-text-primary">Stuff Management</h1>
-        <p className="text-text-secondary mt-2">Manage your product inventory</p>
+        <h1 className="text-3xl font-bold text-text-primary">
+          Stuff Management
+        </h1>
+        <p className="text-text-secondary mt-2">
+          Manage your product inventory
+        </p>
       </div>
 
       <div className="flex justify-between items-center mb-6">
@@ -301,7 +304,10 @@ export default function StuffPage() {
             </thead>
             <tbody className="bg-surface divide-y divide-border">
               {filteredStuffs.map((s) => (
-                <tr key={s.stuff_id} className="hover:bg-surface-hover transition-colors">
+                <tr
+                  key={s.stuff_id}
+                  className="hover:bg-surface-hover transition-colors"
+                >
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary font-medium">
                     {s.stuff_id}
                   </td>
@@ -335,7 +341,10 @@ export default function StuffPage() {
               ))}
               {filteredStuffs.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-6 py-4 text-center text-text-secondary">
+                  <td
+                    colSpan={8}
+                    className="px-6 py-4 text-center text-text-secondary"
+                  >
                     Tidak ada data
                   </td>
                 </tr>
@@ -523,11 +532,12 @@ export default function StuffPage() {
                       }
                       className="rounded"
                     />
-                    <span className="text-sm text-text-secondary">Has Serial Number</span>
+                    <span className="text-sm text-text-secondary">
+                      Has Serial Number
+                    </span>
                   </label>
                 </div>
               )}
-
 
               {/* ================= EDIT FORM ================= */}
               {editId && (
@@ -585,11 +595,12 @@ export default function StuffPage() {
                       }
                       className="rounded"
                     />
-                    <span className="text-sm text-text-secondary">Has Serial Number</span>
+                    <span className="text-sm text-text-secondary">
+                      Has Serial Number
+                    </span>
                   </label>
                 </div>
               )}
-
 
               <div className="flex justify-end gap-3 pt-6">
                 <button

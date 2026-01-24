@@ -119,9 +119,10 @@ async function getImeiSn() {
         sn,
         stock_status
         FROM stuff_information
-        LEFT JOIN stuff ON stuff.stuff_id = stuff_information.stuff_id
-        LEFT JOIN stock ON stock.stuff_information_id = stuff_information.stuff_information_id
-        LEFT JOIN warehouse ON warehouse.warehouse_id = stock.warehouse_id  
+        INNER JOIN stuff ON stuff.stuff_id = stuff_information.stuff_id
+        INNER JOIN stock ON stock.stuff_information_id = stuff_information.stuff_information_id
+        INNER JOIN warehouse ON warehouse.warehouse_id = stock.warehouse_id
+        WHERE imei_1 IS NOT NULL OR imei_2 IS NOT NULL OR sn IS NOT NULL
     `,
   );
   let result = query.rows;
