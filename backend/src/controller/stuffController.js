@@ -1,4 +1,5 @@
 import ErrorMessage from "../error/ErrorMessage.js";
+import convertionToNumber from "../util/convertionNumber.js";
 import {
   showStuff,
   showStuffById,
@@ -64,7 +65,7 @@ async function presentImeiSn(req, res, next) {
   }
 }
 
-async function presentValidImeiSn(req, res, status) {
+async function presentValidImeiSn(req, res, next) {
   try {
     let warehouseId = parseInt(req.query.warehouse_id);
     let identify = req.query.identify;
@@ -131,7 +132,7 @@ async function saveStuff(req, res, next) {
       "has_sn",
       "barcode",
     ];
-    let invalidField = Object.keys(body).filter((k) => !fields.includes(k));
+    let invalidField = Object.keys(data).filter((k) => !fields.includes(k));
 
     if (invalidField.length > 0) {
       throw new ErrorMessage(
@@ -151,6 +152,10 @@ async function saveStuff(req, res, next) {
 
       if (k === "supplier_id" && typeof data[k] === "string") {
         data[k] = parseInt(data[k]);
+      }
+
+      if (k === "current_sell_price" && typeof data[k] === "string") {
+        data[k] = convertionToNumber(data[k]);
       }
 
       if (typeof data[k] === "string") {
@@ -204,6 +209,10 @@ async function changeStuff(req, res, next) {
 
       if (k === "supplier_id" && typeof update[k] === "string") {
         update[k] = parseInt(update[k]);
+      }
+
+      if (k === "current_sell_price" && typeof update[k] === "string") {
+        update[k] = convertionToNumber(update[k]);
       }
 
       if (typeof update[k] === "string") {

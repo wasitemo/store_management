@@ -144,32 +144,6 @@ async function verifyToken(req, res, next) {
   });
 }
 
-function convertionToNumber(value) {
-  if (value.includes(".") || value.includes(",")) {
-    let newValue = value.replaceAll(".", "").replace(",", "");
-    let parsed = parseFloat(newValue);
-
-    if (!isNaN(parsed)) {
-      return (value = parsed);
-    }
-  } else {
-    return parseFloat(value);
-  }
-}
-
-function convertionToDecimal(value) {
-  if (value.includes(",")) {
-    let newValue = value.replace(",", ".");
-    let parsed = parseFloat(newValue);
-
-    if (!isNaN(parsed)) {
-      return (value = parsed);
-    }
-  } else {
-    return parseFloat(value);
-  }
-}
-
 app.use("/", employeeRoute);
 app.use("/", warehouseRoute);
 app.use("/", supplierRoute);

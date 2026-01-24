@@ -125,7 +125,21 @@ async function editStuff(data, stuffId) {
     throw new ErrorMessage("Stuff data not found", 404);
   }
 
-  await updateStuff(data, stuffId);
+  let update = {
+    stuff_category_id: data.stuff_category_id ?? existingData.stuff_category_id,
+    stuff_brand_id: data.stuff_brand_id ?? existingData.stuff_brand_id,
+    supplier_id: data.supplier_id ?? existingData.supplier_id,
+    stuff_name: data.stuff_name ?? existingData.stuff_name,
+    stuff_code: data.stuff_code ?? existingData.stuff_code,
+    stuff_sku: data.stuff_sku ?? existingData.stuff_sku,
+    stuff_variant: data.stuff_variant ?? existingData.stuff_variant,
+    current_sell_price:
+      data.current_sell_price ?? existingData.current_sell_price,
+    has_sn: data.has_sn ?? existingData.has_sn,
+    barcode: data.barcode ?? existingData.barcode,
+  };
+
+  await updateStuff(update, stuffId);
 }
 
 export {
