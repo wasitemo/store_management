@@ -11,7 +11,7 @@ async function getStuffCategory(limit, offset) {
         ORDER BY stuff_category_id ASC
         LIMIT $1 OFFSET $2    
     `,
-    [limit, offset]
+    [limit, offset],
   );
   const result = query.rows;
 
@@ -27,7 +27,16 @@ async function getStuffCategoryById(stuffCategoryId) {
         FROM stuff_category
         WHERE stuff_category_id = $1
     `,
-    [stuffCategoryId]
+    [stuffCategoryId],
+  );
+  const result = query.rows;
+
+  return result;
+}
+
+async function getStuffCategoryName() {
+  const query = await store.query(
+    "SELECT stuff_category_name FROM stuff_category",
   );
   const result = query.rows;
 
@@ -42,7 +51,7 @@ async function addStuffCategory(stuffCategoryName) {
         VALUES
         ($1)    
     `,
-    [stuffCategoryName]
+    [stuffCategoryName],
   );
 }
 
@@ -54,14 +63,14 @@ async function updateStuffCategory(stuffCategoryName, stuffCategoryId) {
         stuff_category_name = $1
         WHERE stuff_category_id = $2
     `,
-    [stuffCategoryName, stuffCategoryId]
+    [stuffCategoryName, stuffCategoryId],
   );
 }
 
 // UTIL QUERY
 async function getTotalStuffCategory() {
   const query = await store.query(
-    "SELECT COUNT(stuff_category_id) FROM stuff_category"
+    "SELECT COUNT(stuff_category_id) FROM stuff_category",
   );
   const result = query.rows[0];
 
@@ -71,6 +80,7 @@ async function getTotalStuffCategory() {
 export {
   getStuffCategory,
   getStuffCategoryById,
+  getStuffCategoryName,
   getTotalStuffCategory,
   addStuffCategory,
   updateStuffCategory,

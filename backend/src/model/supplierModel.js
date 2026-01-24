@@ -13,7 +13,7 @@ async function getSupplier(limit, offset) {
         ORDER BY supplier_id ASC
         LIMIT $1 OFFSET $2    
     `,
-    [limit, offset]
+    [limit, offset],
   );
   const result = query.rows;
 
@@ -31,9 +31,16 @@ async function getSupplierById(supplierId) {
         FROM supplier
         WHERE supplier_id = $1
     `,
-    [supplierId]
+    [supplierId],
   );
   const result = query.rows[0];
+
+  return result;
+}
+
+async function getSupplierName() {
+  const query = await store.query("SELECT supplier_name FROM supplier");
+  const result = query.rows;
 
   return result;
 }
@@ -46,7 +53,7 @@ async function addSupplier(supplierName, supplierContact, supplierAddress) {
         VALUES
         ($1, $2, $3)    
     `,
-    [supplierName, supplierContact, supplierAddress]
+    [supplierName, supplierContact, supplierAddress],
   );
 }
 
@@ -62,7 +69,7 @@ async function updateSupplier(data, supplierId) {
         supplier_address = $3
         WHERE supplier_id = $4    
     `,
-    [supplier_name, supplier_contact, supplier_address, supplierId]
+    [supplier_name, supplier_contact, supplier_address, supplierId],
   );
 }
 
@@ -77,6 +84,7 @@ async function getTotalSupplier() {
 export {
   getSupplier,
   getSupplierById,
+  getSupplierName,
   getTotalSupplier,
   addSupplier,
   updateSupplier,

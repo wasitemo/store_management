@@ -44,7 +44,7 @@ async function presentStuffById(req, res, next) {
       stuff_category: result.stuff_category,
       stuff_brand: result.stuff_brand,
       supplier: result.supplier,
-      data: result,
+      data: result.data,
     });
   } catch (err) {
     console.log(err);

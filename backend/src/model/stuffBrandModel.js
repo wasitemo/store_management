@@ -11,7 +11,7 @@ async function getStuffBrand(limit, offset) {
         ORDER BY stuff_brand_id ASC
         LIMIT $1 OFFSET $2    
     `,
-    [limit, offset]
+    [limit, offset],
   );
   const result = query.rows;
 
@@ -27,9 +27,16 @@ async function getStuffBrandById(stuffBrandId) {
         FROM stuff_brand
         WHERE stuff_brand_id = $1
     `,
-    [stuffBrandId]
+    [stuffBrandId],
   );
   const result = query.rows[0];
+
+  return result;
+}
+
+async function getStuffBrandName() {
+  const query = await store.query("SELECT stuff_brand_name FROM stuff_brand");
+  const result = query.rows;
 
   return result;
 }
@@ -42,7 +49,7 @@ async function addStuffBrand(stuffBrandName) {
         VALUES
         ($1)    
     `,
-    [stuffBrandName]
+    [stuffBrandName],
   );
 }
 
@@ -54,14 +61,14 @@ async function updateStuffBrand(stuffBrandName, stuffBrandId) {
         stuff_brand_name = $1
         WHERE stuff_brand_id = $2
     `,
-    [stuffBrandName, stuffBrandId]
+    [stuffBrandName, stuffBrandId],
   );
 }
 
 // UTIL QUERY
 async function getTotalStuffBrand() {
   const query = await store.query(
-    "SELECT COUNT(stuff_brand_id) FROM stuff_brand"
+    "SELECT COUNT(stuff_brand_id) FROM stuff_brand",
   );
   const result = query.rows[0];
 
@@ -71,6 +78,7 @@ async function getTotalStuffBrand() {
 export {
   getStuffBrand,
   getStuffBrandById,
+  getStuffBrandName,
   getTotalStuffBrand,
   addStuffBrand,
   updateStuffBrand,

@@ -1,7 +1,7 @@
 import ErrorMessage from "../error/ErrorMessage.js";
-import { getStuffCategory } from "../model/stuffCategoryModel.js";
-import { getStuffBrand } from "../model/stuffBrandModel.js";
-import { getSupplier } from "../model/supplierModel.js";
+import { getStuffCategoryName } from "../model/stuffCategoryModel.js";
+import { getStuffBrandName } from "../model/stuffBrandModel.js";
+import { getSupplierName } from "../model/supplierModel.js";
 import {
   getStuff,
   getStuffByStuffId,
@@ -23,9 +23,9 @@ async function showStuff(limit, offset) {
 }
 
 async function showStuffById(stuffId) {
-  const cResult = await getStuffCategory();
-  const bResult = await getStuffBrand();
-  const sResult = await getSupplier();
+  const cResult = await getStuffCategoryName();
+  const bResult = await getStuffBrandName();
+  const sResult = await getSupplierName();
   const stfResult = await getStuffByStuffId(stuffId);
 
   if (!cResult) {
@@ -74,9 +74,9 @@ async function showValidImeiSn(warehouseId, identify) {
 }
 
 async function showStuffCBS() {
-  const cResult = await getStuffCategory();
-  const bResult = await getStuffBrand();
-  const sResult = await getSupplier();
+  const cResult = await getStuffCategoryName();
+  const bResult = await getStuffBrandName();
+  const sResult = await getSupplierName();
 
   if (cResult.length === 0) {
     throw new ErrorMessage("Stuff category data not found", 404);
