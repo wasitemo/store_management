@@ -13,8 +13,8 @@ import {
 
 async function presentStuff(req, res, next) {
   try {
-    let page = parseInt(req.query.page);
-    let limit = parseInt(req.query.limit);
+    let page = parseInt(req.query.page) || 1;
+    let limit = parseInt(req.query.limit) || 15;
     let offset = (page - 1) * limit;
     let total = await showTotalStuff();
     const result = await showStuff(limit, offset);
@@ -24,7 +24,7 @@ async function presentStuff(req, res, next) {
       page,
       limit,
       total_data: parseInt(total.count),
-      total_page: parseInt(total_count / limit),
+      total_page: parseInt(total.count / limit),
       data: result,
     });
   } catch (err) {
@@ -40,7 +40,10 @@ async function presentStuffById(req, res, next) {
 
     return res.status(200).json({
       status: 200,
-      result,
+      stuff_category: result.stuff_category,
+      stuff_brand: result.stuff_brand,
+      supplier: result.supplier,
+      data: result,
     });
   } catch (err) {
     console.log(err);

@@ -20,7 +20,7 @@ async function getStuff(limit, offset) {
       LEFT JOIN stuff_category ON stuff.stuff_category_id = stuff_category.stuff_category_id
       LEFT JOIN stuff_brand ON stuff.stuff_brand_id = stuff_brand.stuff_brand_id
       LEFT JOIN supplier ON stuff.supplier_id = supplier.supplier_id
-      GROUP BY stuff.stuff_id ORDER BY ASC
+      ORDER BY stuff.stuff_id ASC
       LIMIT $1 OFFSET $2
     `,
     [limit, offset],
