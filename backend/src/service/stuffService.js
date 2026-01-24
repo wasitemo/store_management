@@ -8,6 +8,7 @@ import {
   getImeiSn,
   getValidImeiSn,
   getStuffHistory,
+  getTotalStuff,
   addStuff,
   updateStuff,
 } from "../model/stuffModel.js";
@@ -22,12 +23,33 @@ async function showStuff(limit, offset) {
 }
 
 async function showStuffById(stuffId) {
-  const result = await getStuffByStuffId(stuffId);
-  if (!result) {
+  const cResult = await getStuffCategory();
+  const bResult = await getStuffBrand();
+  const sResult = await getSupplier();
+  const stfResult = await getStuffByStuffId(stuffId);
+
+  if (!cResult) {
+    throw new ErrorMessage("Stuff category data not found", 404);
+  }
+
+  if (!bResult) {
+    throw new ErrorMessage("Stuff brand data not found", 404);
+  }
+
+  if (!sResult) {
+    throw new ErrorMessage("Supplier data not found", 404);
+  }
+
+  if (!stfResult) {
     throw new ErrorMessage("Stuff data not found", 404);
   }
 
-  return result;
+  return {
+    stuff_category: cResult,
+    stuff_brand: bResult,
+    supplier: sResult,
+    data: stfResult,
+  };
 }
 
 async function showImeiSn() {
@@ -84,6 +106,15 @@ async function showStuffHistory() {
   return result;
 }
 
+async function showTotalStuff() {
+  const result = await getTotalStuff();
+  if (!result) {
+    throw new ErrorMessage("Stuff data not found", 404);
+  }
+
+  return result;
+}
+
 async function newStuff(data) {
   await addStuff(data);
 }
@@ -104,6 +135,7 @@ export {
   showValidImeiSn,
   showStuffHistory,
   showStuffCBS,
+  showTotalStuff,
   newStuff,
   editStuff,
 };

@@ -252,12 +252,21 @@ async function updateStuff(data, stuffId) {
   );
 }
 
+// UTIL QUERY
+async function getTotalStuff() {
+  let query = await store.query("SELECT COUNT(stuff_id) FROM stuff");
+  let result = query.rows[0];
+
+  return result;
+}
+
 export {
   getStuff,
   getStuffByStuffId,
   getImeiSn,
   getValidImeiSn,
   getStuffHistory,
+  getTotalStuff,
   addStuff,
   updateStuff,
 };
