@@ -1,15 +1,14 @@
 import "dotenv/config";
 import express from "express";
-import store from "./src/config/store.js";
-import bcrypt from "bcrypt";
 import bodyParser from "body-parser";
+import cookieParser from "cookie-parser";
 import multer from "multer";
 import csv from "csv-parser";
 import fs from "fs";
 import XLSX from "xlsx";
-import jwt from "jsonwebtoken";
-import cookieParser from "cookie-parser";
+import store from "./src/config/store.js";
 import errorHandler from "./src/middleware/errorHandler.js";
+import authRoute from "./src/route/authRoute.js";
 import employeeRoute from "./src/route/employeeRoute.js";
 import warehouseRoute from "./src/route/warehouseRoute.js";
 import supplierRoute from "./src/route/supplierRoute.js";
@@ -104,55 +103,16 @@ function parseExcel(filePath) {
   return formattedData;
 }
 
-function generateAccessToken(account) {
-  return jwt.sign(
-    { id: account.employee_account_id, username: account.username },
-    process.env.JWT_ACCESS_SECRET,
-    { expiresIn: process.env.ACCESS_TOKEN_EXPIRE },
-  );
-}
-
-function generateRefreshToken(account) {
-  return jwt.sign(
-    { id: account.employee_account_id },
-    process.env.JWT_REFRESH_SECRET,
-    { expiresIn: process.env.REFRESH_TOKEN_EXPIRE },
-  );
-}
-
-async function verifyToken(req, res, next) {
-  let authHeader = req.headers["authorization"];
-  let token = authHeader && authHeader.split(" ")[1];
-
-  if (!token) {
-    return res.status(401).json({
-      status: 401,
-      message: "Access token required",
-    });
-  }
-
-  jwt.verify(token, process.env.JWT_ACCESS_SECRET, (err, account) => {
-    if (err) {
-      return res.status(401).json({
-        status: 401,
-        message: "Invalid or expired token",
-      });
-    }
-
-    req.user = account;
-    next();
-  });
-}
-
 app.use("/", employeeRoute);
 app.use("/", warehouseRoute);
 app.use("/", supplierRoute);
 app.use("/", stuffCategoryRoute);
 app.use("/", stuffBrandRoute);
 app.use("/", stuffRoute);
+app.use("/", authRoute);
 
 // STUFF PURCHASE
-app.get("/stuff-purchases", verifyToken, async (req, res) => {
+app.get("/stuff-purchases", async (req, res) => {
   try {
     const query = await store.query(`
       SELECT
@@ -189,7 +149,7 @@ app.get("/stuff-purchases", verifyToken, async (req, res) => {
 
 app.get(
   "/stuff-purchase-detail/:stuff_purchase_id",
-  verifyToken,
+
   async (req, res) => {
     const id = parseInt(req.params.stuff_purchase_id);
 
@@ -240,7 +200,7 @@ app.get(
   },
 );
 
-app.get("/stuff-purchase", verifyToken, async (req, res) => {
+app.get("/stuff-purchase", async (req, res) => {
   try {
     let supplierQuery = await store.query("SELECT * FROM supplier");
     let warehouseQuery = await store.query("SELECT * FROM warehouse");
@@ -288,7 +248,7 @@ app.get("/stuff-purchase", verifyToken, async (req, res) => {
   }
 });
 
-app.post("/stuff-purchase", verifyToken, async (req, res) => {
+app.post("/stuff-purchase", async (req, res) => {
   let {
     supplier_id,
     buy_date,
@@ -369,7 +329,7 @@ app.post("/stuff-purchase", verifyToken, async (req, res) => {
 // ================= ROUTE =================
 app.post(
   "/upload-stuff-purchase",
-  verifyToken,
+
   upload.single("file"),
   async (req, res) => {
     if (!req.file) {
@@ -607,7 +567,7 @@ app.post(
 );
 
 // CUSTOMER
-app.get("/customers", verifyToken, async (req, res) => {
+app.get("/customers", async (req, res) => {
   try {
     let query = await store.query("SELECT * FROM customer");
     let result = query.rows;
@@ -632,7 +592,7 @@ app.get("/customers", verifyToken, async (req, res) => {
   }
 });
 
-app.post("/customer", verifyToken, async (req, res) => {
+app.post("/customer", async (req, res) => {
   let { customer_name, customer_contact, customer_address } = req.body;
 
   if (!customer_name) {
@@ -683,7 +643,7 @@ app.post("/customer", verifyToken, async (req, res) => {
   }
 });
 
-app.get("/customer/:customer_id", verifyToken, async (req, res) => {
+app.get("/customer/:customer_id", async (req, res) => {
   let reqId = parseInt(req.params.customer_id);
 
   try {
@@ -713,7 +673,7 @@ app.get("/customer/:customer_id", verifyToken, async (req, res) => {
   }
 });
 
-app.patch("/customer/:customer_id", verifyToken, async (req, res) => {
+app.patch("/customer/:customer_id", async (req, res) => {
   let reqId = parseInt(req.params.customer_id);
   let update = req.body;
   let keys = Object.keys(update);
@@ -764,7 +724,7 @@ app.patch("/customer/:customer_id", verifyToken, async (req, res) => {
 });
 
 // PAYMENT METHODE
-app.get("/payment-methods", verifyToken, async (req, res) => {
+app.get("/payment-methods", async (req, res) => {
   try {
     let query = await store.query("SELECT * FROM payment_method");
     let result = query.rows;
@@ -789,7 +749,7 @@ app.get("/payment-methods", verifyToken, async (req, res) => {
   }
 });
 
-app.post("/payment-method", verifyToken, async (req, res) => {
+app.post("/payment-method", async (req, res) => {
   let { payment_method_name } = req.body;
 
   if (!payment_method_name) {
@@ -822,7 +782,7 @@ app.post("/payment-method", verifyToken, async (req, res) => {
   }
 });
 
-app.get("/payment-method/:payment_method_id", verifyToken, async (req, res) => {
+app.get("/payment-method/:payment_method_id", async (req, res) => {
   let reqId = parseInt(req.params.payment_method_id);
 
   try {
@@ -854,7 +814,7 @@ app.get("/payment-method/:payment_method_id", verifyToken, async (req, res) => {
 
 app.patch(
   "/payment-method/:payment_method_id",
-  verifyToken,
+
   async (req, res) => {
     let reqId = parseInt(req.params.payment_method_id);
     let update = req.body;
@@ -909,7 +869,7 @@ app.patch(
 );
 
 // DISCOUNT
-app.get("/stuff-discounts", verifyToken, async (req, res) => {
+app.get("/stuff-discounts", async (req, res) => {
   try {
     let query = await store.query(`
       SELECT
@@ -956,7 +916,7 @@ app.get("/stuff-discounts", verifyToken, async (req, res) => {
   }
 });
 
-app.get("/stuff-discount", verifyToken, async (req, res) => {
+app.get("/stuff-discount", async (req, res) => {
   try {
     let query = await store.query("SELECT * FROM stuff");
     let result = query.rows;
@@ -981,7 +941,7 @@ app.get("/stuff-discount", verifyToken, async (req, res) => {
   }
 });
 
-app.post("/stuff-discount", verifyToken, async (req, res) => {
+app.post("/stuff-discount", async (req, res) => {
   let {
     stuff_id,
     discount_name,
@@ -1072,7 +1032,7 @@ app.post("/stuff-discount", verifyToken, async (req, res) => {
   }
 });
 
-app.get("/stuff-discount/:stuff_id", verifyToken, async (req, res) => {
+app.get("/stuff-discount/:stuff_id", async (req, res) => {
   let reqId = parseInt(req.params.stuff_id);
 
   try {
@@ -1135,7 +1095,7 @@ app.get("/stuff-discount/:stuff_id", verifyToken, async (req, res) => {
   }
 });
 
-app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
+app.patch("/stuff-discount/:discount_id", async (req, res) => {
   const discountId = parseInt(req.params.discount_id);
   const body = req.body;
 
@@ -1268,7 +1228,7 @@ app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
   }
 });
 
-app.get("/order-discounts", verifyToken, async (req, res) => {
+app.get("/order-discounts", async (req, res) => {
   try {
     let query = await store.query(`
       SELECT
@@ -1306,7 +1266,7 @@ app.get("/order-discounts", verifyToken, async (req, res) => {
   }
 });
 
-app.post("/order-discount", verifyToken, async (req, res) => {
+app.post("/order-discount", async (req, res) => {
   let {
     discount_name,
     discount_type,
@@ -1428,7 +1388,7 @@ app.post("/order-discount", verifyToken, async (req, res) => {
   }
 });
 
-app.get("/order-discount/:discount_id", verifyToken, async (req, res) => {
+app.get("/order-discount/:discount_id", async (req, res) => {
   let reqId = parseInt(req.params.discount_id);
 
   try {
@@ -1472,7 +1432,7 @@ app.get("/order-discount/:discount_id", verifyToken, async (req, res) => {
   }
 });
 
-app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
+app.patch("/stuff-discount/:discount_id", async (req, res) => {
   const discountId = parseInt(req.params.discount_id);
   const body = req.body;
 
@@ -1598,416 +1558,8 @@ app.patch("/stuff-discount/:discount_id", verifyToken, async (req, res) => {
   }
 });
 
-// ACCOUNT
-app.get("/employee-account", verifyToken, async (req, res) => {
-  try {
-    let query = await store.query(`
-      SELECT
-      employee_account.employee_account_id,
-      employee.employee_id,
-      employee_name,
-      username,
-      password,
-      role,
-      account_status
-      FROM employee_account
-      LEFT JOIN employee ON employee.employee_id = employee_account.employee_id
-    `);
-    let result = query.rows;
-
-    if (result.length === 0) {
-      return res.status(404).json({
-        status: 404,
-        message: "Data not found",
-      });
-    }
-
-    return res.status(200).json({
-      status: 200,
-      data: result,
-    });
-  } catch (err) {
-    console.log(err);
-    return res.status(500).json({
-      status: 500,
-      message: "Internal server error",
-    });
-  }
-});
-
-app.get("/employee-account", verifyToken, async (req, res) => {
-  try {
-    let query = await store.query("SELECT * FROM employee");
-    let result = query.rows;
-
-    if (query.rows.length === 0) {
-      return res.status(404).json({
-        status: 404,
-        message: "Data not found",
-      });
-    }
-
-    return res.status(200).json({
-      status: 200,
-      data: { employee: result },
-    });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({
-      status: 500,
-      message: "Internal server error",
-    });
-  }
-});
-
-app.post("/register", verifyToken, async (req, res) => {
-  let { employee_id, username, password, role, account_status } = req.body;
-
-  if (!employee_id) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: employee_id",
-    });
-  } else if (!username) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: username",
-    });
-  } else if (!password) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: password",
-    });
-  } else if (!role) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: role",
-    });
-  } else if (!account_status) {
-    return res.status(400).json({
-      status: 400,
-      message: "Missing required key: account_status",
-    });
-  }
-
-  if (typeof account_status === "string") {
-    account_status = account_status.toLowerCase().trim();
-  }
-
-  if (typeof username === "string") {
-    username = username.trim();
-  }
-
-  if (typeof password === "string") {
-    password = password.trim();
-  }
-
-  if (typeof role === "string") {
-    role = role.trim();
-  }
-
-  try {
-    const checkResult = await store.query(
-      "SELECT * FROM employee_account WHERE username = $1",
-      [username],
-    );
-
-    if (checkResult.rows.length > 0) {
-      return res.status(409).json({
-        status: 409,
-        message: "Username already used",
-      });
-    } else {
-      bcrypt.hash(password, saltRounds, async (err, hash) => {
-        if (err) {
-          console.error("Error hashing password : ", err);
-        } else {
-          await store.query(
-            "INSERT INTO employee_account (employee_id, username, password, role, account_status) VALUES ($1, $2, $3, $4, $5)",
-            [employee_id, username, hash, role, account_status],
-          );
-
-          return res.status(201).json({
-            status: 201,
-            message: "Register account success",
-          });
-        }
-      });
-    }
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({
-      status: 500,
-      message: "Internal server error",
-    });
-  }
-});
-
-app.post("/login", async (req, res) => {
-  try {
-    let { username, password } = req.body;
-    const accountQuery = await store.query(
-      "SELECT * FROM employee_account WHERE username = $1",
-      [username],
-    );
-
-    if (accountQuery.rows.length > 0) {
-      const account = accountQuery.rows[0];
-      const hashPassword = account.password;
-
-      if (!account) {
-        return res.status(401).json({
-          status: 401,
-          message: "Invalid credentials",
-        });
-      }
-
-      if (accountQuery.rows[0].account_status === "non-active") {
-        return res.status(401).json({
-          status: 401,
-          message: "You can't access this account anymore",
-        });
-      }
-
-      bcrypt.compare(password, hashPassword, async (err, valid) => {
-        if (err) {
-          return console.log("Error comparing password: ", err);
-        }
-        if (valid) {
-          let accessToken = generateAccessToken(account);
-          let refreshToken = generateRefreshToken(account);
-          let expiresAt = new Date();
-
-          expiresAt.setDate(expiresAt.getDate() + 7);
-
-          await store.query(
-            "INSERT INTO refresh_token (employee_account_id, token, expires_at) VALUES ($1, $2, $3)",
-            [account.employee_account_id, refreshToken, expiresAt],
-          );
-
-          res.cookie("refreshToken", refreshToken, {
-            httpOnly: true,
-            secure: false,
-            sameSite: "lax",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-          });
-
-          return res.status(200).json({
-            status: 200,
-            access_token: accessToken,
-          });
-        } else {
-          return res.status(400).json({
-            status: 400,
-            message: "Username or password doesn't match",
-          });
-        }
-      });
-    } else {
-      console.log("Account not found");
-      return res.status(400).json({
-        status: 400,
-        message: "Account not found",
-      });
-    }
-  } catch (err) {
-    console.log(err);
-    return res.status(500).json({
-      status: 500,
-      message: "Internal server error",
-    });
-  }
-});
-
-app.get("/employee-account/:account_id", verifyToken, async (req, res) => {
-  let reqId = parseInt(req.params.account_id);
-
-  try {
-    let query = await store.query(
-      `
-      SELECT
-      employee_account.employee_account_id,
-      employee.employee_id,
-      employee_name,
-      username,
-      password,
-      role,
-      account_status
-      FROM employee_account
-      LEFT JOIN employee ON employee.employee_id = employee_account.employee_id
-      WHERE employee_account.employee_account_id = $1
-    `,
-      [reqId],
-    );
-    let result = query.rows[0];
-
-    if (query.rows.length === 0) {
-      return res.status(404).json({
-        status: 404,
-        message: "Data not found",
-      });
-    }
-
-    return res.status(200).json({
-      status: 200,
-      data: result,
-    });
-  } catch (err) {
-    console.log(err);
-    return res.status(500).json({
-      status: 500,
-      message: "Internal server error",
-    });
-  }
-});
-
-app.patch(
-  "/employee-account/:employee_account_id",
-  verifyToken,
-  async (req, res) => {
-    let reqId = parseInt(req.params.employee_account_id);
-    let update = req.body;
-    let keys = Object.keys(update);
-    let fields = {
-      employee_id: "number",
-      username: "string",
-      password: "string",
-      role: "string",
-      account_status: "string",
-    };
-    let invalidField = keys.filter((k) => !fields[k]);
-
-    if (invalidField.length > 0) {
-      return res.status(400).json({
-        status: 400,
-        message: "Invalid field ",
-        invalidField,
-      });
-    }
-
-    if (keys.length === 0) {
-      return res.status("400").json({
-        status: 400,
-        message: "No item updated",
-      });
-    }
-
-    for (let key of keys) {
-      let expextedType = fields[key];
-      let value = update[key];
-
-      if (expextedType === "string") {
-        update[key] = value.trim();
-      }
-
-      if (expextedType === "number") {
-        update[key] = convertionToNumber(value);
-      }
-
-      if (key === "password") {
-        update[key] = await bcrypt.hash(value, saltRounds);
-      }
-    }
-
-    let setQuery = keys.map((key, index) => `${key} = $${index + 1}`).join(",");
-    let values = Object.values(update);
-
-    try {
-      await store.query(
-        `UPDATE employee_account SET ${setQuery} WHERE employee_account_id = $${
-          keys.length + 1
-        }`,
-        [...values, reqId],
-      );
-
-      return res.status(200).json({
-        status: 200,
-        message: "Success updated data",
-      });
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({
-        status: 500,
-        message: "Internal server error",
-      });
-    }
-  },
-);
-
-app.post("/refresh-token", async (req, res) => {
-  try {
-    let refreshToken = req.cookies.refreshToken;
-
-    if (!refreshToken) {
-      return res.status(401).json({
-        status: 401,
-        message: "No refresh token provided",
-      });
-    }
-
-    let query = await store.query(
-      "SELECT * FROM refresh_token WHERE token = $1",
-      [refreshToken],
-    );
-    let queryToken = query.rows[0];
-
-    if (!queryToken) {
-      return res.status(401).json({
-        status: 401,
-        message: "Invalid refresh token",
-      });
-    }
-
-    jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET, (err, account) => {
-      if (err) {
-        return res.status(401).json({
-          status: 401,
-          message: "Token is no longer valid",
-        });
-      }
-
-      let newAccessToken = generateAccessToken(account);
-
-      res.status(200).json({
-        status: 200,
-        access_token: newAccessToken,
-      });
-    });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({
-      status: 500,
-      message: "Internal server error",
-    });
-  }
-});
-
-app.post("/logout", verifyToken, async (req, res) => {
-  try {
-    let refreshToken = req.cookies.refreshToken;
-
-    if (refreshToken) {
-      await store.query("DELETE from refresh_token WHERE token = $1", [
-        refreshToken,
-      ]);
-      res.clearCookie("refreshToken");
-    }
-
-    return res.status(200).json({
-      status: 200,
-      message: "Logout successfully",
-    });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({
-      status: 500,
-      message: "Internal server error",
-    });
-  }
-});
-
 // STOCK
-app.get("/stocks", verifyToken, async (req, res) => {
+app.get("/stocks", async (req, res) => {
   try {
     const query = await store.query(`
       SELECT
@@ -2038,7 +1590,7 @@ app.get("/stocks", verifyToken, async (req, res) => {
   }
 });
 
-app.get("/stock-history", verifyToken, async (req, res) => {
+app.get("/stock-history", async (req, res) => {
   try {
     let query = await store.query(`
       SELECT
@@ -2081,7 +1633,7 @@ app.get("/stock-history", verifyToken, async (req, res) => {
   }
 });
 
-app.get("/stock", verifyToken, async (req, res) => {
+app.get("/stock", async (req, res) => {
   try {
     let stuffQuery = await store.query("SELECT * FROM stuff");
     let warehouseQuery = await store.query("SELECT * FROM warehouse");
@@ -2116,7 +1668,7 @@ app.get("/stock", verifyToken, async (req, res) => {
   }
 });
 // STOCK POST
-app.post("/stock", verifyToken, async (req, res) => {
+app.post("/stock", async (req, res) => {
   if (!req.body || Object.keys(req.body).length === 0) {
     return res.status(400).json({ status: 400, message: "Request body empty" });
   }
@@ -2324,7 +1876,7 @@ app.post("/upload-stock", upload.single("file"), async (req, res) => {
 });
 
 // CUSTOMER ORDER
-app.get("/customer-orders", verifyToken, async (req, res) => {
+app.get("/customer-orders", async (req, res) => {
   try {
     let query = await store.query(`
       SELECT
@@ -2366,7 +1918,7 @@ app.get("/customer-orders", verifyToken, async (req, res) => {
   }
 });
 
-app.get("/customer-order-detail/:order_id", verifyToken, async (req, res) => {
+app.get("/customer-order-detail/:order_id", async (req, res) => {
   let reqId = parseInt(req.params.order_id);
 
   try {
@@ -2481,7 +2033,7 @@ app.get("/customer-order-detail/:order_id", verifyToken, async (req, res) => {
   }
 });
 
-app.get("/customer-order", verifyToken, async (req, res) => {
+app.get("/customer-order", async (req, res) => {
   try {
     let customerQuery = await store.query("SELECT * FROM customer");
     let warehouseQuery = await store.query("SELECT * FROM warehouse");
@@ -2549,7 +2101,7 @@ app.get("/customer-order", verifyToken, async (req, res) => {
   }
 });
 
-app.post("/customer-order", verifyToken, async (req, res) => {
+app.post("/customer-order", async (req, res) => {
   let {
     customer_id,
     warehouse_id,

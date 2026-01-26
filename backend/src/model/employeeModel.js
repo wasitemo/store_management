@@ -98,11 +98,19 @@ async function getTotalEmployee() {
   return result;
 }
 
+async function getEmployeeName() {
+  const query = await store.query("SELECT employee_name FROM employee");
+  const restult = query.rows[0];
+
+  return restult;
+}
+
 export {
   getEmployee,
   getEmployeeById,
-  getTotalEmployee,
   findEmployeeByNik,
+  getTotalEmployee,
+  getEmployeeName,
   addEmployee,
   updateEmployee,
 };
