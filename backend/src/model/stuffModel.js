@@ -107,7 +107,7 @@ async function getValidImeiSn(warehouseId, identify) {
   return result;
 }
 
-async function getImeiSn() {
+async function getImeiSn(limit, offset) {
   const query = await store.query(
     `
         SELECT DISTINCT
@@ -123,7 +123,10 @@ async function getImeiSn() {
         INNER JOIN stock ON stock.stuff_information_id = stuff_information.stuff_information_id
         INNER JOIN warehouse ON warehouse.warehouse_id = stock.warehouse_id
         WHERE imei_1 IS NOT NULL OR imei_2 IS NOT NULL OR sn IS NOT NULL
+        ORDER BY stuff_information_id
+        LIMIT $1 OFFSET $2
     `,
+    [limit, offset],
   );
   let result = query.rows;
 
@@ -261,6 +264,15 @@ async function getTotalStuff() {
   return result;
 }
 
+async function getTotalImeiSn() {
+  const query = await store.query(
+    "SELECT COUNT(stuff_information_id) FROM stuff_information",
+  );
+  const result = query.rows[0];
+
+  return result;
+}
+
 export {
   getStuff,
   getStuffByStuffId,
@@ -268,6 +280,7 @@ export {
   getValidImeiSn,
   getStuffHistory,
   getTotalStuff,
+  getTotalImeiSn,
   addStuff,
   updateStuff,
 };

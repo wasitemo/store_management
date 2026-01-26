@@ -9,6 +9,7 @@ import {
   getValidImeiSn,
   getStuffHistory,
   getTotalStuff,
+  getTotalImeiSn,
   addStuff,
   updateStuff,
 } from "../model/stuffModel.js";
@@ -52,8 +53,8 @@ async function showStuffById(stuffId) {
   };
 }
 
-async function showImeiSn() {
-  const result = await getImeiSn();
+async function showImeiSn(limit, offset) {
+  const result = await getImeiSn(limit, offset);
   if (result.length === 0) {
     throw new ErrorMessage("Imei and SN data not found", 404);
   }
@@ -115,6 +116,15 @@ async function showTotalStuff() {
   return result;
 }
 
+async function showTotalImeiSn() {
+  const result = await getTotalImeiSn();
+  if (!result) {
+    throw new ErrorMessage("Imei or sn data not found", 404);
+  }
+
+  return result;
+}
+
 async function newStuff(data) {
   await addStuff(data);
 }
@@ -150,6 +160,7 @@ export {
   showStuffHistory,
   showStuffCBS,
   showTotalStuff,
+  showTotalImeiSn,
   newStuff,
   editStuff,
 };
