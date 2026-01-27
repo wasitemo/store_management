@@ -204,6 +204,7 @@ async function saveStuff(req, res, next) {
 async function changeStuff(req, res, next) {
   try {
     let stuffId = parseInt(req.params.stuff_id);
+    let employeeId = parseInt(req.user.id);
     let update = req.body;
     let fields = [
       "stuff_category_id",
@@ -247,7 +248,7 @@ async function changeStuff(req, res, next) {
       }
     }
 
-    await editStuff(update, stuffId);
+    await editStuff(update, stuffId, employeeId);
     return res.status(200).json({
       status: 200,
       message: "Success updated stuff data",

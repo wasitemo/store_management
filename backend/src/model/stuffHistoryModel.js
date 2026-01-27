@@ -52,11 +52,11 @@ async function addStuffHistory(stuffId, employeeId, newData) {
 async function updateStuffHistory(stuffId, employeeId, oldData, newData) {
   await store.query(
     `
-        INSERT stuff_history
+        INSERT INTO stuff_history
         (
             stuff_id,
             employee_id,
-            "update",
+            operation,
             old_data,
             new_data
         )
@@ -69,7 +69,7 @@ async function updateStuffHistory(stuffId, employeeId, oldData, newData) {
             $5
         )
     `,
-    [stuffId, employeeId, oldData, newData],
+    [stuffId, employeeId, "update", oldData, newData],
   );
 }
 
