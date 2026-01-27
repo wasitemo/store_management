@@ -100,7 +100,7 @@ async function getTotalEmployee() {
 
 async function getEmployeeName() {
   const query = await store.query("SELECT employee_name FROM employee");
-  const restult = query.rows[0];
+  const restult = query.rows;
 
   return restult;
 }

@@ -1,5 +1,6 @@
 import bcrypt from "bcrypt";
 import ErrorMessage from "../error/ErrorMessage.js";
+import { getEmployeeName } from "../model/employeeModel.js";
 import {
   getAccount,
   getAccountById,
@@ -43,6 +44,15 @@ async function showTotalAccount() {
   const result = await getTotalAccount();
   if (!result) {
     throw new ErrorMessage("Account employee not found", 404);
+  }
+
+  return result;
+}
+
+async function showEmployeeName() {
+  const result = await getEmployeeName();
+  if (!result) {
+    throw new ErrorMessage("Employee data not found", 404);
   }
 
   return result;
@@ -145,6 +155,7 @@ export {
   showAccount,
   showAccountById,
   showTotalAccount,
+  showEmployeeName,
   register,
   login,
   refresh,

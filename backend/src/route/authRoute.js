@@ -3,6 +3,7 @@ import authentication from "../middleware/authMiddleware.js";
 import {
   presentAccount,
   presentAccountById,
+  presentEmployeeName,
   registerAccount,
   loginAccount,
   refreshToken,
@@ -13,6 +14,7 @@ import {
 const authRoute = express.Router();
 
 authRoute.get("/employee-account", presentAccount);
+authRoute.get("/employee-account-le", presentEmployeeName);
 authRoute.get("/employee-account/:employee_account_id", presentAccountById);
 authRoute.post("/register", registerAccount);
 authRoute.post("/login", loginAccount);

@@ -3,6 +3,7 @@ import {
   showAccount,
   showAccountById,
   showTotalAccount,
+  showEmployeeName,
   register,
   login,
   refresh,
@@ -44,6 +45,19 @@ async function presentAccountById(req, res, next) {
   } catch (err) {
     console.log(err);
     next(err);
+  }
+}
+
+async function presentEmployeeName(req, res, next) {
+  try {
+    const result = await showEmployeeName();
+    return res.status(200).json({
+      status: 200,
+      data: result,
+    });
+  } catch (err) {
+    console.log(err);
+    console.log(err);
   }
 }
 
@@ -203,6 +217,7 @@ async function logoutAccount(req, res, next) {
 export {
   presentAccount,
   presentAccountById,
+  presentEmployeeName,
   registerAccount,
   loginAccount,
   refreshToken,
