@@ -124,20 +124,17 @@ async function editAccount(data, accountId) {
   const existingAccount = await getAccountById(accountId);
 
   if (!existingAccount) {
-    throw new ErrorMessage("Account employee not found", 404);
+    throw new ErrorMessage("Employee account not found", 404);
   }
 
-  if (data === "password") {
-    data.password = await bcrypt.hash(
-      data.password,
-      parseInt(process.env.SALT_ROUND),
-    );
-  }
-
+  const hash = await bcrypt.hash(
+    data.password,
+    parseInt(process.env.SALT_ROUND),
+  );
   let updateData = {
     employee_id: data.employee_id ?? existingAccount.employee_id,
     username: data.username ?? existingAccount.username,
-    password: data.password ?? existingAccount.password,
+    password: hash ?? existingAccount.password,
     role: data.role ?? existingAccount.role,
     account_status: data.account_status ?? existingAccount.account_status,
   };

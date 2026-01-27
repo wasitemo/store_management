@@ -62,7 +62,7 @@ async function addAccount(employeeId, username, password, role, accountStatus) {
             $2,
             $3,
             $4,
-            $5,
+            $5
         )
     `,
     [employeeId, username, password, role, accountStatus],
@@ -70,7 +70,7 @@ async function addAccount(employeeId, username, password, role, accountStatus) {
 }
 
 async function updateAccount(data, accountId) {
-  const { employe_id, username, password, role, account_status } = data;
+  const { employee_id, username, password, role, account_status } = data;
   await store.query(
     `
         UPDATE employee_account
@@ -79,10 +79,10 @@ async function updateAccount(data, accountId) {
         username = $2,    
         password = $3,    
         role = $4,    
-        account_status = $5,
+        account_status = $5
         WHERE employee_account_id = $6    
     `,
-    [employe_id, username, password, role, account_status, accountId],
+    [employee_id, username, password, role, account_status, accountId],
   );
 }
 
