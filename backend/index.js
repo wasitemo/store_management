@@ -17,7 +17,6 @@ import stuffBrandRoute from "./src/route/stuffBrandRoute.js";
 import stuffRoute from "./src/route/stuffRoute.js";
 
 const app = express();
-const saltRounds = 12;
 const BACKEND_PORT = process.env.BACKEND_PORT;
 const upload = multer({
   dest: "uploads",
