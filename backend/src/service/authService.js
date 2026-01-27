@@ -7,7 +7,7 @@ import {
   getTotalAccount,
   addAccount,
   updateAccount,
-  findAccounByUsername,
+  findAccountByUsername,
   findPasswordByUsername,
   findAccountStatusByUsername,
 } from "../model/authModel.js";
@@ -59,7 +59,7 @@ async function showEmployeeName() {
 }
 
 async function register(employeeId, username, password, role, accountStatus) {
-  const existingAccount = await findAccounByUsername(username);
+  const existingAccount = await findAccountByUsername(username);
   if (existingAccount) {
     throw new ErrorMessage("Username already registered", 409);
   }
@@ -74,7 +74,7 @@ async function register(employeeId, username, password, role, accountStatus) {
 }
 
 async function login(username, password) {
-  const existingAccount = await findAccounByUsername(username);
+  const existingAccount = await findAccountByUsername(username);
   if (!existingAccount) {
     throw new ErrorMessage("Email not registered", 404);
   }
@@ -95,7 +95,7 @@ async function login(username, password) {
   }
 
   const payload = {
-    id: existingAccount.employee_account_id,
+    id: existingAccount.employee_id,
     username: existingAccount.username,
   };
   const accessToken = generateAccessToken(payload);

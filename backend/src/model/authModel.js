@@ -96,9 +96,9 @@ async function getTotalAccount() {
   return result;
 }
 
-async function findAccounByUsername(username) {
+async function findAccountByUsername(username) {
   const query = await store.query(
-    "SELECT username FROM employee_account WHERE LOWER(TRIM(username)) = LOWER(TRIM($1))",
+    "SELECT employee_id, username FROM employee_account WHERE LOWER(TRIM(username)) = LOWER(TRIM($1))",
     [username],
   );
   const result = query.rows[0];
@@ -132,7 +132,7 @@ export {
   getTotalAccount,
   addAccount,
   updateAccount,
-  findAccounByUsername,
+  findAccountByUsername,
   findPasswordByUsername,
   findAccountStatusByUsername,
 };
