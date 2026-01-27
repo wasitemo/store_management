@@ -114,51 +114,83 @@ async function presentStuffCBS(req, res, next) {
 
 async function saveStuff(req, res, next) {
   try {
-    let data = req.body;
-    let fields = [
-      "stuff_category_id",
-      "stuff_brand_id",
-      "supplier_id",
-      "stuff_code",
-      "stuff_sku",
-      "stuff_name",
-      "stuff_variant",
-      "current_sell_price",
-      "has_sn",
-      "barcode",
-    ];
-    let invalidField = Object.keys(data).filter((k) => !fields.includes(k));
+    let {
+      stuff_category_id,
+      stuff_brand_id,
+      supplier_id,
+      stuff_code,
+      stuff_sku,
+      stuff_name,
+      stuff_variant,
+      current_sell_price,
+      has_sn,
+      barcode,
+    } = req.body;
+    let employeeId = parseInt(req.user.id);
 
-    if (invalidField.length > 0) {
-      throw new ErrorMessage(
-        `Missing required key: ${invalidField.join(", ")}`,
-        400,
-      );
+    if (!stuff_category_id) {
+      throw new ErrorMessage(`Missing required key ${stuff_category_id}`);
     }
 
-    for (let k in data) {
-      if (k === "stuff_category_id" && typeof data[k] === "string") {
-        data[k] = parseInt(data[k]);
-      }
-
-      if (k === "stuff_brand_id" && typeof data[k] === "string") {
-        data[k] = parseInt(data[k]);
-      }
-
-      if (k === "supplier_id" && typeof data[k] === "string") {
-        data[k] = parseInt(data[k]);
-      }
-
-      if (k === "current_sell_price" && typeof data[k] === "string") {
-        data[k] = convertionToNumber(data[k]);
-      }
-
-      if (typeof data[k] === "string") {
-        data[k] = data[k].trim();
-      }
+    if (!stuff_brand_id) {
+      throw new ErrorMessage(`Missing required key ${stuff_brand_id}`);
     }
 
-    await newStuff(data);
+    if (!supplier_id) {
+      throw new ErrorMessage(`Missing required key ${supplier_id}`);
+    }
+
+    if (!stuff_code) {
+      throw new ErrorMessage(`Missing required key ${stuff_code}`);
+    }
+
+    if (!stuff_sku) {
+      throw new ErrorMessage(`Missing required key ${stuff_sku}`);
+    }
+
+    if (!stuff_name) {
+      throw new ErrorMessage(`Missing required key ${stuff_name}`);
+    }
+
+    if (!stuff_variant) {
+      throw new ErrorMessage(`Missing required key ${stuff_variant}`);
+    }
+
+    if (!current_sell_price) {
+      throw new ErrorMessage(`Missing required key ${current_sell_price}`);
+    }
+
+    if (!has_sn) {
+      throw new ErrorMessage(`Missing required key ${has_sn}`);
+    }
+
+    if (!barcode) {
+      throw new ErrorMessage(`Missing required key ${barcode}`);
+    }
+
+    stuff_category_id = parseInt(stuff_category_id);
+    stuff_brand_id = parseInt(stuff_brand_id);
+    supplier_id = parseInt(supplier_id);
+    stuff_name = stuff_name.trim();
+    stuff_code = stuff_code.trim();
+    stuff_sku = stuff_sku.trim();
+    stuff_variant = stuff_variant.trim();
+    current_sell_price = convertionToNumber(current_sell_price);
+    barcode = barcode.trim();
+
+    await newStuff(
+      stuff_category_id,
+      stuff_brand_id,
+      supplier_id,
+      stuff_name,
+      stuff_code,
+      stuff_sku,
+      stuff_variant,
+      current_sell_price,
+      has_sn,
+      barcode,
+      employeeId,
+    );
     return res.status(201).json({
       status: 201,
       message: "Success added data stuff",

@@ -1,7 +1,12 @@
 import ErrorMessage from "../error/ErrorMessage.js";
+import store from "../config/store.js";
 import { getStuffCategoryName } from "../model/stuffCategoryModel.js";
 import { getStuffBrandName } from "../model/stuffBrandModel.js";
 import { getSupplierName } from "../model/supplierModel.js";
+import {
+  addStuffHistory,
+  updateStuffHistory,
+} from "../model/stuffHistoryModel.js";
 import {
   getStuff,
   getStuffByStuffId,
@@ -115,8 +120,42 @@ async function showTotalImeiSn() {
   return result;
 }
 
-async function newStuff(data) {
-  await addStuff(data);
+async function newStuff(
+  stuffCategoryId,
+  stuffBrandId,
+  supplierId,
+  stuffName,
+  stuffCode,
+  stuffSku,
+  stuffVariant,
+  currentSellPrice,
+  hasSn,
+  barcode,
+  employeeId,
+) {
+  try {
+    store.query("BEGIN");
+
+    const stuffData = await addStuff(
+      stuffCategoryId,
+      stuffBrandId,
+      supplierId,
+      stuffCode,
+      stuffSku,
+      stuffName,
+      stuffVariant,
+      currentSellPrice,
+      hasSn,
+      barcode,
+    );
+    await addStuffHistory(stuffData.stuff_id, employeeId, stuffData);
+
+    store.query("COMMIT");
+  } catch (err) {
+    store.query("ROLLBACK");
+    console.log(err);
+    throw err;
+  }
 }
 
 async function editStuff(data, stuffId) {

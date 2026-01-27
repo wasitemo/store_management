@@ -133,20 +133,19 @@ async function getImeiSn(limit, offset) {
   return result;
 }
 
-async function addStuff(data) {
-  const {
-    stuff_category_id,
-    stuff_brand_id,
-    supplier_id,
-    stuff_code,
-    stuff_sku,
-    stuff_name,
-    stuff_variant,
-    current_sell_price,
-    has_sn,
-    barcode,
-  } = data;
-  await store.query(
+async function addStuff(
+  stuffCategoryId,
+  stuffBrandId,
+  supplierId,
+  stuffCode,
+  stuffSku,
+  stuffName,
+  stuffVariant,
+  currentSellPrice,
+  hasSn,
+  barcode,
+) {
+  const query = await store.query(
     `
         INSERT INTO stuff 
         (
@@ -174,20 +173,24 @@ async function addStuff(data) {
             $9,
             $10
         )
+        RETURNING *
     `,
     [
-      stuff_category_id,
-      stuff_brand_id,
-      supplier_id,
-      stuff_code,
-      stuff_sku,
-      stuff_name,
-      stuff_variant,
-      current_sell_price,
-      has_sn,
+      stuffCategoryId,
+      stuffBrandId,
+      supplierId,
+      stuffCode,
+      stuffSku,
+      stuffName,
+      stuffVariant,
+      currentSellPrice,
+      hasSn,
       barcode,
     ],
   );
+  const result = query.rows[0];
+
+  return result;
 }
 
 async function updateStuff(data, stuffId) {
@@ -204,7 +207,7 @@ async function updateStuff(data, stuffId) {
     barcode,
   } = data;
 
-  await store.query(
+  const query = await store.query(
     `
         UPDATE stuff
         SET
@@ -218,7 +221,8 @@ async function updateStuff(data, stuffId) {
         current_sell_price = $8,    
         has_sn = $9,    
         barcode = $10
-        WHERE stuff_id = $11    
+        WHERE stuff_id = $11
+        RETURNING *
     `,
     [
       stuff_category_id,
@@ -234,6 +238,9 @@ async function updateStuff(data, stuffId) {
       stuffId,
     ],
   );
+  const result = query.rows[0];
+
+  return result;
 }
 
 // UTIL QUERY
