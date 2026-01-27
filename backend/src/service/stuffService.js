@@ -10,10 +10,7 @@ import {
 import {
   getStuff,
   getStuffByStuffId,
-  getImeiSn,
-  getValidImeiSn,
   getTotalStuff,
-  getTotalImeiSn,
   addStuff,
   updateStuff,
 } from "../model/stuffModel.js";
@@ -57,27 +54,6 @@ async function showStuffById(stuffId) {
   };
 }
 
-async function showImeiSn(limit, offset) {
-  const result = await getImeiSn(limit, offset);
-  if (result.length === 0) {
-    throw new ErrorMessage("Imei and SN data not found", 404);
-  }
-
-  return result;
-}
-
-async function showValidImeiSn(warehouseId, identify) {
-  const result = await getValidImeiSn(warehouseId, identify);
-  if (!result.length) {
-    throw new ErrorMessage(
-      ` ${identify} not found in warehouse ${warehouseId}`,
-      404,
-    );
-  }
-
-  return result;
-}
-
 async function showStuffCBS() {
   const cResult = await getStuffCategoryName();
   const bResult = await getStuffBrandName();
@@ -106,15 +82,6 @@ async function showTotalStuff() {
   const result = await getTotalStuff();
   if (!result) {
     throw new ErrorMessage("Stuff data not found", 404);
-  }
-
-  return result;
-}
-
-async function showTotalImeiSn() {
-  const result = await getTotalImeiSn();
-  if (!result) {
-    throw new ErrorMessage("Imei or sn data not found", 404);
   }
 
   return result;
@@ -201,11 +168,8 @@ async function editStuff(data, stuffId, employeeId) {
 export {
   showStuff,
   showStuffById,
-  showImeiSn,
-  showValidImeiSn,
   showStuffCBS,
   showTotalStuff,
-  showTotalImeiSn,
   newStuff,
   editStuff,
 };

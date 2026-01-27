@@ -3,8 +3,6 @@ import authentication from "../middleware/authMiddleware.js";
 import {
   presentStuff,
   presentStuffById,
-  presentImeiSn,
-  presentValidImeiSn,
   presentStuffCBS,
   saveStuff,
   changeStuff,
@@ -13,8 +11,6 @@ import {
 const stuffRoute = express.Router();
 
 stuffRoute.get("/stuff", authentication, presentStuff);
-stuffRoute.get("/imei-sn", authentication, presentImeiSn);
-stuffRoute.get("/stuff-scan", authentication, presentValidImeiSn);
 stuffRoute.get("/stuff-cbs", authentication, presentStuffCBS);
 stuffRoute.get("/stuff/:stuff_id", authentication, presentStuffById);
 stuffRoute.post("/stuff", authentication, saveStuff);
