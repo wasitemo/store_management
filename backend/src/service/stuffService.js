@@ -7,7 +7,6 @@ import {
   getStuffByStuffId,
   getImeiSn,
   getValidImeiSn,
-  getStuffHistory,
   getTotalStuff,
   getTotalImeiSn,
   addStuff,
@@ -98,15 +97,6 @@ async function showStuffCBS() {
   };
 }
 
-async function showStuffHistory() {
-  const result = getStuffHistory();
-  if (result.length === 0) {
-    throw new ErrorMessage("Stuff history data not found", 404);
-  }
-
-  return result;
-}
-
 async function showTotalStuff() {
   const result = await getTotalStuff();
   if (!result) {
@@ -157,7 +147,6 @@ export {
   showStuffById,
   showImeiSn,
   showValidImeiSn,
-  showStuffHistory,
   showStuffCBS,
   showTotalStuff,
   showTotalImeiSn,

@@ -5,7 +5,6 @@ import {
   showStuffById,
   showImeiSn,
   showValidImeiSn,
-  showStuffHistory,
   showStuffCBS,
   showTotalStuff,
   showTotalImeiSn,
@@ -103,19 +102,6 @@ async function presentValidImeiSn(req, res, next) {
 async function presentStuffCBS(req, res, next) {
   try {
     const result = await showStuffCBS();
-    return res.status(200).json({
-      status: 200,
-      data: result,
-    });
-  } catch (err) {
-    console.log(err);
-    next(err);
-  }
-}
-
-async function presentStuffHistory(req, res, next) {
-  try {
-    const result = await showStuffHistory();
     return res.status(200).json({
       status: 200,
       data: result,
@@ -246,7 +232,6 @@ export {
   presentImeiSn,
   presentValidImeiSn,
   presentStuffCBS,
-  presentStuffHistory,
   saveStuff,
   changeStuff,
 };

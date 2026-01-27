@@ -133,26 +133,6 @@ async function getImeiSn(limit, offset) {
   return result;
 }
 
-async function getStuffHistory() {
-  const query = await store.query(`
-        SELECT
-        employee.employee_id,
-        stuff.stuff_id,
-        employee.employee_name,
-        stuff.stuff_name,
-        operation,
-        change_at,
-        old_data,
-        new_data
-        FROM stuff_history
-        LEFT JOIN employee ON employee.employee_id = stuff_history.employee_id
-        LEFT JOIN stuff ON stuff.stuff_id = stuff_history.stuff_id
-    `);
-  const result = query.rows;
-
-  return result;
-}
-
 async function addStuff(data) {
   const {
     stuff_category_id,
@@ -278,7 +258,6 @@ export {
   getStuffByStuffId,
   getImeiSn,
   getValidImeiSn,
-  getStuffHistory,
   getTotalStuff,
   getTotalImeiSn,
   addStuff,

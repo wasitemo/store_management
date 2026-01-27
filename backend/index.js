@@ -15,6 +15,7 @@ import supplierRoute from "./src/route/supplierRoute.js";
 import stuffCategoryRoute from "./src/route/stuffCategoryRoute.js";
 import stuffBrandRoute from "./src/route/stuffBrandRoute.js";
 import stuffRoute from "./src/route/stuffRoute.js";
+import stuffHistoryRoute from "./src/route/stuffHistoryRoute.js";
 
 const app = express();
 const BACKEND_PORT = process.env.BACKEND_PORT;
@@ -102,13 +103,14 @@ function parseExcel(filePath) {
   return formattedData;
 }
 
+app.use("/", authRoute);
 app.use("/", employeeRoute);
 app.use("/", warehouseRoute);
 app.use("/", supplierRoute);
 app.use("/", stuffCategoryRoute);
 app.use("/", stuffBrandRoute);
 app.use("/", stuffRoute);
-app.use("/", authRoute);
+app.use("/", stuffHistoryRoute);
 
 // STUFF PURCHASE
 app.get("/stuff-purchases", async (req, res) => {
