@@ -69,4 +69,19 @@ async function addStuffPurchase(supplierId, employeeId, buyDate, totalPrice) {
   return result;
 }
 
-export { getStuffPurchase, getStuffPurchaseById, addStuffPurchase };
+// UTIL QUERY
+async function getTotalStuffPurchase() {
+  const query = await store.query(
+    "SELECT COUNT(stuff_purchase_id) FROM stuff_purchase",
+  );
+  const result = query.rows[0];
+
+  return result;
+}
+
+export {
+  getStuffPurchase,
+  getStuffPurchaseById,
+  addStuffPurchase,
+  getTotalStuffPurchase,
+};
