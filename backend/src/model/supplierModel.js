@@ -81,11 +81,22 @@ async function getTotalSupplier() {
   return result;
 }
 
+async function findSupplierIdByName(supplierName) {
+  const query = await store.query(
+    "SELECT supplier_id FROM supplier WHERE LOWER(TRIM(supplier_name)) = LOWER(TRIM($1))",
+    [supplierName],
+  );
+  const result = query.rows[0];
+
+  return result;
+}
+
 export {
   getSupplier,
   getSupplierById,
   getSupplierName,
   getTotalSupplier,
+  findSupplierIdByName,
   addSupplier,
   updateSupplier,
 };

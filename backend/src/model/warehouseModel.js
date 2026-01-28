@@ -12,7 +12,7 @@ async function getWarehouse(limit, offset) {
         GROUP BY warehouse_id
         LIMIT $1 OFFSET $2 
     `,
-    [limit, offset]
+    [limit, offset],
   );
   const result = query.rows;
 
@@ -29,7 +29,7 @@ async function getWarehouseById(warehouseId) {
         FROM warehouse
         WHERE warehouse_id = $1
     `,
-    [warehouseId]
+    [warehouseId],
   );
   const result = query.rows[0];
 
@@ -44,7 +44,7 @@ async function addWarehouse(warehouseName, warehouseAddress) {
         VALUES
         ($1, $2)    
     `,
-    [warehouseName, warehouseAddress]
+    [warehouseName, warehouseAddress],
   );
 }
 
@@ -58,8 +58,18 @@ async function updateWarehouse(data, warehouseId) {
         warehouse_address = $2
         WHERE warehouse_id = $3    
     `,
-    [warehouse_name, warehouse_address, warehouseId]
+    [warehouse_name, warehouse_address, warehouseId],
   );
+}
+
+async function findWarehouseIdByName(warehouseName) {
+  const query = await store.query(
+    "SELECT warehouse_id FROM warehouse WHERE LOWER(TRIM(warehouse_name)) = LOWER(TRIM($1))",
+    [warehouseName],
+  );
+  const result = query.rows[0];
+
+  return result;
 }
 
 // UTIL QUERY
@@ -73,6 +83,7 @@ export {
   getWarehouse,
   getWarehouseById,
   getTotalWarehouse,
+  findWarehouseIdByName,
   addWarehouse,
   updateWarehouse,
 };
