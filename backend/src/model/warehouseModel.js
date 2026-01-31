@@ -62,6 +62,23 @@ async function updateWarehouse(data, warehouseId) {
   );
 }
 
+// UTIL QUERY
+async function getTotalWarehouse() {
+  const query = await store.query("SELECT COUNT(warehouse_id) FROM warehouse");
+  const result = query.rows[0];
+
+  return result;
+}
+
+async function getWarehouseName() {
+  const query = await store.query(
+    "SELECT warehouse_id, warehouse_name FROM warehouse",
+  );
+  const result = query.rows;
+
+  return result;
+}
+
 async function findWarehouseIdByName(warehouseName) {
   const query = await store.query(
     "SELECT warehouse_id FROM warehouse WHERE LOWER(TRIM(warehouse_name)) = LOWER(TRIM($1))",
@@ -72,16 +89,10 @@ async function findWarehouseIdByName(warehouseName) {
   return result;
 }
 
-// UTIL QUERY
-async function getTotalWarehouse() {
-  const query = await store.query("SELECT COUNT(warehouse_id) FROM warehouse");
-  const result = query.rows[0];
-
-  return result;
-}
 export {
   getWarehouse,
   getWarehouseById,
+  getWarehouseName,
   getTotalWarehouse,
   findWarehouseIdByName,
   addWarehouse,

@@ -179,4 +179,29 @@ async function getTotalStuff() {
   return result;
 }
 
-export { getStuff, getStuffByStuffId, getTotalStuff, addStuff, updateStuff };
+async function getStuffName() {
+  const query = await store.query("SELECT stuff_id, stuff_name FROM stuff");
+  const result = query.rows;
+
+  return result;
+}
+
+async function findStuffIdByName(stuffName) {
+  const query = await store.query(
+    "SELECT stuff_id FROM stuff WHERE LOWER(TRIM(stuff_name)) = LOWER(TRIM($1))",
+    [stuffName],
+  );
+  const result = query.rows[0];
+
+  return result;
+}
+
+export {
+  getStuff,
+  getStuffByStuffId,
+  getTotalStuff,
+  getStuffName,
+  findStuffIdByName,
+  addStuff,
+  updateStuff,
+};

@@ -38,13 +38,6 @@ async function getSupplierById(supplierId) {
   return result;
 }
 
-async function getSupplierName() {
-  const query = await store.query("SELECT supplier_name FROM supplier");
-  const result = query.rows;
-
-  return result;
-}
-
 async function addSupplier(supplierName, supplierContact, supplierAddress) {
   await store.query(
     `
@@ -77,6 +70,15 @@ async function updateSupplier(data, supplierId) {
 async function getTotalSupplier() {
   const query = await store.query("SELECT COUNT(supplier_id) FROM supplier");
   const result = query.rows[0];
+
+  return result;
+}
+
+async function getSupplierName() {
+  const query = await store.query(
+    "SELECT supplier_id, supplier_name FROM supplier",
+  );
+  const result = query.rows;
 
   return result;
 }
