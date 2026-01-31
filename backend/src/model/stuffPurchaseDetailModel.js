@@ -5,15 +5,16 @@ async function getStuffPurchaseDetailById(stuffPurchaseId) {
     `
         SELECT
         stuff_purchase_detail.stuff_purchase_detail_id,
+        stuff_purchase.stuff_purchase_id,
         warehouse.warehouse_id,
         stuff.stuff_id,
-        stuff_purchase.stuff_purchase_id,
         buy_batch,
         quantity,
         buy_price
-        INNER JOIN warehouse ON warehouse.warehouse_id = stuff_purchase_detail.warehouse_id    
-        INNER JOIN stuff ON stuff.stuff_id = stuff_purchase_detail.stuff_id    
-        INNER JOIN stuff_purchase ON stuff_purchase.stuff_purchase_id = stuff_purchase_detail.stuff_purchase_id
+        FROM stuff_purchase_detail
+        LEFT JOIN warehouse ON warehouse.warehouse_id = stuff_purchase_detail.warehouse_id    
+        LEFT JOIN stuff ON stuff.stuff_id = stuff_purchase_detail.stuff_id    
+        LEFT JOIN stuff_purchase ON stuff_purchase.stuff_purchase_id = stuff_purchase_detail.stuff_purchase_id
         WHERE stuff_purchase_detail.stuff_purchase_id = $1    
     `,
     [stuffPurchaseId],

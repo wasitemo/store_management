@@ -18,6 +18,7 @@ import stuffRoute from "./src/route/stuffRoute.js";
 import stuffHistoryRoute from "./src/route/stuffHistoryRoute.js";
 import imeiSnRoute from "./src/route/imeiSnRoute.js";
 import stuffPurchaseRoute from "./src/route/stuffPurchaseRoute.js";
+import stuffPurchaseDetailRoute from "./src/route/stuffPurchaseDetailRoute.js";
 
 const app = express();
 const BACKEND_PORT = process.env.BACKEND_PORT;
@@ -106,6 +107,7 @@ app.use("/", stuffRoute);
 app.use("/", stuffHistoryRoute);
 app.use("/", imeiSnRoute);
 app.use("/", stuffPurchaseRoute);
+app.use("/", stuffPurchaseDetailRoute);
 
 // CUSTOMER
 app.get("/customers", async (req, res) => {
