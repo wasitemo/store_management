@@ -180,7 +180,9 @@ async function getTotalStuff() {
 }
 
 async function getStuffName() {
-  const query = await store.query("SELECT stuff_id, stuff_name FROM stuff");
+  const query = await store.query(
+    "SELECT stuff_id, stuff_name FROM stuff ORDER BY stuff_id ASC",
+  );
   const result = query.rows;
 
   return result;
