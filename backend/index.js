@@ -26,10 +26,6 @@ import stockRoute from "./src/route/stockRoute.js";
 
 const app = express();
 const BACKEND_PORT = process.env.BACKEND_PORT;
-const upload = multer({
-  dest: "uploads",
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-});
 
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
