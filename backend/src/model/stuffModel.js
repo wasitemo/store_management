@@ -171,6 +171,20 @@ async function updateStuff(data, stuffId) {
   return result;
 }
 
+async function updateTotalStock(stuffId1, stuffId2) {
+  await store.query(
+    `
+    UPDATE stuff
+    SET
+    total_stock = (
+      SELECT COUNT(*) FROM stuff_information WHERE stuff_id = $1 AND stock_status = "ready"
+    )
+    WHERE stuff_id = $2  
+  `,
+    [stuffId1, stuffId2],
+  );
+}
+
 // UTIL QUERY
 async function getTotalStuff() {
   let query = await store.query("SELECT COUNT(stuff_id) FROM stuff");
@@ -206,4 +220,5 @@ export {
   findStuffIdByName,
   addStuff,
   updateStuff,
+  updateTotalStock,
 };
