@@ -93,7 +93,7 @@ async function saveStock(req, res, next) {
     }
 
     warehouse_id = parseInt(warehouse_id);
-    stuff_id = parseInt(warehouse_id);
+    stuff_id = parseInt(stuff_id);
     imei_1 = imei_1.trim();
     imei_1 = imei_1.trim();
     sn = sn.trim();
@@ -116,15 +116,15 @@ async function uploadStock(req, res, next) {
       throw new ErrorMessage("File must be included", 400);
     }
 
-    const ext = req.file.originalname.split(".").pop();
+    const ext = req.file.originalname.split(".").pop().toLowerCase();
     let rows;
 
     if (ext === "csv") {
-      rows = parseCSV(filePath);
-    } else if (ext === "xlsx" || ext === "xlx") {
-      rows = parseExcel(filePath);
+      rows = await parseCSV(filePath);
+    } else if (ext === "xlsx" || ext === "xls") {
+      rows = await parseExcel(filePath);
     } else {
-      throw new ErrorMessage("File format must be csv or xlsx or xlx", 400);
+      throw new ErrorMessage("File format must be csv or xlsx or xls", 400);
     }
 
     if (!rows || rows.lengt === 0) {

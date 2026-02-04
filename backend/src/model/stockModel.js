@@ -60,10 +60,11 @@ async function addStock(warehouseId, stuffId, stuffInfoId) {
   await store.query(
     `
         INSERT INTO stock
-        (warehouseId, stuff_id, stuff_information_id, stock_type)
+        (warehouse_id, stuff_id, stuff_information_id, stock_type)
         VALUES
-        ($1, $2, $3, "in")
-    `[(warehouseId, stuffId, stuffInfoId)],
+        ($1, $2, $3, 'in')
+    `,
+    [warehouseId, stuffId, stuffInfoId],
   );
 }
 

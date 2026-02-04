@@ -1,6 +1,6 @@
 import express from "express";
 import authentication from "../middleware/authMiddleware.js";
-import uploadPurchaseMiddleware from "../middleware/uploadPurchaseMiddleware.js";
+import uploadStockMiddleware from "../middleware/uploadStockMiddleware.js";
 import {
   presentStock,
   presentStockHistory,
@@ -18,7 +18,7 @@ stockRoute.post("/stock", authentication, saveStock);
 stockRoute.post(
   "/upload-stock",
   authentication,
-  uploadPurchaseMiddleware.single("file"),
+  uploadStockMiddleware.single("file"),
   uploadStock,
 );
 

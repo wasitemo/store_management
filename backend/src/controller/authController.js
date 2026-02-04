@@ -125,7 +125,7 @@ async function loginAccount(req, res, next) {
       maxAge: parseInt(process.env.MAX_AGE_COOKIE),
     });
 
-    return res.status(201).json({
+    return res.status(200).json({
       status: 200,
       access_token,
     });

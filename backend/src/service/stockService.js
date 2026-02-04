@@ -96,7 +96,11 @@ async function newStock(warehouseId, stuffId, imei1, imei2, sn) {
 
     const infoQuery = await addStuffInformation(stuffId, imei1, imei2, sn);
 
-    await addStock(warehouseId, parseInt(infoQuery.stuff_information_id));
+    await addStock(
+      warehouseId,
+      stuffId,
+      parseInt(infoQuery.stuff_information_id),
+    );
     await updateTotalStock(stuffId, stuffId);
 
     await store.query("COMMIT");
@@ -120,13 +124,13 @@ async function uploadStuffStock(rows) {
         }
       }
 
-      let { warehous_name, stuff_name, imei_1, imei_2, sn } = row;
+      let { warehouse_name, stuff_name, imei_1, imei_2, sn } = row;
 
-      const warehouseId = await findWarehouseIdByName(warehous_name);
+      const warehouseId = await findWarehouseIdByName(warehouse_name);
       const stuffId = await findStuffIdByName(stuff_name);
 
       if (!warehouseId) {
-        throw new ErrorMessage(`${warehous_name} not registered`, 404);
+        throw new ErrorMessage(`${warehouse_name} not registered`, 404);
       }
 
       if (!stuffId) {
@@ -149,10 +153,22 @@ async function uploadStuffStock(rows) {
         throw new ErrorMessage("SN already registered", 409);
       }
 
-      const infoQuery = await addStuffInformation(stuffId, imei_1, imei_2, sn);
+      const infoQuery = await addStuffInformation(
+        parseInt(stuffId.stuff_id),
+        imei_1,
+        imei_2,
+        sn,
+      );
 
-      await addStock(warehouseId, parseInt(infoQuery.stuff_information_id));
-      await updateTotalStock(stuffId, stuffId);
+      await addStock(
+        parseInt(warehouseId.warehouse_id),
+        parseInt(stuffId.stuff_id),
+        parseInt(infoQuery.stuff_information_id),
+      );
+      await updateTotalStock(
+        parseInt(stuffId.stuff_id),
+        parseInt(stuffId.stuff_id),
+      );
     }
 
     await store.query("COMMIT");

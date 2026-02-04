@@ -7,7 +7,7 @@ async function addStuffInformation(stuffId, imei1, imei2, sn) {
         INSERT INTO stuff_information
         (stuff_id, imei_1, imei_2, sn, stock_status)
         VALUES
-        ($1, $2, $3, $4, "ready") 
+        ($1, $2, $3, $4, 'ready') 
         RETURNING stuff_information_id
     `,
     [stuffId, imei1, imei2, sn],
