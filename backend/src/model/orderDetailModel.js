@@ -1,5 +1,6 @@
 import store from "../config/store.js";
 
+// MAIN QUERY
 async function getOrderDetail(orderId) {
   let query = await store.query(
     `

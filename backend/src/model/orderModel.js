@@ -1,7 +1,6 @@
 import store from "../config/store.js";
 
 // MAIN QUERY
-
 async function getOrder(limit, offset) {
   let query = await store.query(
     `
@@ -63,4 +62,22 @@ async function addOrder(
   return result;
 }
 
-export { getOrder, addOrder };
+// UTIL QUERY
+async function getTotalOrder() {
+  const query = await store.query(`
+        SELECT COUNT(*)
+        FROM (
+            SELECT
+            customer_order.order_id
+            FROM customer_order
+            LEFT JOIN customer ON customer.customer_id = customer_order.customer_id
+            LEFT JOIN payment_method ON payment_method.payment_method_id = customer_order.payment_method_id
+            LEFT JOIN employee ON employee.employee_id = customer_order.employee_id
+        )    
+    `);
+  const result = query.rows[0];
+
+  return result;
+}
+
+export { getOrder, getTotalOrder, addOrder };
