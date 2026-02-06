@@ -52,7 +52,7 @@ async function saveOrder(req, res, next) {
       order_date,
       payment,
       items,
-      dicounts,
+      discounts,
     } = req.body;
 
     if (!customer_id) {
@@ -75,14 +75,6 @@ async function saveOrder(req, res, next) {
       throw new ErrorMessage(`Missing required key: ${payment}`);
     }
 
-    if (!items) {
-      throw new ErrorMessage(`Missing required key: ${items}`);
-    }
-
-    if (!dicounts) {
-      throw new ErrorMessage(`Missing required key: ${dicounts}`);
-    }
-
     customer_id = parseInt(customer_id);
     payment_method_id = parseInt(payment_method_id);
     warehouse_id = parseInt(warehouse_id);
@@ -96,7 +88,7 @@ async function saveOrder(req, res, next) {
       order_date,
       payment,
       items,
-      dicounts,
+      discounts,
     );
     return res.status(201).json({
       status: 201,

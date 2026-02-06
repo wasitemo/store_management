@@ -11,7 +11,7 @@ async function calculateItemDiscount(stuffId) {
   for (let d of result.discounts || []) {
     if (d.discount_status === true) {
       if (d.discount_type === "percentage") {
-        totalDiscount += item.current_sell_price * (d.discount_value / 100);
+        totalDiscount += result.current_sell_price * (d.discount_value / 100);
       } else if (d.discount_type === "fixed") {
         totalDiscount += d.discount_value;
       }

@@ -20,7 +20,7 @@ async function addStuffInformation(stuffId, imei1, imei2, sn) {
 async function updateStatus(stuffInfoId) {
   await store.query(
     `
-    UPDATE stuff_informastion
+    UPDATE stuff_information
     SET
     stock_status = 'sold'
     WHERE stuff_information_id = $1  

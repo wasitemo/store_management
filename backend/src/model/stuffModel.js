@@ -191,7 +191,7 @@ async function reduceStock(quantity, stuffId) {
     UPDATE stuff
     SET
     total_stock = total_stock - $1
-    WHERE stuff_id = $2 FOR UPDATE
+    WHERE stuff_id = $2
   `,
     [quantity, stuffId],
   );

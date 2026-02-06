@@ -4,7 +4,7 @@ async function calculateOrderDiscount(discounts, grandTotal) {
   let total = 0;
 
   for (let d of discounts || []) {
-    const result = await getDiscountTypeStatusAndValueById(d.dicount_id);
+    const result = await getDiscountTypeStatusAndValueById(d.discount_id);
 
     if (result?.discount_status) {
       if (result.discount_type === "percentage") {
@@ -14,6 +14,7 @@ async function calculateOrderDiscount(discounts, grandTotal) {
       }
     }
   }
+
   return total;
 }
 

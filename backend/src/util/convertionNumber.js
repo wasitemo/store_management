@@ -1,13 +1,15 @@
 function convertionToNumber(value) {
-  if (value.includes(".") || value.includes(",")) {
-    let newValue = value.replaceAll(".", "").replaceAll(",", "");
+  let strValue = String(value);
+
+  if (strValue.includes(".") || strValue.includes(",")) {
+    let newValue = strValue.replaceAll(".", "").replaceAll(",", "");
     let parsed = parseFloat(newValue);
 
     if (!isNaN(parsed)) {
       return (value = parsed);
     }
   } else {
-    return parseFloat(value);
+    return parseFloat(strValue);
   }
 }
 

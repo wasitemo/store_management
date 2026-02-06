@@ -26,7 +26,7 @@ async function verifyStuff(stuffId, item) {
       continue;
     }
 
-    if (stuffId !== result.stuff_information_id) {
+    if (stuffInfoId && stuffInfoId !== result.stuff_information_id) {
       errors.push("Inconsistent identifiers detected");
     }
 

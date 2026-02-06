@@ -91,7 +91,9 @@ async function newOrder(
     let quantities = calculateCuantities(items);
 
     for (let item of items) {
-      let { price, totalDiscount } = await calculateItemDiscount(item.stuff_id);
+      let { price, totalDiscount } = await calculateItemDiscount(
+        parseInt(item.stuff_id),
+      );
 
       grandTotal += price;
       totalItemDiscount += totalDiscount;
@@ -112,16 +114,25 @@ async function newOrder(
     );
 
     for (let d of discounts || []) {
-      await addOrderDiscount(orderId, d.dicount_id);
+      await addOrderDiscount(
+        parseInt(orderId.order_id),
+        parseInt(d.discount_id),
+      );
     }
 
     for (let item of items) {
-      let { stuff_information_id } = await verifyStuff(item.stuff_id, item);
-
-      await addStock(warehouseId, item.stuff_id, stuff_information_id);
+      let { stuff_information_id } = await verifyStuff(
+        parseInt(item.stuff_id),
+        item,
+      );
+      await addStock(
+        warehouseId,
+        parseInt(item.stuff_id),
+        parseInt(stuff_information_id),
+      );
       await addOrderDetail(
-        item.stuff_id,
-        orderId,
+        parseInt(item.stuff_id),
+        parseInt(orderId.order_id),
         warehouseId,
         item.imei_1,
         item.imei_2,
@@ -130,16 +141,16 @@ async function newOrder(
         totalItemDiscount,
         orderDiscount,
       );
-      await updateStatus(stuff_information_id);
+      await updateStatus(parseInt(stuff_information_id));
     }
 
     for (let q of quantities) {
-      let stock = await getStuffStock(q.stuff_id);
+      let stock = await getStuffStock(parseInt(q.stuff_id));
       if (stock.total_stock < q.quantity) {
         throw new ErrorMessage("Stock insifficient", 409);
       }
 
-      await reduceStock(q.quantity, q.stuff_id);
+      await reduceStock(q.quantity, parseInt(q.stuff_id));
     }
 
     await store.query("COMMIT");

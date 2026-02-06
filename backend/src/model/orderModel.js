@@ -42,10 +42,10 @@ async function addOrder(
   const query = await store.query(
     `
         INSERT INTO customer_order
-        (customer_id, payment_method_id, employee_id, oder_date, payment, sub_total, remaining_payment)
+        (customer_id, payment_method_id, employee_id, order_date, payment, sub_total, remaining_payment)
         VALUES
         ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING customer.order_id    
+        RETURNING customer_order.order_id    
     `,
     [
       customerId,
