@@ -70,10 +70,20 @@ async function getTotalPaymentMethod() {
   return result;
 }
 
+async function getPaymentMethodIdAndName() {
+  const query = await store.query(
+    "SELECT payment_method_id, payment_method_name FROM payment_method",
+  );
+  const result = query.rows;
+
+  return result;
+}
+
 export {
   getPaymentMethod,
   getPaymentMethodById,
   getTotalPaymentMethod,
+  getPaymentMethodIdAndName,
   addPaymentMethod,
   updatePaymentMethod,
 };

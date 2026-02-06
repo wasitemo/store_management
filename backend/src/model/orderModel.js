@@ -21,7 +21,7 @@ async function getOrder(limit, offset) {
       LEFT JOIN payment_method ON payment_method.payment_method_id = customer_order.payment_method_id
       LEFT JOIN employee ON employee.employee_id = customer_order.employee_id
       ORDER BY customer_order.order_id ASC
-      LIMIT $1 OFFSET $1
+      LIMIT $1 OFFSET $2
     `,
     [limit, offset],
   );
@@ -36,7 +36,7 @@ async function addOrder(
   employeeId,
   orderDate,
   payment,
-  subtTotal,
+  subTotal,
   remainingPayment,
 ) {
   const query = await store.query(
@@ -53,7 +53,7 @@ async function addOrder(
       employeeId,
       orderDate,
       payment,
-      subtTotal,
+      subTotal,
       remainingPayment,
     ],
   );

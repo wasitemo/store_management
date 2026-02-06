@@ -74,10 +74,20 @@ async function getTotalCustomer() {
   return result;
 }
 
+async function getCustomerIdAndName() {
+  const query = await store.query(
+    "SELECT customer_id, customer_name FROM customer",
+  );
+  const result = query.rows;
+
+  return result;
+}
+
 export {
   getCustomer,
   getCustomerById,
   getTotalCustomer,
+  getCustomerIdAndName,
   addCustomer,
   updateCustomer,
 };

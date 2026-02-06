@@ -242,6 +242,51 @@ async function getTotalOrderDiscount() {
   return result;
 }
 
+async function getStuffPriceAndDiscount(stuffId) {
+  const query = await store.query(
+    `
+      SELECT
+        stuff.stuff_id,
+        stuff.current_sell_price,
+        json_agg(
+          DISTINCT jsonb_build_object(
+            'discount_type', discount.discount_type,
+            'discount_status', discount.discount_status,
+            'discount_value', discount.discount_value
+          )
+        ) AS discounts
+      FROM stuff
+      LEFT JOIN stuff_discount ON stuff.stuff_id = stuff_discount.stuff_id
+      LEFT JOIN discount ON stuff_discount.discount_id = discount.discount_id
+      WHERE stuff.stuff_id = $1
+      GROUP BY stuff.stuff_id, stuff.current_sell_price`,
+    [stuffId],
+  );
+  const result = query.rows[0];
+
+  return result;
+}
+
+async function getDiscountIdAndName() {
+  const query = await store.query(
+    "SELECT discount_id, discount_name FROM discount",
+  );
+  const result = query.rows;
+
+  return result;
+}
+
+async function getDiscountTypeStatusAndValueById(discountId) {
+  const query = await store.query(
+    `SELECT discount_type, discount_status, discount_value 
+         FROM discount WHERE discount_id = $1`,
+    [discountId],
+  );
+  const result = query.rows[0];
+
+  return result;
+}
+
 export {
   getStuffDiscount,
   getStuffDiscountById,
@@ -249,6 +294,9 @@ export {
   getOrderDiscountById,
   getTotalStuffDiscount,
   getTotalOrderDiscount,
+  getDiscountIdAndName,
+  getStuffPriceAndDiscount,
+  getDiscountTypeStatusAndValueById,
   addOrderDiscount,
   addStuffDiscount,
   addDiscount,

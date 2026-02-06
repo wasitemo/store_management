@@ -17,6 +17,18 @@ async function addStuffInformation(stuffId, imei1, imei2, sn) {
   return result;
 }
 
+async function updateStatus(stuffInfoId) {
+  await store.query(
+    `
+    UPDATE stuff_informastion
+    SET
+    stock_status = 'sold'
+    WHERE stuff_information_id = $1  
+  `,
+    [stuffInfoId],
+  );
+}
+
 // UTIL QUERY
 async function findImei1(imei1) {
   const query = await store.query(
@@ -48,4 +60,37 @@ async function findSn(sn) {
   return result;
 }
 
-export { findImei1, findImei2, findSn, addStuffInformation };
+async function findStuffInfo(stuffId, identifiers) {
+  const query = await store.query(
+    `
+    SELECT
+        si.stuff_information_id,
+        si.stuff_id,
+        si.imei_1,
+        si.imei_2,
+        si.sn,
+        si.stock_status
+      FROM stuff_information si
+      WHERE si.stuff_id = $1
+        AND (
+          LOWER(TRIM(si.imei_1)) = LOWER(TRIM($2)) OR
+          LOWER(TRIM(si.imei_2)) = LOWER(TRIM($2)) OR
+          LOWER(TRIM(si.sn)) = LOWER(TRIM($2))
+        )
+      LIMIT 1
+  `,
+    [stuffId, identifiers],
+  );
+  const result = query.rows[0];
+
+  return result;
+}
+
+export {
+  findImei1,
+  findImei2,
+  findSn,
+  findStuffInfo,
+  addStuffInformation,
+  updateStatus,
+};

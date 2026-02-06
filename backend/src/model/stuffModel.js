@@ -185,6 +185,18 @@ async function updateTotalStock(stuffId1, stuffId2) {
   );
 }
 
+async function reduceStock(quantity, stuffId) {
+  await store.query(
+    `
+    UPDATE stuff
+    SET
+    total_stock = total_stock - $1
+    WHERE stuff_id = $2 FOR UPDATE
+  `,
+    [quantity, stuffId],
+  );
+}
+
 // UTIL QUERY
 async function getTotalStuff() {
   let query = await store.query("SELECT COUNT(stuff_id) FROM stuff");
@@ -212,13 +224,25 @@ async function findStuffIdByName(stuffName) {
   return result;
 }
 
+async function getStuffStock(stuffId) {
+  const query = await store.query(
+    "SELECT total_stock FROM stuff WHERE stuff_id = $1 FOR UPDATE",
+    [stuffId],
+  );
+  const result = query.rows[0];
+
+  return result;
+}
+
 export {
   getStuff,
   getStuffByStuffId,
   getTotalStuff,
   getStuffName,
   findStuffIdByName,
+  getStuffStock,
   addStuff,
   updateStuff,
   updateTotalStock,
+  reduceStock,
 };
