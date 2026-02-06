@@ -19,6 +19,7 @@ import paymentMethodRoute from "./src/route/paymentMethodRoute.js";
 import discountRoute from "./src/route/discountRoute.js";
 import stockRoute from "./src/route/stockRoute.js";
 import orderRoute from "./src/route/orderRoute.js";
+import orderDetailRoute from "./src/route/orderDetailRoute.js";
 
 const app = express();
 const BACKEND_PORT = process.env.BACKEND_PORT;
@@ -59,6 +60,7 @@ app.use("/", paymentMethodRoute);
 app.use("/", discountRoute);
 app.use("/", stockRoute);
 app.use("/", orderRoute);
+app.use("/", orderDetailRoute);
 
 app.use(errorHandler);
 app.listen(BACKEND_PORT, () => {
