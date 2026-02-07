@@ -75,9 +75,25 @@ async function updateStuffHistory(stuffId, employeeId, oldData, newData) {
 
 // UTIL QUERY
 async function getTotalStuffHistory() {
-  const query = store.query(
-    "SELECT COUNT(stuff_history_id) FROM stuff_history",
-  );
+  const query = store.query(`
+    SELECT COUNT(*)
+    FROM (
+      SELECT
+        stuff_history.stuff_history_id,
+        employee.employee_id,
+        stuff.stuff_id,
+        employee.employee_name,
+        stuff.stuff_name,
+        operation,
+        change_at,
+        old_data,
+        new_data
+        FROM stuff_history
+        LEFT JOIN employee ON employee.employee_id = stuff_history.employee_id
+        LEFT JOIN stuff ON stuff.stuff_id = stuff_history.stuff_id
+        ORDER BY stuff_history.stuff_history_id ASC
+    )  
+  `);
   const result = (await query).rows[0];
 
   return result;

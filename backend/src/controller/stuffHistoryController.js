@@ -17,7 +17,7 @@ async function presentStuffHistory(req, res, next) {
       page,
       limit,
       total_data: parseInt(total.count),
-      total_page: Math.round(page / limit),
+      total_page: Math.ceil(total.count / limit),
       data: result,
     });
   } catch (err) {
