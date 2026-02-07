@@ -199,7 +199,28 @@ async function reduceStock(quantity, stuffId) {
 
 // UTIL QUERY
 async function getTotalStuff() {
-  let query = await store.query("SELECT COUNT(stuff_id) FROM stuff");
+  let query = await store.query(`
+    SELECT COUNT(*)
+    FROM (
+      SELECT DISTINCT 
+      stuff.stuff_id,
+      stuff.stuff_name,
+      stuff_category.stuff_category_name,
+      stuff_brand.stuff_brand_name,
+      supplier.supplier_name,
+      stuff.stuff_code,
+      stuff.stuff_sku,
+      stuff.stuff_variant,
+      stuff.current_sell_price,
+      stuff.barcode,
+      stuff.has_sn
+      FROM stuff
+      LEFT JOIN stuff_category ON stuff.stuff_category_id = stuff_category.stuff_category_id
+      LEFT JOIN stuff_brand ON stuff.stuff_brand_id = stuff_brand.stuff_brand_id
+      LEFT JOIN supplier ON stuff.supplier_id = supplier.supplier_id
+      ORDER BY stuff.stuff_id ASC
+    )  
+  `);
   let result = query.rows[0];
 
   return result;
