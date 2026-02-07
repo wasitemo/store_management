@@ -67,9 +67,16 @@ async function updateStuffBrand(stuffBrandName, stuffBrandId) {
 
 // UTIL QUERY
 async function getTotalStuffBrand() {
-  const query = await store.query(
-    "SELECT COUNT(stuff_brand_id) FROM stuff_brand",
-  );
+  const query = await store.query(`
+    SELECT COUNT(*)
+    FROM (
+      SELECT
+      stuff_brand_id,
+      stuff_brand_name
+      FROM stuff_brand
+      ORDER BY stuff_brand_id ASC
+    )  
+  `);
   const result = query.rows[0];
 
   return result;
