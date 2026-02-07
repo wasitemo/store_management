@@ -13,7 +13,7 @@ import {
   findImei2,
   findSn,
   addStuffInformation,
-} from "../model/stuffInformationModel.js";
+} from "../model/stuffInfoModel.js";
 import {
   getStock,
   getStockHistory,

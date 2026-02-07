@@ -9,7 +9,7 @@ import { getCustomerIdAndName } from "../model/customerModel.js";
 import { getWarehouseName } from "../model/warehouseModel.js";
 import { getPaymentMethodIdAndName } from "../model/paymentMethodModel.js";
 import { getDiscountIdAndName } from "../model/discountModel.js";
-import { updateStatus } from "../model/stuffInformationModel.js";
+import { updateStatus } from "../model/stuffInfoModel.js";
 import { addStock } from "../model/stockModel.js";
 import { addOrderDetail } from "../model/orderDetailModel.js";
 import { getOrder, getTotalOrder, addOrder } from "../model/orderModel.js";

@@ -3,7 +3,7 @@ import {
   getImeiSn,
   getValidImeiSn,
   getTotalImeiSn,
-} from "../model/imeiSnModel.js";
+} from "../model/stuffInfoModel.js";
 
 async function showImeiSn(limit, offset) {
   const result = await getImeiSn(limit, offset);

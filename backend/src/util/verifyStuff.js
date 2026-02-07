@@ -1,5 +1,5 @@
 import ErrorMessage from "../error/ErrorMessage.js";
-import { findStuffInfo } from "../model/stuffInformationModel.js";
+import { findStuffInfo } from "../model/stuffInfoModel.js";
 
 async function verifyStuff(stuffId, item) {
   let identifiers = [

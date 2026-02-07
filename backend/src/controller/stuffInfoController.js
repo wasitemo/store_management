@@ -3,7 +3,7 @@ import {
   showImeiSn,
   showValidImeiSn,
   showTotalImeiSn,
-} from "../service/imeiSnService.js";
+} from "../service/stuffInfoService.js";
 
 async function presentImeiSn(req, res, next) {
   try {
