@@ -41,9 +41,21 @@ async function addStuffPurchase(supplierId, employeeId, buyDate, totalPrice) {
 
 // UTIL QUERY
 async function getTotalStuffPurchase() {
-  const query = await store.query(
-    "SELECT COUNT(stuff_purchase_id) FROM stuff_purchase",
-  );
+  const query = await store.query(`
+    SELECT COUNT(*)
+    FROM (
+      SELECT
+      stuff_purchase.stuff_purchase_id,
+      supplier.supplier_name,
+      employee.employee_name,
+      stuff_purchase.buy_date,
+      stuff_purchase.total_price
+      FROM stuff_purchase
+      LEFT JOIN supplier ON supplier.supplier_id = stuff_purchase.supplier_id
+      LEFT JOIN employee ON employee.employee_id = stuff_purchase.employee_id
+      ORDER BY stuff_purchase.stuff_purchase_id ASC
+    )  
+  `);
   const result = query.rows[0];
 
   return result;
