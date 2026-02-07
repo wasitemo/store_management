@@ -88,9 +88,22 @@ async function updateAccount(data, accountId) {
 
 // UTIL QUERY
 async function getTotalAccount() {
-  const query = await store.query(
-    "SELECT COUNT(employee_account_id) FROM employee_account",
-  );
+  const query = await store.query(`
+    SELECT COUNT(*)
+    FROM
+    (
+      SELECT
+        employee_account.employee_account_id,
+        employee.employee_id,
+        employee_name,
+        username,
+        role,
+        account_status
+        FROM employee_account
+        INNER JOIN employee ON employee_account.employee_id = employee.employee_id
+        ORDER BY employee_account_id ASC
+    )  
+  `);
   const result = query.rows[0];
 
   return result;
