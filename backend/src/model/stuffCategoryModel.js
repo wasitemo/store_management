@@ -69,9 +69,16 @@ async function updateStuffCategory(stuffCategoryName, stuffCategoryId) {
 
 // UTIL QUERY
 async function getTotalStuffCategory() {
-  const query = await store.query(
-    "SELECT COUNT(stuff_category_id) FROM stuff_category",
-  );
+  const query = await store.query(`
+    SELECT COUNT(*)
+    FROM (
+      SELECT
+        stuff_category_id,
+        stuff_category_name
+        FROM stuff_category
+        ORDER BY stuff_category_id ASC
+    )  
+  `);
   const result = query.rows[0];
 
   return result;
