@@ -19,7 +19,7 @@ async function presentWarehouse(req, res, next) {
       page,
       limit,
       total_data: parseInt(total.count),
-      total_page: Math.round(total.count / limit),
+      total_page: Math.ceil(total.count / limit),
       data: result,
     });
   } catch (err) {

@@ -20,7 +20,7 @@ async function presentSupplier(req, res, next) {
       page,
       limit,
       total_data: parseInt(total.count),
-      total_page: Math.round(total.count / limit),
+      total_page: Math.ceil(total.count / limit),
       data: result,
     });
   } catch (err) {
@@ -59,7 +59,7 @@ async function saveSupplier(req, res, next) {
     if (supplier_contact.length > 13) {
       throw new ErrorMessage(
         "Supplier contact cannot exceed 13 characters",
-        400
+        400,
       );
     }
 
@@ -91,7 +91,7 @@ async function changeSupplier(req, res, next) {
 
     if (invalidField.length > 0) {
       throw new ErrorMessage(
-        `Missing required key: ${invalidField.join(", ")}`
+        `Missing required key: ${invalidField.join(", ")}`,
       );
     }
 
@@ -103,7 +103,7 @@ async function changeSupplier(req, res, next) {
       if (k === "supplier_contact" && update[k].length > 13) {
         throw new ErrorMessage(
           "Supplier contact cannot exceed 13 characters",
-          400
+          400,
         );
       }
     }
