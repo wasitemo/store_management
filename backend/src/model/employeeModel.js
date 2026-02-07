@@ -92,7 +92,19 @@ async function findEmployeeByNik(employeeNik) {
 }
 
 async function getTotalEmployee() {
-  const query = await store.query("SELECT COUNT(employee_id) FROM employee");
+  const query = await store.query(`
+    SELECT COUNT(*)
+    FROM (
+      SELECT
+        employee.employee_id,
+        employee_nik,
+        employee_name,
+        employee_contact,
+        employee_address    
+        FROM employee
+        ORDER BY employee_id ASC
+    )  
+  `);
   const result = query.rows[0];
 
   return result;
