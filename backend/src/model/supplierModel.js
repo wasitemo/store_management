@@ -68,7 +68,18 @@ async function updateSupplier(data, supplierId) {
 
 // UTIL QUERY
 async function getTotalSupplier() {
-  const query = await store.query("SELECT COUNT(supplier_id) FROM supplier");
+  const query = await store.query(`
+    SELECT COUNT(*)
+    FROM (
+      SELECT
+        supplier_id,
+        supplier_name,
+        supplier_contact,
+        supplier_address
+        FROM supplier
+        ORDER BY supplier_id ASC
+    )  
+  `);
   const result = query.rows[0];
 
   return result;
