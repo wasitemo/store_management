@@ -64,7 +64,17 @@ async function updateWarehouse(data, warehouseId) {
 
 // UTIL QUERY
 async function getTotalWarehouse() {
-  const query = await store.query("SELECT COUNT(warehouse_id) FROM warehouse");
+  const query = await store.query(`
+    SELECT COUNT(*)
+    FROM (
+      SELECT
+      warehouse_id,
+      warehouse_name,
+      warehouse_address
+      FROM warehouse
+      GROUP BY warehouse_id
+    )
+  `);
   const result = query.rows[0];
 
   return result;

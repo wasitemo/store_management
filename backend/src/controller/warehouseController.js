@@ -13,7 +13,7 @@ async function presentWarehouse(req, res, next) {
     let limit = parseInt(req.query.limit) || 15;
     let offset = (page - 1) * limit;
     let total = await showtTotalWarehouse(limit, offset);
-    const result = await showWarehouse(limit);
+    const result = await showWarehouse(limit, offset);
     return res.status(200).json({
       status: 200,
       page,
@@ -78,7 +78,7 @@ async function changeWarehouse(req, res, next) {
 
     if (invalidField.length > 0) {
       throw new ErrorMessage(
-        `Missing required key: ${invalidField.join(", ")}`
+        `Missing required key: ${invalidField.join(", ")}`,
       );
     }
 
