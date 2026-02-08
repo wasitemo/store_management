@@ -67,12 +67,23 @@ async function getTotalOrder() {
   const query = await store.query(`
         SELECT COUNT(*)
         FROM (
-            SELECT
-            customer_order.order_id
-            FROM customer_order
-            LEFT JOIN customer ON customer.customer_id = customer_order.customer_id
-            LEFT JOIN payment_method ON payment_method.payment_method_id = customer_order.payment_method_id
-            LEFT JOIN employee ON employee.employee_id = customer_order.employee_id
+          SELECT
+          customer_order.order_id,
+          customer.customer_id,
+          payment_method.payment_method_id,
+          employee.employee_id,
+          customer_name,
+          payment_method_name,
+          employee_name,
+          order_date,
+          payment,
+          sub_total,
+          remaining_payment
+          FROM customer_order
+          LEFT JOIN customer ON customer.customer_id = customer_order.customer_id
+          LEFT JOIN payment_method ON payment_method.payment_method_id = customer_order.payment_method_id
+          LEFT JOIN employee ON employee.employee_id = customer_order.employee_id
+          ORDER BY customer_order.order_id ASC
         )    
     `);
   const result = query.rows[0];
