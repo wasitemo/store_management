@@ -5,11 +5,11 @@ async function getStock(limit, offset) {
   const query = await store.query(
     `
       SELECT
-        w.warehouse_id,
-        s.stuff_id,
-        w.warehouse_name,
-        s.stuff_name,
-        COUNT(si.stuff_information_id) AS total_stock
+      w.warehouse_id,
+      s.stuff_id,
+      w.warehouse_name,
+      s.stuff_name,
+      COUNT(si.stuff_information_id) AS total_stock
       FROM stock st
       JOIN warehouse w ON w.warehouse_id = st.warehouse_id
       JOIN stuff s ON s.stuff_id = st.stuff_id
@@ -72,21 +72,21 @@ async function addStock(warehouseId, stuffId, stuffInfoId) {
 async function getTotalStock() {
   const query = await store.query(
     `
-        SELECT COUNT(*)
-            FROM (
-                SELECT
-                w.warehouse_id,
-                s.stuff_id,
-                w.warehouse_name,
-                s.stuff_name,
-                COUNT(si.stuff_information_id) AS total_stock
-                FROM stock st
-                JOIN warehouse w ON w.warehouse_id = st.warehouse_id
-                JOIN stuff s ON s.stuff_id = st.stuff_id
-                JOIN stuff_information si ON si.stuff_information_id = st.stuff_information_id
-                WHERE si.stock_status = 'ready'
-                GROUP BY w.warehouse_id, s.stuff_id, w.warehouse_name, s.stuff_name
-            );
+      SELECT COUNT(*)
+        FROM (
+          SELECT
+          w.warehouse_id,
+          s.stuff_id,
+          w.warehouse_name,
+          s.stuff_name,
+          COUNT(si.stuff_information_id) AS total_stock
+          FROM stock st
+          JOIN warehouse w ON w.warehouse_id = st.warehouse_id
+          JOIN stuff s ON s.stuff_id = st.stuff_id
+          JOIN stuff_information si ON si.stuff_information_id = st.stuff_information_id
+          WHERE si.stock_status = 'ready'
+          GROUP BY w.warehouse_id, s.stuff_id, w.warehouse_name, s.stuff_name
+      );
     `,
   );
   const result = query.rows[0];
@@ -95,29 +95,30 @@ async function getTotalStock() {
 }
 
 async function getTotalStockHistory() {
-  const query = await store.query(`
-        SELECT COUNT(*)
-            FROM 
-            (
-                SELECT
-                stock.stock_id,
-                warehouse.warehouse_id,
-                stuff.stuff_id,
-                stuff_information.stuff_information_id,
-                warehouse_name,
-                stuff_name,
-                imei_1,
-                imei_2,
-                sn,
-                stock_date,
-                stock_type,
-                stock_status
-                FROM stock
-                LEFT JOIN warehouse ON warehouse.warehouse_id = stock.warehouse_id
-                LEFT JOIN stuff ON stuff.stuff_id = stock.stuff_id
-                LEFT JOIN stuff_information ON stuff_information.stuff_information_id = stock.stuff_information_id
-            );    
-    `);
+  const query = await store.query(
+    `
+      SELECT COUNT(*)
+        FROM (
+          SELECT
+          stock.stock_id,
+          warehouse.warehouse_id,
+          stuff.stuff_id,
+          stuff_information.stuff_information_id,
+          warehouse_name,
+          stuff_name,
+          imei_1,
+          imei_2,
+          sn,
+          stock_date,
+          stock_type,
+          stock_status
+          FROM stock
+          LEFT JOIN warehouse ON warehouse.warehouse_id = stock.warehouse_id
+          LEFT JOIN stuff ON stuff.stuff_id = stock.stuff_id
+          LEFT JOIN stuff_information ON stuff_information.stuff_information_id = stock.stuff_information_id
+        );    
+    `,
+  );
   const result = query.rows[0];
 
   return result;
