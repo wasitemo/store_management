@@ -5,7 +5,7 @@ import {
   presentPaymentMethodById,
   savePaymentMethod,
   changePaymentMethod,
-} from "../controller/paymentMethodeController.js";
+} from "../controller/paymentMethodController.js";
 
 const paymentMethodRoute = express.Router();
 
