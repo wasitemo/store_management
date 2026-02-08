@@ -68,7 +68,18 @@ async function updateCustomer(data, customerId) {
 
 // UTIL QUERY
 async function getTotalCustomer() {
-  const query = await store.query("SELECT COUNT(customer_id) FROM customer");
+  const query = await store.query(`
+    SELECT COUNT(*)
+    FROM (
+      SELECT
+      customer.customer_id,
+      customer_name,
+      customer_contact,
+      customer_address
+      FROM customer
+      ORDER BY customer_id ASC
+    )  
+  `);
   const result = query.rows[0];
 
   return result;
