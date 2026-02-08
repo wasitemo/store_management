@@ -229,14 +229,57 @@ async function updateDiscount(data, employeeId, discountId) {
 
 // UTIL QUERY
 async function getTotalStuffDiscount() {
-  const query = await store.query("SELECT COUNT(stuff_id) FROM stuff_discount");
+  const query = await store.query(`
+    SELECT COUNT(*)
+    FROM (
+      SELECT
+      stuff.stuff_id,
+      stuff_name,
+      json_agg(
+        DISTINCT jsonb_build_object(
+          'discount_id', discount.discount_id,
+          'employee_id', employee.employee_id,
+          'employee_name', employee_name,
+          'discount_name', discount_name,
+          'discount_type', discount_type,
+          'discount_value', discount_value,
+          'started_time', started_time,
+          'ended_time', ended_time,
+          'discount_status', discount_status
+        )
+      ) AS stuff_discounts
+      FROM stuff_discount
+      LEFT JOIN stuff ON stuff_discount.stuff_id = stuff.stuff_id
+      LEFT JOIN discount ON stuff_discount.discount_id = discount.discount_id
+      LEFT JOIN employee ON employee.employee_id = discount.employee_id
+      GROUP BY stuff.stuff_id, stuff_name
+      ORDER BY stuff.stuff_id ASC
+    )  
+  `);
   const result = query.rows[0];
 
   return result;
 }
 
 async function getTotalOrderDiscount() {
-  const query = await store.query("SELECT COUNT(order_id) FROM order_discount");
+  const query = await store.query(`
+    SELECT COUNT(*)
+    FROM (
+      SELECT
+      discount.discount_id,
+      employee.employee_id,
+      employee_name,
+      discount_name,
+      discount_type,
+      discount_value,
+      started_time,
+      ended_time,
+      discount_status
+      FROM discount
+      LEFT JOIN employee ON employee.employee_id = discount.employee_id  
+      ORDER BY discount_id ASC
+    )  
+  `);
   const result = query.rows[0];
 
   return result;
