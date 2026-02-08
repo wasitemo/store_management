@@ -61,9 +61,14 @@ async function updatePaymentMethod(paymentMethodName, paymentMethodId) {
 // UTIL QUERY
 async function getTotalPaymentMethod() {
   const query = await store.query(`
-        SELECT COUNT(payment_method_id)
-        FROM
-        payment_method    
+        SELECT COUNT(*)
+        FROM (
+          SELECT
+          payment_method_id,
+          payment_method_name
+          FROM payment_method
+          ORDER BY payment_method_id ASC
+        )    
     `);
   const result = query.rows[0];
 
