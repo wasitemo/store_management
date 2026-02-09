@@ -75,6 +75,25 @@ async function saveOrder(req, res, next) {
       throw new ErrorMessage(`Missing required key: ${payment}`);
     }
 
+    const fieldItems = ["imei_1", "imei_2", "sn"];
+    const sets = Object.fromEntries(fieldItems.map((f) => [f, new Set()]));
+
+    for (let item of items) {
+      for (let field of fieldItems) {
+        const value = item[field];
+
+        if (!value) {
+          continue;
+        }
+
+        if (sets[field].has(value)) {
+          throw new ErrorMessage(`${value} already in the list`, 409);
+        }
+
+        sets[field].add(value);
+      }
+    }
+
     customer_id = parseInt(customer_id);
     payment_method_id = parseInt(payment_method_id);
     warehouse_id = parseInt(warehouse_id);
