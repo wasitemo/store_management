@@ -5,6 +5,7 @@ import {
   presentStuffPurchase,
   presentStuffPurchaseSWS,
   saveStuffPurchase,
+  downloadPurchaseTemplateFile,
   uploadPurchase,
 } from "../controller/stuffPurchaseController.js";
 
@@ -15,6 +16,11 @@ stuffPurchaseRoute.get(
   "/stuff-purchase-sws",
   authentication,
   presentStuffPurchaseSWS,
+);
+stuffPurchaseRoute.get(
+  "/download-purchase-template",
+  authentication,
+  downloadPurchaseTemplateFile,
 );
 stuffPurchaseRoute.post("/stuff-purchase", authentication, saveStuffPurchase);
 stuffPurchaseRoute.post(

@@ -1,3 +1,4 @@
+import path from "path";
 import ErrorMessage from "../error/ErrorMessage.js";
 import parseCsv from "../util/parseCsv.js";
 import parseExcel from "../util/parseExcel.js";
@@ -122,6 +123,29 @@ async function saveStuffPurchase(req, res, next) {
   }
 }
 
+function downloadPurchaseTemplateFile(req, res, next) {
+  try {
+    const filePath = path.join(
+      process.cwd(),
+      "download",
+      "template_purchase.xlsx",
+    );
+
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=template_purchase.xlsx",
+    );
+    res.download(filePath, "template_purchase.xlsx", (err) => {
+      if (err) {
+        throw new ErrorMessage("Failed to download file", 500);
+      }
+    });
+  } catch (err) {
+    console.log(err);
+    next(err);
+  }
+}
+
 async function uploadPurchase(req, res, next) {
   const filePath = req.file ? req.file.path : null;
   try {
@@ -163,5 +187,6 @@ export {
   presentStuffPurchase,
   presentStuffPurchaseSWS,
   saveStuffPurchase,
+  downloadPurchaseTemplateFile,
   uploadPurchase,
 };
