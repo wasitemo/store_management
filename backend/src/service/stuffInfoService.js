@@ -21,6 +21,8 @@ async function showValidImeiSn(warehouseId, identify) {
       ` ${identify} not found in warehouse ${warehouseId}`,
       404,
     );
+  } else if (result[0].stock_status === "sold") {
+    throw new ErrorMessage(`${identify} has been sold`, 409);
   }
 
   return result;

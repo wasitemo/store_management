@@ -44,6 +44,7 @@ async function getValidImeiSn(warehouseId, identify) {
         si.imei_1,
         si.imei_2,
         si.sn,
+        si.stock_status,
         CASE
           WHEN LOWER(TRIM(si.imei_1)) = $2 THEN 'imei_1'
           WHEN LOWER(TRIM(si.imei_2)) = $2 THEN 'imei_2'
@@ -64,6 +65,7 @@ async function getValidImeiSn(warehouseId, identify) {
           LOWER(TRIM(si.sn)) = $2 OR
           LOWER(TRIM(s.barcode)) = $2
         )
+      AND stock_status = 'ready'
       LIMIT 1
     `,
     [warehouseId, identify],
