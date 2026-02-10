@@ -11,6 +11,7 @@ async function getImeiSn(limit, offset) {
         imei_1,
         imei_2,
         sn,
+        barcode,
         stock_status
         FROM stuff_information
         INNER JOIN stuff ON stuff.stuff_id = stuff_information.stuff_id
@@ -36,7 +37,6 @@ async function getValidImeiSn(warehouseId, identify) {
         s.stuff_variant,
         s.current_sell_price,
         s.has_sn,
-        s.barcode,
         s.total_stock,
         w.warehouse_id,
         w.warehouse_name,
@@ -44,12 +44,13 @@ async function getValidImeiSn(warehouseId, identify) {
         si.imei_1,
         si.imei_2,
         si.sn,
+        si.barcode,
         si.stock_status,
         CASE
-          WHEN LOWER(TRIM(si.imei_1)) = $2 THEN 'imei_1'
-          WHEN LOWER(TRIM(si.imei_2)) = $2 THEN 'imei_2'
-          WHEN LOWER(TRIM(si.sn)) = $2 THEN 'sn'
-          WHEN LOWER(TRIM(s.barcode)) = $2 THEN 'barcode'
+          WHEN TRIM(si.imei_1) = $2 THEN 'imei_1'
+          WHEN TRIM(si.imei_2) = $2 THEN 'imei_2'
+          WHEN TRIM(si.sn) = $2 THEN 'sn'
+          WHEN TRIM(si.barcode) = $2 THEN 'barcode'
         END AS matched_by
       FROM stuff_information si
       JOIN stuff s
@@ -60,12 +61,11 @@ async function getValidImeiSn(warehouseId, identify) {
         ON w.warehouse_id = st.warehouse_id
       WHERE w.warehouse_id = $1
         AND (
-          LOWER(TRIM(si.imei_1)) = $2 OR
-          LOWER(TRIM(si.imei_2)) = $2 OR
-          LOWER(TRIM(si.sn)) = $2 OR
-          LOWER(TRIM(s.barcode)) = $2
+          TRIM(si.imei_1) = $2 OR
+          TRIM(si.imei_2) = $2 OR
+          TRIM(si.sn) = $2 OR
+          TRIM(si.barcode) = $2
         )
-      AND stock_status = 'ready'
       LIMIT 1
     `,
     [warehouseId, identify],
@@ -134,26 +134,34 @@ async function findSn(sn) {
   return result;
 }
 
-async function findStuffInfo(stuffId, identifiers) {
+async function findStuffInfo(warehouseId, identifiers) {
   const query = await store.query(
     `
     SELECT
-        si.stuff_information_id,
-        si.stuff_id,
-        si.imei_1,
-        si.imei_2,
-        si.sn,
-        si.stock_status
+        si.stock_status,
+        CASE
+          WHEN TRIM(si.imei_1) = $2 THEN 'imei_1'
+          WHEN TRIM(si.imei_2) = $2 THEN 'imei_2'
+          WHEN TRIM(si.sn) = $2 THEN 'sn'
+          WHEN TRIM(si.barcode) = $2 THEN 'barcode'
+        END AS matched_by
       FROM stuff_information si
-      WHERE si.stuff_id = $1
+      JOIN stuff s
+        ON s.stuff_id = si.stuff_id
+      JOIN stock st
+        ON st.stuff_information_id = si.stuff_information_id
+      JOIN warehouse w
+        ON w.warehouse_id = st.warehouse_id
+      WHERE w.warehouse_id = $1
         AND (
-          LOWER(TRIM(si.imei_1)) = LOWER(TRIM($2)) OR
-          LOWER(TRIM(si.imei_2)) = LOWER(TRIM($2)) OR
-          LOWER(TRIM(si.sn)) = LOWER(TRIM($2))
+          TRIM(si.imei_1) = $2 OR
+          TRIM(si.imei_2) = $2 OR
+          TRIM(si.sn) = $2 OR
+          TRIM(si.barcode) = $2
         )
       LIMIT 1
   `,
-    [stuffId, identifiers],
+    [warehouseId, identifiers],
   );
   const result = query.rows[0];
 

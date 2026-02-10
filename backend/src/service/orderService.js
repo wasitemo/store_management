@@ -121,10 +121,7 @@ async function newOrder(
     }
 
     for (let item of items) {
-      let { stuff_information_id } = await verifyStuff(
-        parseInt(item.stuff_id),
-        item,
-      );
+      let { stuff_information_id } = await verifyStuff(warehouseId, item);
       await addStock(
         warehouseId,
         parseInt(item.stuff_id),

@@ -1,11 +1,12 @@
 import ErrorMessage from "../error/ErrorMessage.js";
 import { findStuffInfo } from "../model/stuffInfoModel.js";
 
-async function verifyStuff(stuffId, item) {
+async function verifyStuff(warehouseId, item) {
   let identifiers = [
     { key: "imei_1", value: item.imei_1 },
     { key: "imei_2", value: item.imei_2 },
     { key: "sn", value: item.sn },
+    { key: "barcode", value: item.barcode },
   ].filter((i) => i.value);
 
   if (!identifiers.length)
@@ -15,14 +16,19 @@ async function verifyStuff(stuffId, item) {
   let errors = [];
 
   for (let id of identifiers) {
-    let result = await findStuffInfo(stuffId, id.value);
+    if (typeof id.value === "string") {
+      id.value = id.value.trim();
+    }
+
+    let result = await findStuffInfo(warehouseId, id.value);
+
     if (!result) {
-      errors.push(`${id.key} ${id.value} not registered`);
+      errors.push(`${id.key}: "${id.value}" not registered`);
       continue;
     }
 
     if (result.stock_status !== "ready") {
-      errors.push(`${id.key} ${id.value} already ${result.stock_status}`);
+      errors.push(`${id.key}: "${id.value}" already "${result.stock_status}"`);
       continue;
     }
 
