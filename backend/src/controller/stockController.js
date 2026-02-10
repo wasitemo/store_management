@@ -71,35 +71,40 @@ async function presentStockSW(req, res, next) {
 
 async function saveStock(req, res, next) {
   try {
-    let { warehouse_id, stuff_id, imei_1, imei_2, sn } = req.body;
+    let { warehouse_id, stuff_id, imei_1, imei_2, sn, barcode } = req.body;
 
     if (!warehouse_id) {
-      throw new ErrorMessage(`Missing required key: ${warehouse_id}`, 400);
+      throw new ErrorMessage(`Missing required key: warehouse_id`, 400);
     }
 
     if (!stuff_id) {
-      throw new ErrorMessage(`Missing required key: ${stuff_id}`, 400);
+      throw new ErrorMessage(`Missing required key: stuff_id`, 400);
     }
 
-    if (!imei_1) {
-      throw new ErrorMessage(`Missing required key: ${imei_1}`, 400);
+    if (imei_1 === "" || imei_1 === null || imei_1 === undefined) {
+      imei_1 = null;
     }
 
-    if (!imei_2) {
-      throw new ErrorMessage(`Missing required key: ${imei_2}`, 400);
+    if (imei_2 === "" || imei_2 === null || imei_2 === undefined) {
+      imei_2 = null;
     }
 
-    if (!sn) {
-      throw new ErrorMessage(`Missing required key: ${sn}`, 400);
+    if (sn === "" || sn === null || sn === undefined) {
+      sn = null;
+    }
+
+    if (!barcode) {
+      throw new ErrorMessage(`Missing required key barcode`);
     }
 
     warehouse_id = parseInt(warehouse_id);
     stuff_id = parseInt(stuff_id);
-    imei_1 = imei_1.trim();
-    imei_1 = imei_1.trim();
-    sn = sn.trim();
+    imei_1 = imei_1?.trim();
+    imei_1 = imei_1?.trim();
+    sn = sn?.trim();
+    barcode = barcode.trim();
 
-    await newStock(warehouse_id, stuff_id, imei_1, imei_2, sn);
+    await newStock(warehouse_id, stuff_id, imei_1, imei_2, sn, barcode);
     return res.status(201).json({
       status: 201,
       message: "Success added new stock",

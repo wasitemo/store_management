@@ -74,7 +74,7 @@ async function showStockSW() {
   return { stuff: stfResult, warehouse: wResult };
 }
 
-async function newStock(warehouseId, stuffId, imei1, imei2, sn) {
+async function newStock(warehouseId, stuffId, imei1, imei2, sn, barcode) {
   try {
     await store.query("BEGIN");
 
@@ -94,7 +94,13 @@ async function newStock(warehouseId, stuffId, imei1, imei2, sn) {
       throw new ErrorMessage("SN already registered", 409);
     }
 
-    const infoQuery = await addStuffInformation(stuffId, imei1, imei2, sn);
+    const infoQuery = await addStuffInformation(
+      stuffId,
+      imei1,
+      imei2,
+      sn,
+      barcode,
+    );
 
     await addStock(
       warehouseId,
@@ -120,11 +126,11 @@ async function uploadStuffStock(rows) {
 
       for (let k in row) {
         if (typeof row[k] === "string") {
-          row[k] = row[k].toLowerCase().trim();
+          row[k] = row[k].trim();
         }
       }
 
-      let { warehouse_name, stuff_name, imei_1, imei_2, sn } = row;
+      let { warehouse_name, stuff_name, imei_1, imei_2, sn, barcode } = row;
 
       const warehouseId = await findWarehouseIdByName(warehouse_name);
       const stuffId = await findStuffIdByName(stuff_name);
@@ -137,10 +143,8 @@ async function uploadStuffStock(rows) {
         throw new ErrorMessage(`${stuffId} not registered`, 404);
       }
 
-      if (!imei_1 && !imei_2 && !sn) {
-        throw new ErrorMessage(
-          "Imei 1 or imei 2 or sn cannot be empty, one of them must be filled",
-        );
+      if (!barcode) {
+        throw new ErrorMessage("Barcode cannot be empty", 400);
       }
 
       const existingImei1 = await findImei1(imei_1);
@@ -164,6 +168,7 @@ async function uploadStuffStock(rows) {
         imei_1,
         imei_2,
         sn,
+        barcode,
       );
 
       await addStock(

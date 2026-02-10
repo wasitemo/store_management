@@ -75,16 +75,16 @@ async function getValidImeiSn(warehouseId, identify) {
   return result;
 }
 
-async function addStuffInformation(stuffId, imei1, imei2, sn) {
+async function addStuffInformation(stuffId, imei1, imei2, sn, barcode) {
   const query = await store.query(
     `
         INSERT INTO stuff_information
-        (stuff_id, imei_1, imei_2, sn, stock_status)
+        (stuff_id, imei_1, imei_2, sn, stock_status, barcode)
         VALUES
-        ($1, $2, $3, $4, 'ready') 
+        ($1, $2, $3, $4, 'ready', $5) 
         RETURNING stuff_information_id
     `,
-    [stuffId, imei1, imei2, sn],
+    [stuffId, imei1, imei2, sn, barcode],
   );
   const result = query.rows[0];
 
