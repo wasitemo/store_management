@@ -97,7 +97,6 @@ async function newStuff(
   stuffVariant,
   currentSellPrice,
   hasSn,
-  barcode,
   employeeId,
 ) {
   try {
@@ -113,7 +112,6 @@ async function newStuff(
       stuffVariant,
       currentSellPrice,
       hasSn,
-      barcode,
     );
     await addStuffHistory(stuffData.stuff_id, employeeId, stuffData);
 

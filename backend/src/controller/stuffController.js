@@ -114,10 +114,6 @@ async function saveStuff(req, res, next) {
       throw new ErrorMessage(`Missing required key ${has_sn}`);
     }
 
-    if (!barcode) {
-      throw new ErrorMessage(`Missing required key ${barcode}`);
-    }
-
     stuff_category_id = parseInt(stuff_category_id);
     stuff_brand_id = parseInt(stuff_brand_id);
     supplier_id = parseInt(supplier_id);
@@ -126,7 +122,6 @@ async function saveStuff(req, res, next) {
     stuff_sku = stuff_sku.trim();
     stuff_variant = stuff_variant.trim();
     current_sell_price = convertionToNumber(current_sell_price);
-    barcode = barcode.trim();
 
     await newStuff(
       stuff_category_id,
@@ -138,7 +133,6 @@ async function saveStuff(req, res, next) {
       stuff_variant,
       current_sell_price,
       has_sn,
-      barcode,
       employeeId,
     );
     return res.status(201).json({

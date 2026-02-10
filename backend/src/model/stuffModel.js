@@ -71,7 +71,6 @@ async function addStuff(
   stuffVariant,
   currentSellPrice,
   hasSn,
-  barcode,
 ) {
   const query = await store.query(
     `
@@ -85,8 +84,7 @@ async function addStuff(
             stuff_name, 
             stuff_variant, 
             current_sell_price, 
-            has_sn, 
-            barcode
+            has_sn
         )
         VALUES 
         (
@@ -98,8 +96,7 @@ async function addStuff(
             $6,
             $7,
             $8,
-            $9,
-            $10
+            $9
         )
         RETURNING *
     `,
@@ -113,7 +110,6 @@ async function addStuff(
       stuffVariant,
       currentSellPrice,
       hasSn,
-      barcode,
     ],
   );
   const result = query.rows[0];
