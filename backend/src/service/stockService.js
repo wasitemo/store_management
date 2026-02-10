@@ -137,6 +137,12 @@ async function uploadStuffStock(rows) {
         throw new ErrorMessage(`${stuffId} not registered`, 404);
       }
 
+      if (!imei_1 && !imei_2 && !sn) {
+        throw new ErrorMessage(
+          "Imei 1 or imei 2 or sn cannot be empty, one of them must be filled",
+        );
+      }
+
       const existingImei1 = await findImei1(imei_1);
       const existingImei2 = await findImei2(imei_2);
       const existingSn = await findSn(sn);

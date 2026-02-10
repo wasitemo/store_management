@@ -151,7 +151,7 @@ async function uploadStock(req, res, next) {
       throw new ErrorMessage("File format must be csv or xlsx or xls", 400);
     }
 
-    if (!rows || rows.lengt === 0) {
+    if (!rows || rows.length === 0) {
       throw new ErrorMessage("File cannot be empty", 400);
     }
 
