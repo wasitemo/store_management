@@ -43,6 +43,12 @@ export default function StuffPurchasePage() {
     direction: "asc",
   });
 
+  // pagination state
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalData, setTotalData] = useState(0);
+
   const [data, setData] = useState<Purchase[]>([]);
   const [detail, setDetail] = useState<Detail | null>(null);
 
@@ -81,9 +87,13 @@ export default function StuffPurchasePage() {
     setLoading(true);
     setError("");
     try {
+      const params = new URLSearchParams({
+        limit: String(limit),
+        page: String(page),
+      });
       const [dataRes, metaRes] = await Promise.all([
-        apiFetch(`${BASE_URL}/stuff-purchases`),
-        apiFetch(`${BASE_URL}/stuff-purchase`),
+        apiFetch(`${BASE_URL}/stuff-purchase?${params.toString()}`),
+        apiFetch(`${BASE_URL}/stuff-purchase-sws`),
       ]);
       if (dataRes.status === 401 || metaRes.status === 401) {
         localStorage.removeItem("access_token");
@@ -93,6 +103,8 @@ export default function StuffPurchasePage() {
       const dataJson = await dataRes.json();
       const metaJson = await metaRes.json();
       setData(Array.isArray(dataJson.data) ? dataJson.data : []);
+      setTotalPages(dataJson.total_page || 1);
+      setTotalData(dataJson.total_data || 0);
       setMeta(metaJson.data || { supplier: [], warehouse: [], stuff: [] });
     } catch (err) {
       setError("Failed to load data");
@@ -103,7 +115,7 @@ export default function StuffPurchasePage() {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [page, limit]);
 
   // ================= DETAIL =================
   const openDetail = async (id: number) => {
@@ -203,6 +215,7 @@ export default function StuffPurchasePage() {
       key,
       direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc"
     }));
+    setPage(1);
   };
 
   // ================= UI =================
@@ -241,7 +254,7 @@ export default function StuffPurchasePage() {
             placeholder="Search purchases..."
             className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text-primary"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           />
           <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary">
             🔍
@@ -369,6 +382,29 @@ export default function StuffPurchasePage() {
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* pagination controls */}
+      <div className="flex items-center justify-between mt-4">
+        <div className="text-sm text-text-secondary">
+          Page {page} of {totalPages} ({totalData} items)
+        </div>
+        <div className="space-x-2">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1}
+            className="px-3 py-1 rounded-lg border border-border bg-surface hover:bg-surface-hover disabled:opacity-50"
+          >
+            Previous
+          </button>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+            className="px-3 py-1 rounded-lg border border-border bg-surface hover:bg-surface-hover disabled:opacity-50"
+          >
+            Next
+          </button>
         </div>
       </div>
 

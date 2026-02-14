@@ -76,28 +76,40 @@ export default function OrderCreatePage() {
     setLoading(true);
     setError("");
     try {
-      const [customerRes, warehouseRes, paymentRes, discountRes, employeeRes] = await Promise.all([
-        apiFetch("/customers"),
-        apiFetch("/warehouse"),
-        apiFetch("/payment-methods"),
-        apiFetch("/order-discounts"),
-        apiFetch("/employee-account"),
-      ]);
-      const customerJson = await customerRes.json();
-      const warehouseJson = await warehouseRes.json();
-      const paymentJson = await paymentRes.json();
-      const discountJson = await discountRes.json();
-      const employeeJson = await employeeRes.json();
+      const res = await apiFetch("/customer-order-pwsco");
+      if (res.status === 401) {
+        localStorage.removeItem("access_token");
+        router.push("/login");
+        return;
+      }
+      const json = await res.json();
+      const payload = json.data || {};
+      // payload contains { customer, warehouse, stuff, payment_method, discount }
       setMaster({
-        customer: Array.isArray(customerJson.data) ? customerJson.data : [],
-        warehouse: Array.isArray(warehouseJson.data) ? warehouseJson.data : [],
-        payment_method: Array.isArray(paymentJson.data) ? paymentJson.data : [],
-        order_discount: Array.isArray(discountJson.data) ? discountJson.data : [],
-        employee: Array.isArray(employeeJson.data) ? employeeJson.data.map((emp: any) => ({
-          employee_id: emp.employee_id,
-          employee_name: emp.username,
-        })) : [],
+        customer: Array.isArray(payload.customer) ? payload.customer : [],
+        warehouse: Array.isArray(payload.warehouse) ? payload.warehouse : [],
+        payment_method: Array.isArray(payload.payment_method) ? payload.payment_method : [],
+        order_discount: Array.isArray(payload.discount) ? payload.discount : [],
+        employee: [],
       });
+
+      // employees still fetched separately
+      const employeeRes = await apiFetch("/employee-account");
+      if (employeeRes.status === 401) {
+        localStorage.removeItem("access_token");
+        router.push("/login");
+        return;
+      }
+      const employeeJson = await employeeRes.json();
+      setMaster((prev: any) => ({
+        ...prev,
+        employee: Array.isArray(employeeJson.data)
+          ? employeeJson.data.map((emp: any) => ({
+              employee_id: emp.employee_id,
+              employee_name: emp.username,
+            }))
+          : [],
+      }));
     } catch (err) {
       setError("Failed to load master data");
     } finally {

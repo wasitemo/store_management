@@ -76,7 +76,7 @@ export default function StuffDiscountPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await apiFetch(`${BASE_URL}/stuff-discounts`);
+      const res = await apiFetch(`${BASE_URL}/stuff-discount`);
       if (res.status === 401) {
         localStorage.removeItem("access_token");
         router.push("/login");

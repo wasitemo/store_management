@@ -61,7 +61,7 @@ export default function OrderDiscountPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await apiFetch(`${BASE_URL}/order-discounts`);
+      const res = await apiFetch(`${BASE_URL}/order-discount`);
       if (res.status === 401) {
         localStorage.removeItem("access_token");
         router.push("/login");

@@ -48,7 +48,7 @@ export default function StockPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await apiFetch("/stocks");
+      const res = await apiFetch("/stock");
       if (res.status === 401) {
         localStorage.removeItem("access_token");
         router.push("/login");

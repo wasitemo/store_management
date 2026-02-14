@@ -24,6 +24,12 @@ export default function PaymentMethodPage() {
     direction: "asc",
   });
 
+  // pagination state
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalData, setTotalData] = useState(0);
+
   const [data, setData] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -40,8 +46,14 @@ export default function PaymentMethodPage() {
 
   // ================= LOAD DATA =================
   const loadPaymentMethods = async () => {
+    setLoading(true);
+    setError("");
     try {
-      const res = await apiFetch("/payment-methods");
+      const params = new URLSearchParams({
+        limit: String(limit),
+        page: String(page),
+      });
+      const res = await apiFetch(`/payment-method?${params.toString()}`);
 
       if (res.status === 401) {
         // Token refresh handled by apiFetch, but if still 401, redirect
@@ -52,6 +64,8 @@ export default function PaymentMethodPage() {
 
       const json = await res.json();
       setData(Array.isArray(json.data) ? json.data : []);
+      setTotalPages(json.total_page || 1);
+      setTotalData(json.total_data || 0);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -61,7 +75,7 @@ export default function PaymentMethodPage() {
 
   useEffect(() => {
     loadPaymentMethods();
-  }, []);
+  }, [page, limit]);
 
   // ================= FORM =================
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -156,6 +170,7 @@ export default function PaymentMethodPage() {
       key,
       direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc"
     }));
+    setPage(1);
   };
 
   // ================= UI =================
@@ -196,7 +211,7 @@ export default function PaymentMethodPage() {
             placeholder="Search payment methods..."
             className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-text-primary"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           />
           <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary">
             🔍
@@ -284,6 +299,29 @@ export default function PaymentMethodPage() {
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+
+      {/* pagination controls */}
+      <div className="flex items-center justify-between mt-4">
+        <div className="text-sm text-text-secondary">
+          Page {page} of {totalPages} ({totalData} items)
+        </div>
+        <div className="space-x-2">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page <= 1}
+            className="px-3 py-1 rounded-lg border border-border bg-surface hover:bg-surface-hover disabled:opacity-50"
+          >
+            Previous
+          </button>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page >= totalPages}
+            className="px-3 py-1 rounded-lg border border-border bg-surface hover:bg-surface-hover disabled:opacity-50"
+          >
+            Next
+          </button>
         </div>
       </div>
 
