@@ -82,6 +82,33 @@ export default function StuffPurchasePage() {
   const token =
     typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
+  const downloadTemplate = async () => {
+    try {
+      const res = await apiFetch(`${BASE_URL}/download-purchase-template`);
+      if (res.status === 401) {
+        localStorage.removeItem("access_token");
+        router.push("/login");
+        return;
+      }
+      if (!res.ok) {
+        const err = await res.json();
+        setError(err.message || "Failed to download template");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "purchase-template.xlsx";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError("Network error downloading template");
+    }
+  };
+
   // ================= LOAD =================
   const loadData = async () => {
     setLoading(true);
@@ -261,6 +288,13 @@ export default function StuffPurchasePage() {
           </span>
         </div>
         <div className="space-x-3">
+          <button
+            onClick={downloadTemplate}
+            className="bg-info text-white px-5 py-2.5 rounded-lg hover:bg-blue-600 transition flex items-center shadow-sm"
+          >
+            <span className="mr-2">⬇️</span>
+            Download Template
+          </button>
           <button
             onClick={() => setShowAdd(true)}
             className="bg-primary text-white px-5 py-2.5 rounded-lg hover:bg-primary-dark transition flex items-center shadow-sm"

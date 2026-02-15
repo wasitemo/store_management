@@ -139,7 +139,7 @@ export default function OrderCreatePage() {
         identify: searchValue,
       });
 
-      const res = await apiFetch(`/search?${params.toString()}`);
+      const res = await apiFetch(`/stuff-scan?${params.toString()}`);
 
       if (res.status === 401) {
         // Token refresh handled by apiFetch, but if still 401, redirect
@@ -155,13 +155,20 @@ export default function OrderCreatePage() {
         return;
       }
 
+      // backend returns an array under data, take first element
+      const resultItem = Array.isArray(json.data) && json.data.length ? json.data[0] : null;
+      if (!resultItem) {
+        setErrorMsg(json.message || "Produk tidak ditemukan");
+        return;
+      }
+
       const existsStuff = form.items.some(
-        (i: any) => i.stuff_id === json.result.stuff_id,
+        (i: any) => i.stuff_id === resultItem.stuff_id,
       );
 
       if (existsStuff) {
         setErrorMsg(
-          `Produk "${json.result.stuff_name}" sudah ada di order`,
+          `Produk "${resultItem.stuff_name}" sudah ada di order`,
         );
         return;
       }
@@ -171,12 +178,12 @@ export default function OrderCreatePage() {
         items: [
           ...prev.items,
           {
-            stuff_id: json.result.stuff_id,
-            stuff_name: json.result.stuff_name,
-            stuff_variant: json.result.stuff_variant,
-            current_sell_price: json.result.current_sell_price, // ✅ FIX
+            stuff_id: resultItem.stuff_id,
+            stuff_name: resultItem.stuff_name,
+            stuff_variant: resultItem.stuff_variant,
+            current_sell_price: resultItem.current_sell_price, // ✅ FIX
             identifier: searchValue,
-            matched_by: json.result.matched_by,
+            matched_by: resultItem.matched_by,
           },
         ],
       }));
