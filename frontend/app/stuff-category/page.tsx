@@ -12,17 +12,6 @@ interface Category {
 export default function StuffCategoryPage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
-  type SortKey =
-    | "stuff_category_id"
-    | "stuff_category_name";
-
-  const [sortConfig, setSortConfig] = useState<{
-    key: SortKey | null;
-    direction: "asc" | "desc";
-  }>({
-    key: null,
-    direction: "asc",
-  });
 
   const [data, setData] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,36 +116,12 @@ export default function StuffCategoryPage() {
     }
   };
 
-  // ================= SORTING =================
-  const sortedData = [...data].sort((a, b) => {
-    if (!sortConfig.key) return 0;
-
-    const aValue = a[sortConfig.key];
-    const bValue = b[sortConfig.key];
-
-    if (typeof aValue === "string" && typeof bValue === "string") {
-      const comparison = aValue.localeCompare(bValue);
-      return sortConfig.direction === "asc" ? comparison : -comparison;
-    } else {
-      const comparison = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
-      return sortConfig.direction === "asc" ? comparison : -comparison;
-    }
-  });
-
   // ================= FILTERING =================
-  const filteredData = sortedData.filter((category) => {
+  const filteredData = data.filter((category) => {
     return (
       category.stuff_category_name.toLowerCase().includes(search.toLowerCase())
     );
   });
-
-  // ================= HANDLE SORT =================
-  const handleSort = (key: SortKey) => {
-    setSortConfig(prev => ({
-      key,
-      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc"
-    }));
-  };
 
   // ================= UI =================
   if (loading)
@@ -216,31 +181,15 @@ export default function StuffCategoryPage() {
               <tr>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("stuff_category_id")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    ID
-                    {sortConfig.key === "stuff_category_id" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "↑" : "↓"}
-                      </span>
-                    )}
-                  </div>
+                  ID
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("stuff_category_name")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    Category Name
-                    {sortConfig.key === "stuff_category_name" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "↑" : "↓"}
-                      </span>
-                    )}
-                  </div>
+                  Category Name
                 </th>
                 <th
                   scope="col"

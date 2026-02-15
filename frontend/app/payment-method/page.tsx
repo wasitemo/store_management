@@ -12,17 +12,6 @@ interface PaymentMethod {
 export default function PaymentMethodPage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
-  type SortKey =
-    | "payment_method_id"
-    | "payment_method_name";
-
-  const [sortConfig, setSortConfig] = useState<{
-    key: SortKey | null;
-    direction: "asc" | "desc";
-  }>({
-    key: null,
-    direction: "asc",
-  });
 
   // pagination state
   const [page, setPage] = useState(1);
@@ -141,37 +130,12 @@ export default function PaymentMethodPage() {
     }
   };
 
-  // ================= SORTING =================
-  const sortedData = [...data].sort((a, b) => {
-    if (!sortConfig.key) return 0;
-
-    const aValue = a[sortConfig.key];
-    const bValue = b[sortConfig.key];
-
-    if (typeof aValue === "string" && typeof bValue === "string") {
-      const comparison = aValue.localeCompare(bValue);
-      return sortConfig.direction === "asc" ? comparison : -comparison;
-    } else {
-      const comparison = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
-      return sortConfig.direction === "asc" ? comparison : -comparison;
-    }
-  });
-
   // ================= FILTERING =================
-  const filteredData = sortedData.filter((pm) => {
+  const filteredData = data.filter((pm) => {
     return (
       pm.payment_method_name.toLowerCase().includes(search.toLowerCase())
     );
   });
-
-  // ================= HANDLE SORT =================
-  const handleSort = (key: SortKey) => {
-    setSortConfig(prev => ({
-      key,
-      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc"
-    }));
-    setPage(1);
-  };
 
   // ================= UI =================
   if (loading)
@@ -233,31 +197,15 @@ export default function PaymentMethodPage() {
               <tr>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("payment_method_id")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    ID
-                    {sortConfig.key === "payment_method_id" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "↑" : "↓"}
-                      </span>
-                    )}
-                  </div>
+                  ID
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("payment_method_name")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    Name
-                    {sortConfig.key === "payment_method_name" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "↑" : "↓"}
-                      </span>
-                    )}
-                  </div>
+                  Name
                 </th>
                 <th
                   scope="col"

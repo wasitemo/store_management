@@ -33,16 +33,6 @@ export default function StockPage() {
   const [formError, setFormError] = useState("");
   const [search, setSearch] = useState("");
 
-  type SortKey = "warehouse_name" | "stuff_name" | "total_stock";
-
-  const [sortConfig, setSortConfig] = useState<{
-    key: SortKey | null;
-    direction: "asc" | "desc";
-  }>({
-    key: null,
-    direction: "asc",
-  });
-
   // ================= LOAD =================
   const loadStocks = async () => {
     setLoading(true);
@@ -204,29 +194,13 @@ export default function StockPage() {
     }
   };
 
-  const handleSort = (key: SortKey) => {
-    setSortConfig((prev) => ({
-      key,
-      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
-    }));
-  };
-
-  const filteredAndSortedData = data
-    .filter((s) => {
-      const keyword = search.toLowerCase();
-      return (
-        s.warehouse_name.toLowerCase().includes(keyword) ||
-        s.stuff_name.toLowerCase().includes(keyword)
-      );
-    })
-    .sort((a, b) => {
-      if (!sortConfig.key) return 0;
-      const aVal = a[sortConfig.key];
-      const bVal = b[sortConfig.key];
-      return sortConfig.direction === "asc"
-        ? String(aVal).localeCompare(String(bVal))
-        : String(bVal).localeCompare(String(aVal));
-    });
+  const filteredData = data.filter((s) => {
+    const keyword = search.toLowerCase();
+    return (
+      s.warehouse_name.toLowerCase().includes(keyword) ||
+      s.stuff_name.toLowerCase().includes(keyword)
+    );
+  });
 
   if (loading) {
     return (
@@ -302,48 +276,24 @@ export default function StockPage() {
             <thead className="bg-surface-hover">
               <tr>
                 <th
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("warehouse_name")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    Warehouse
-                    {sortConfig.key === "warehouse_name" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "▲" : "▼"}
-                      </span>
-                    )}
-                  </div>
+                  Warehouse
                 </th>
                 <th
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("stuff_name")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    Product
-                    {sortConfig.key === "stuff_name" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "▲" : "▼"}
-                      </span>
-                    )}
-                  </div>
+                  Product
                 </th>
                 <th
-                  className="px-6 py-4 text-center text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("total_stock")}
+                  className="px-6 py-4 text-center text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center justify-center">
-                    Total
-                    {sortConfig.key === "total_stock" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "▲" : "▼"}
-                      </span>
-                    )}
-                  </div>
+                  Total
                 </th>
               </tr>
             </thead>
             <tbody className="bg-surface divide-y divide-border">
-              {filteredAndSortedData.map((s) => (
+              {filteredData.map((s) => (
                 <tr
                   key={`${s.warehouse_id}-${s.stuff_id}`}
                   className="hover:bg-surface-hover transition-colors"
@@ -359,7 +309,7 @@ export default function StockPage() {
                   </td>
                 </tr>
               ))}
-              {filteredAndSortedData.length === 0 && (
+              {filteredData.length === 0 && (
                 <tr>
                   <td colSpan={3} className="px-6 py-4 text-center text-text-secondary">
                     Tidak ada data

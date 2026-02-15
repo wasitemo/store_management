@@ -22,20 +22,6 @@ interface EmployeeAccount {
 export default function EmployeeAccountsPage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
-  type SortKey =
-    | "employee_account_id"
-    | "employee_name"
-    | "username"
-    | "role"
-    | "account_status";
-
-  const [sortConfig, setSortConfig] = useState<{
-    key: SortKey | null;
-    direction: "asc" | "desc";
-  }>({
-    key: null,
-    direction: "asc",
-  });
   const [accounts, setAccounts] = useState<EmployeeAccount[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
 
@@ -198,42 +184,17 @@ export default function EmployeeAccountsPage() {
         </div>
       </div>
     );
-  const handleSort = (key: SortKey) => {
-    setSortConfig((prev) => ({
-      key,
-      direction:
-        prev.key === key && prev.direction === "asc" ? "desc" : "asc",
-    }));
-  };
+  const filteredAccounts = accounts.filter((acc) => {
+    const keyword = search.toLowerCase();
 
-  const filteredAccounts = accounts
-    .filter((acc) => {
-      const keyword = search.toLowerCase();
-
-      return (
-        acc.employee_account_id.toString().includes(keyword) ||
-        acc.employee_name.toLowerCase().includes(keyword) ||
-        acc.username.toLowerCase().includes(keyword) ||
-        acc.role.toLowerCase().includes(keyword) ||
-        acc.account_status.toLowerCase().includes(keyword)
-      );
-    })
-    .sort((a, b) => {
-      if (!sortConfig.key) return 0;
-
-      const aVal = a[sortConfig.key];
-      const bVal = b[sortConfig.key];
-
-      if (typeof aVal === "number") {
-        return sortConfig.direction === "asc"
-          ? aVal - (bVal as number)
-          : (bVal as number) - aVal;
-      }
-
-      return sortConfig.direction === "asc"
-        ? String(aVal).localeCompare(String(bVal))
-        : String(bVal).localeCompare(String(aVal));
-    });
+    return (
+      acc.employee_account_id.toString().includes(keyword) ||
+      acc.employee_name.toLowerCase().includes(keyword) ||
+      acc.username.toLowerCase().includes(keyword) ||
+      acc.role.toLowerCase().includes(keyword) ||
+      acc.account_status.toLowerCase().includes(keyword)
+    );
+  });
 
   return (
     <div className="p-container-padding">
@@ -276,25 +237,32 @@ export default function EmployeeAccountsPage() {
             <thead className="bg-surface-hover">
               <tr>
                 <th
-                  onClick={() => handleSort("employee_account_id")}
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer select-none"
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  Account ID {sortConfig.key === "employee_account_id" && (sortConfig.direction === "asc" ? "▲" : "▼")}
+                  Account ID
                 </th>
 
-                <th onClick={() => handleSort("employee_name")} className="... cursor-pointer">
-                  Employee {sortConfig.key === "employee_name" && (sortConfig.direction === "asc" ? "▲" : "▼")}
+                <th
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                >
+                  Employee
                 </th>
 
-                <th onClick={() => handleSort("username")} className="... cursor-pointer">
-                  Username {sortConfig.key === "username" && (sortConfig.direction === "asc" ? "▲" : "▼")}
+                <th
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                >
+                  Username
                 </th>
-                <th onClick={() => handleSort("role")} className="... cursor-pointer">
-                  Role {sortConfig.key === "role" && (sortConfig.direction === "asc" ? "▲" : "▼")}
+                <th
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                >
+                  Role
                 </th>
 
-                <th onClick={() => handleSort("account_status")} className="... cursor-pointer">
-                  Status {sortConfig.key === "account_status" && (sortConfig.direction === "asc" ? "▲" : "▼")}
+                <th
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
+                >
+                  Status
                 </th>
 
                 <th

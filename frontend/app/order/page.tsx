@@ -20,21 +20,6 @@ export default function OrderPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalData, setTotalData] = useState(0);
 
-  type SortKey =
-    | "order_date"
-    | "customer_name"
-    | "payment_method_name"
-    | "sub_total"
-    | "remaining_payment";
-
-  const [sortConfig, setSortConfig] = useState<{
-    key: SortKey | null;
-    direction: "asc" | "desc";
-  }>({
-    key: null,
-    direction: "asc",
-  });
-
   useEffect(() => {
     loadOrders();
   }, [page, limit]);
@@ -64,33 +49,15 @@ export default function OrderPage() {
     }
   };
 
-  const handleSort = (key: SortKey) => {
-    setSortConfig((prev) => ({
-      key,
-      direction:
-        prev.key === key && prev.direction === "asc" ? "desc" : "asc",
-    }));
-    setPage(1);
-  };
-
-  const filteredAndSortedOrders = orders
-    .filter((o) => {
-      const keyword = search.toLowerCase();
-      return (
-        o.customer_name.toLowerCase().includes(keyword) ||
-        o.payment_method_name.toLowerCase().includes(keyword) ||
-        o.sub_total.toString().includes(keyword) ||
-        o.remaining_payment.toString().includes(keyword)
-      );
-    })
-    .sort((a, b) => {
-      if (!sortConfig.key) return 0;
-      const aVal = a[sortConfig.key];
-      const bVal = b[sortConfig.key];
-      return sortConfig.direction === "asc"
-        ? String(aVal).localeCompare(String(bVal))
-        : String(bVal).localeCompare(String(aVal));
-    });
+  const filteredOrders = orders.filter((o) => {
+    const keyword = search.toLowerCase();
+    return (
+      o.customer_name.toLowerCase().includes(keyword) ||
+      o.payment_method_name.toLowerCase().includes(keyword) ||
+      o.sub_total.toString().includes(keyword) ||
+      o.remaining_payment.toString().includes(keyword)
+    );
+  });
 
   const [showDetail, setShowDetail] = useState(false);
   const [detail, setDetail] = useState<any>(null);
@@ -162,69 +129,29 @@ export default function OrderPage() {
             <thead className="bg-surface-hover">
               <tr>
                 <th
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("order_date")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    Date
-                    {sortConfig.key === "order_date" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "▲" : "▼"}
-                      </span>
-                    )}
-                  </div>
+                  Date
                 </th>
                 <th
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("customer_name")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    Customer
-                    {sortConfig.key === "customer_name" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "▲" : "▼"}
-                      </span>
-                    )}
-                  </div>
+                  Customer
                 </th>
                 <th
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("payment_method_name")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    Payment
-                    {sortConfig.key === "payment_method_name" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "▲" : "▼"}
-                      </span>
-                    )}
-                  </div>
+                  Payment
                 </th>
                 <th
-                  className="px-6 py-4 text-right text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("sub_total")}
+                  className="px-6 py-4 text-right text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center justify-end">
-                    Total
-                    {sortConfig.key === "sub_total" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "▲" : "▼"}
-                      </span>
-                    )}
-                  </div>
+                  Total
                 </th>
                 <th
-                  className="px-6 py-4 text-right text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("remaining_payment")}
+                  className="px-6 py-4 text-right text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center justify-end">
-                    Remaining
-                    {sortConfig.key === "remaining_payment" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "▲" : "▼"}
-                      </span>
-                    )}
-                  </div>
+                  Remaining
                 </th>
                 <th className="px-6 py-4 text-center text-xs font-medium text-text-secondary uppercase tracking-wider">
                   Action
@@ -232,7 +159,7 @@ export default function OrderPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border bg-surface">
-              {filteredAndSortedOrders.map((o) => (
+              {filteredOrders.map((o) => (
                 <tr
                   key={o.order_id}
                   className="hover:bg-surface-hover transition-colors"
@@ -262,7 +189,7 @@ export default function OrderPage() {
                   </td>
                 </tr>
               ))}
-              {filteredAndSortedOrders.length === 0 && (
+              {filteredOrders.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-6 py-4 text-center text-text-secondary">
                     Tidak ada data

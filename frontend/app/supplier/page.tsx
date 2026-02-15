@@ -14,19 +14,6 @@ interface Supplier {
 export default function SupplierPage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
-  type SortKey =
-    | "supplier_id"
-    | "supplier_name"
-    | "supplier_contact"
-    | "supplier_address";
-
-  const [sortConfig, setSortConfig] = useState<{
-    key: SortKey | null;
-    direction: "asc" | "desc";
-  }>({
-    key: null,
-    direction: "asc",
-  });
 
   const [data, setData] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
@@ -136,38 +123,14 @@ export default function SupplierPage() {
     }
   };
 
-  // ================= SORTING =================
-  const sortedData = [...data].sort((a, b) => {
-    if (!sortConfig.key) return 0;
-
-    const aValue = a[sortConfig.key];
-    const bValue = b[sortConfig.key];
-
-    if (typeof aValue === "string" && typeof bValue === "string") {
-      const comparison = aValue.localeCompare(bValue);
-      return sortConfig.direction === "asc" ? comparison : -comparison;
-    } else {
-      const comparison = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
-      return sortConfig.direction === "asc" ? comparison : -comparison;
-    }
-  });
-
   // ================= FILTERING =================
-  const filteredData = sortedData.filter((sup) => {
+  const filteredData = data.filter((sup) => {
     return (
       sup.supplier_name.toLowerCase().includes(search.toLowerCase()) ||
       sup.supplier_contact.toLowerCase().includes(search.toLowerCase()) ||
       sup.supplier_address.toLowerCase().includes(search.toLowerCase())
     );
   });
-
-  // ================= HANDLE SORT =================
-  const handleSort = (key: SortKey) => {
-    setSortConfig(prev => ({
-      key,
-      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc"
-    }));
-  };
 
   // ================= UI =================
   if (loading)
@@ -227,59 +190,27 @@ export default function SupplierPage() {
               <tr>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("supplier_id")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    ID
-                    {sortConfig.key === "supplier_id" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "↑" : "↓"}
-                      </span>
-                    )}
-                  </div>
+                  ID
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("supplier_name")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    Name
-                    {sortConfig.key === "supplier_name" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "↑" : "↓"}
-                      </span>
-                    )}
-                  </div>
+                  Name
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("supplier_contact")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    Contact
-                    {sortConfig.key === "supplier_contact" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "↑" : "↓"}
-                      </span>
-                    )}
-                  </div>
+                  Contact
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("supplier_address")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    Address
-                    {sortConfig.key === "supplier_address" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "↑" : "↓"}
-                      </span>
-                    )}
-                  </div>
+                  Address
                 </th>
                 <th
                   scope="col"

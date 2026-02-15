@@ -29,19 +29,6 @@ interface Detail {
 export default function StuffPurchasePage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
-  type SortKey =
-    | "stuff_purchase_id"
-    | "supplier_name"
-    | "buy_date"
-    | "total_price";
-
-  const [sortConfig, setSortConfig] = useState<{
-    key: SortKey | null;
-    direction: "asc" | "desc";
-  }>({
-    key: null,
-    direction: "asc",
-  });
 
   // pagination state
   const [page, setPage] = useState(1);
@@ -211,39 +198,14 @@ export default function StuffPurchasePage() {
     loadData();
   };
 
-  // ================= SORTING =================
-  const sortedData = [...data].sort((a, b) => {
-    if (!sortConfig.key) return 0;
-
-    const aValue = a[sortConfig.key];
-    const bValue = b[sortConfig.key];
-
-    if (typeof aValue === "string" && typeof bValue === "string") {
-      const comparison = aValue.localeCompare(bValue);
-      return sortConfig.direction === "asc" ? comparison : -comparison;
-    } else {
-      const comparison = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
-      return sortConfig.direction === "asc" ? comparison : -comparison;
-    }
-  });
-
   // ================= FILTERING =================
-  const filteredData = sortedData.filter((purchase) => {
+  const filteredData = data.filter((purchase) => {
     return (
       purchase.supplier_name.toLowerCase().includes(search.toLowerCase()) ||
       purchase.buy_date.toLowerCase().includes(search.toLowerCase()) ||
       purchase.total_price.toLowerCase().includes(search.toLowerCase())
     );
   });
-
-  // ================= HANDLE SORT =================
-  const handleSort = (key: SortKey) => {
-    setSortConfig(prev => ({
-      key,
-      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc"
-    }));
-    setPage(1);
-  };
 
   // ================= UI =================
   if (loading) {
@@ -320,59 +282,27 @@ export default function StuffPurchasePage() {
               <tr>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("stuff_purchase_id")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    ID
-                    {sortConfig.key === "stuff_purchase_id" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "▲" : "▼"}
-                      </span>
-                    )}
-                  </div>
+                  ID
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("supplier_name")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    Supplier
-                    {sortConfig.key === "supplier_name" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "↑" : "↓"}
-                      </span>
-                    )}
-                  </div>
+                  Supplier
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("buy_date")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    Date
-                    {sortConfig.key === "buy_date" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "↑" : "↓"}
-                      </span>
-                    )}
-                  </div>
+                  Date
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("total_price")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    Total
-                    {sortConfig.key === "total_price" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "↑" : "↓"}
-                      </span>
-                    )}
-                  </div>
+                  Total
                 </th>
                 <th
                   scope="col"

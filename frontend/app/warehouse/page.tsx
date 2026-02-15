@@ -13,18 +13,6 @@ interface Warehouse {
 export default function WarehousePage() {
   const router = useRouter();
   const [search, setSearch] = useState("");
-  type SortKey =
-    | "warehouse_id"
-    | "warehouse_name"
-    | "warehouse_address";
-
-  const [sortConfig, setSortConfig] = useState<{
-    key: SortKey | null;
-    direction: "asc" | "desc";
-  }>({
-    key: null,
-    direction: "asc",
-  });
 
   const [data, setData] = useState<Warehouse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -130,37 +118,13 @@ export default function WarehousePage() {
     }
   };
 
-  // ================= SORTING =================
-  const sortedData = [...data].sort((a, b) => {
-    if (!sortConfig.key) return 0;
-
-    const aValue = a[sortConfig.key];
-    const bValue = b[sortConfig.key];
-
-    if (typeof aValue === "string" && typeof bValue === "string") {
-      const comparison = aValue.localeCompare(bValue);
-      return sortConfig.direction === "asc" ? comparison : -comparison;
-    } else {
-      const comparison = aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
-      return sortConfig.direction === "asc" ? comparison : -comparison;
-    }
-  });
-
   // ================= FILTERING =================
-  const filteredData = sortedData.filter((wh) => {
+  const filteredData = data.filter((wh) => {
     return (
       wh.warehouse_name.toLowerCase().includes(search.toLowerCase()) ||
       wh.warehouse_address.toLowerCase().includes(search.toLowerCase())
     );
   });
-
-  // ================= HANDLE SORT =================
-  const handleSort = (key: SortKey) => {
-    setSortConfig(prev => ({
-      key,
-      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc"
-    }));
-  };
 
   // ================= UI =================
   if (loading)
@@ -220,45 +184,21 @@ export default function WarehousePage() {
               <tr>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("warehouse_id")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    ID
-                    {sortConfig.key === "warehouse_id" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "↑" : "↓"}
-                      </span>
-                    )}
-                  </div>
+                  ID
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("warehouse_name")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    Name
-                    {sortConfig.key === "warehouse_name" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "↑" : "↓"}
-                      </span>
-                    )}
-                  </div>
+                  Name
                 </th>
                 <th
                   scope="col"
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("warehouse_address")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    Address
-                    {sortConfig.key === "warehouse_address" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "↑" : "↓"}
-                      </span>
-                    )}
-                  </div>
+                  Address
                 </th>
                 <th
                   scope="col"

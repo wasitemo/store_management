@@ -34,18 +34,6 @@ export default function StuffDiscountPage() {
   const [error, setError] = useState("");
   const [formError, setFormError] = useState("");
 
-  type SortKey =
-    | "stuff_id"
-    | "stuff_name";
-
-  const [sortConfig, setSortConfig] = useState<{
-    key: SortKey | null;
-    direction: "asc" | "desc";
-  }>({
-    key: null,
-    direction: "asc",
-  });
-
   const [data, setData] = useState<StuffDiscount[]>([]);
   const [stuffList, setStuffList] = useState<Stuff[]>([]);
   const [showModal, setShowModal] = useState(false);
@@ -138,23 +126,7 @@ export default function StuffDiscountPage() {
     setShowModal(true);
   };
 
-  const handleSort = (key: SortKey) => {
-    setSortConfig((prev) => ({
-      key,
-      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
-    }));
-  };
-
-  const filteredAndSortedData = data
-    .filter((stuff) => stuff.stuff_name.toLowerCase().includes(search.toLowerCase()))
-    .sort((a, b) => {
-      if (!sortConfig.key) return 0;
-      const aVal = a[sortConfig.key];
-      const bVal = b[sortConfig.key];
-      return sortConfig.direction === "asc"
-        ? String(aVal).localeCompare(String(bVal))
-        : String(bVal).localeCompare(String(aVal));
-    });
+  const filteredData = data.filter((stuff) => stuff.stuff_name.toLowerCase().includes(search.toLowerCase()));
 
   const submitForm = async () => {
     setFormError("");
@@ -264,22 +236,15 @@ export default function StuffDiscountPage() {
         </button>
       </div>
 
-      {filteredAndSortedData.length === 0 && (
+      {filteredData.length === 0 && (
         <div className="text-center text-text-secondary py-8">
           Tidak ada data
         </div>
       )}
-      {filteredAndSortedData.map((stuff) => (
+      {filteredData.map((stuff) => (
         <div key={stuff.stuff_id} className="mb-6 bg-surface rounded-xl border border-border shadow-sm overflow-hidden">
           <div className="bg-surface-hover px-6 py-4 font-semibold text-text-primary">
-            <div className="flex items-center">
-              <span>{stuff.stuff_name}</span>
-              {sortConfig.key === "stuff_name" && (
-                <span className="ml-2">
-                  {sortConfig.direction === "asc" ? "▲" : "▼"}
-                </span>
-              )}
-            </div>
+            <span>{stuff.stuff_name}</span>
           </div>
 
           <div className="overflow-x-auto">

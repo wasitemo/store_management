@@ -39,23 +39,6 @@ export default function OrderDiscountPage() {
   const token =
     typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
-  type SortKey =
-    | "discount_name"
-    | "discount_type"
-    | "discount_value"
-    | "started_time"
-    | "ended_time"
-    | "discount_status"
-    | "employee_name";
-
-  const [sortConfig, setSortConfig] = useState<{
-    key: SortKey | null;
-    direction: "asc" | "desc";
-  }>({
-    key: null,
-    direction: "asc",
-  });
-
   // ================= LOAD DATA =================
   const loadData = async () => {
     setLoading(true);
@@ -94,32 +77,16 @@ export default function OrderDiscountPage() {
     setShowModal(true);
   };
 
-  const handleSort = (key: SortKey) => {
-    setSortConfig((prev) => ({
-      key,
-      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
-    }));
-  };
-
-  const filteredAndSortedData = data
-    .filter((d) => {
-      const keyword = search.toLowerCase();
-      return (
-        d.discount_name.toLowerCase().includes(keyword) ||
-        d.discount_type.toLowerCase().includes(keyword) ||
-        d.discount_value.toLowerCase().includes(keyword) ||
-        d.employee_name.toLowerCase().includes(keyword) ||
-        (d.discount_status ? "active" : "inactive").includes(keyword)
-      );
-    })
-    .sort((a, b) => {
-      if (!sortConfig.key) return 0;
-      const aVal = a[sortConfig.key];
-      const bVal = b[sortConfig.key];
-      return sortConfig.direction === "asc"
-        ? String(aVal).localeCompare(String(bVal))
-        : String(bVal).localeCompare(String(aVal));
-    });
+  const filteredData = data.filter((d) => {
+    const keyword = search.toLowerCase();
+    return (
+      d.discount_name.toLowerCase().includes(keyword) ||
+      d.discount_type.toLowerCase().includes(keyword) ||
+      d.discount_value.toLowerCase().includes(keyword) ||
+      d.employee_name.toLowerCase().includes(keyword) ||
+      (d.discount_status ? "active" : "inactive").includes(keyword)
+    );
+  });
 
   const submitForm = async () => {
     setFormError("");
@@ -211,100 +178,44 @@ export default function OrderDiscountPage() {
             <thead className="bg-surface-hover">
               <tr>
                 <th
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("discount_name")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    Name
-                    {sortConfig.key === "discount_name" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "▲" : "▼"}
-                      </span>
-                    )}
-                  </div>
+                  Name
                 </th>
                 <th
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("discount_type")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    Type
-                    {sortConfig.key === "discount_type" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "▲" : "▼"}
-                      </span>
-                    )}
-                  </div>
+                  Type
                 </th>
                 <th
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("discount_value")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    Value
-                    {sortConfig.key === "discount_value" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "▲" : "▼"}
-                      </span>
-                    )}
-                  </div>
+                  Value
                 </th>
                 <th
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("started_time")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    Start Date
-                    {sortConfig.key === "started_time" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "▲" : "▼"}
-                      </span>
-                    )}
-                  </div>
+                  Start Date
                 </th>
                 <th
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("ended_time")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    End Date
-                    {sortConfig.key === "ended_time" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "▲" : "▼"}
-                      </span>
-                    )}
-                  </div>
+                  End Date
                 </th>
                 <th
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("discount_status")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    Status
-                    {sortConfig.key === "discount_status" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "▲" : "▼"}
-                      </span>
-                    )}
-                  </div>
+                  Status
                 </th>
                 <th
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("employee_name")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    Employee
-                    {sortConfig.key === "employee_name" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "▲" : "▼"}
-                      </span>
-                    )}
-                  </div>
+                  Employee
                 </th>
               </tr>
             </thead>
             <tbody className="bg-surface divide-y divide-border">
-              {filteredAndSortedData.map((d) => (
+              {filteredData.map((d) => (
                 <tr key={d.discount_id} className="hover:bg-surface-hover transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
                     {d.discount_name}
@@ -337,7 +248,7 @@ export default function OrderDiscountPage() {
                   </td>
                 </tr>
               ))}
-              {filteredAndSortedData.length === 0 && (
+              {filteredData.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-6 py-4 text-center text-text-secondary">
                     Tidak ada data

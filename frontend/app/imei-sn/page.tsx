@@ -21,16 +21,6 @@ export default function ImeiSnPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalData, setTotalData] = useState(0);
 
-  type SortKey = "stuff_name" | "warehouse_name" | "imei_1" | "imei_2" | "sn" | "stock_status";
-
-  const [sortConfig, setSortConfig] = useState<{
-    key: SortKey | null;
-    direction: "asc" | "desc";
-  }>({
-    key: null,
-    direction: "asc",
-  });
-
   const loadData = async () => {
     setLoading(true);
     setError("");
@@ -60,40 +50,17 @@ export default function ImeiSnPage() {
     loadData();
   }, [page, limit]);
 
-  const handleSort = (key: SortKey) => {
-    setSortConfig((prev) => ({
-      key,
-      direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc",
-    }));
-    setPage(1);
-  };
+  const filteredData = data.filter((item) => {
+    const matchSearch =
+      (item.stuff_name || "").toLowerCase().includes(filter.search.toLowerCase()) ||
+      (item.warehouse_name || "").toLowerCase().includes(filter.search.toLowerCase()) ||
+      (item.imei_1 || "").includes(filter.search) ||
+      (item.sn || "").includes(filter.search);
 
-  const filteredAndSorted = data
-    .filter((item) => {
-      const matchSearch =
-        (item.stuff_name || "").toLowerCase().includes(filter.search.toLowerCase()) ||
-        (item.warehouse_name || "").toLowerCase().includes(filter.search.toLowerCase()) ||
-        (item.imei_1 || "").includes(filter.search) ||
-        (item.sn || "").includes(filter.search);
+    const matchStatus = filter.status ? item.stock_status === filter.status : true;
 
-      const matchStatus = filter.status ? item.stock_status === filter.status : true;
-
-      return matchSearch && matchStatus;
-    })
-    .sort((a, b) => {
-      if (!sortConfig.key) return 0;
-
-      const aVal = a[sortConfig.key];
-      const bVal = b[sortConfig.key];
-
-      if (typeof aVal === "number") {
-        return sortConfig.direction === "asc" ? aVal - (bVal as number) : (bVal as number) - aVal;
-      }
-
-      return sortConfig.direction === "asc"
-        ? String(aVal).localeCompare(String(bVal))
-        : String(bVal).localeCompare(String(aVal));
-    });
+    return matchSearch && matchStatus;
+  });
 
   if (loading) {
     return (
@@ -156,88 +123,40 @@ export default function ImeiSnPage() {
             <thead className="bg-surface-hover">
               <tr>
                 <th
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("stuff_name")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    Stuff
-                    {sortConfig.key === "stuff_name" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "▲" : "▼"}
-                      </span>
-                    )}
-                  </div>
+                  Stuff
                 </th>
                 <th
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("warehouse_name")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    Warehouse
-                    {sortConfig.key === "warehouse_name" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "▲" : "▼"}
-                      </span>
-                    )}
-                  </div>
+                  Warehouse
                 </th>
                 <th
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("imei_1")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    IMEI 1
-                    {sortConfig.key === "imei_1" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "▲" : "▼"}
-                      </span>
-                    )}
-                  </div>
+                  IMEI 1
                 </th>
                 <th
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("imei_2")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    IMEI 2
-                    {sortConfig.key === "imei_2" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "▲" : "▼"}
-                      </span>
-                    )}
-                  </div>
+                  IMEI 2
                 </th>
                 <th
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("sn")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    Serial Number
-                    {sortConfig.key === "sn" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "▲" : "▼"}
-                      </span>
-                    )}
-                  </div>
+                  Serial Number
                 </th>
                 <th
-                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider cursor-pointer hover:bg-surface transition-colors"
-                  onClick={() => handleSort("stock_status")}
+                  className="px-6 py-4 text-left text-xs font-medium text-text-secondary uppercase tracking-wider"
                 >
-                  <div className="flex items-center">
-                    Status
-                    {sortConfig.key === "stock_status" && (
-                      <span className="ml-1">
-                        {sortConfig.direction === "asc" ? "▲" : "▼"}
-                      </span>
-                    )}
-                  </div>
+                  Status
                 </th>
               </tr>
             </thead>
 
             <tbody className="divide-y divide-border bg-surface">
-              {filteredAndSorted.map((item, i) => (
+              {filteredData.map((item, i) => (
                 <tr key={i} className="hover:bg-surface-hover transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-text-primary">
                     {item.stuff_name}
@@ -269,7 +188,7 @@ export default function ImeiSnPage() {
                   </td>
                 </tr>
               ))}
-              {filteredAndSorted.length === 0 && (
+              {filteredData.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-6 py-4 text-center text-text-secondary">
                     Tidak ada data
